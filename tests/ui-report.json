@@ -1,0 +1,246 @@
+{
+ "startedAt": "2026-10-01T20:52:19.754Z",
+ "url": "http://127.0.0.1:5273/",
+ "checks": {
+  "depth_and_collision_lobby": {
+   "ok": true,
+   "underCanopy": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 148.1,
+    "y": 171.17,
+    "color": "#ffb347"
+   },
+   "inFront": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 147.15,
+    "y": 194.89,
+    "color": "#ffb347"
+   },
+   "trunkStop": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 147.15,
+    "y": 187.39,
+    "color": "#ffb347"
+   },
+   "behindHouse": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 120.69,
+    "y": 48.72,
+    "color": "#ffb347"
+   },
+   "wallStop": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 120.45,
+    "y": 99.77,
+    "color": "#ffb347"
+   }
+  },
+  "depth_and_collision_arcade_garden": {
+   "ok": true,
+   "behindCabinets": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 108.57,
+    "y": 190.93,
+    "color": "#ffb347"
+   },
+   "frontCabinets": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 107.98,
+    "y": 221.92,
+    "color": "#ffb347"
+   },
+   "behindPillar": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 200.71,
+    "y": 120.52,
+    "color": "#ffb347"
+   },
+   "behindCounter": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 539.58,
+    "y": 312.02,
+    "color": "#ffb347"
+   },
+   "wallStop": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 321.05,
+    "y": 51.15,
+    "color": "#ffb347"
+   },
+   "underPergola": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 99.75,
+    "y": 216.72,
+    "color": "#ffb347"
+   },
+   "pondStop": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 271.98,
+    "y": 195.25,
+    "color": "#ffb347"
+   }
+  },
+  "two_users_move_chat_portal": {
+   "ok": true,
+   "seenByOther": {
+    "id": "f0ti7oepxcftf2u",
+    "name": "Demo 2",
+    "x": 375.89,
+    "y": 271.56,
+    "color": "#89cff0"
+   },
+   "unreadWhileCollapsed": "1",
+   "badgeAfterExpand": false,
+   "log": "Demo 2 안녕! 일촌 신청해요 ♥",
+   "typingDidNotMove": true,
+   "opacityMin": "20",
+   "chatBackground": "rgba(255, 250, 252, 0.2)",
+   "chatTextOpacity": "1",
+   "opacityMax": "95",
+   "opacityAfterReload": "75",
+   "portalArrival": {
+    "id": "f0ti7oepxcftf2u",
+    "name": "Demo 2",
+    "x": 44,
+    "y": 218,
+    "color": "#89cff0"
+   },
+   "otherZoneHidden": true,
+   "portalBack": {
+    "id": "f0ti7oepxcftf2u",
+    "name": "Demo 2",
+    "x": 596,
+    "y": 226,
+    "color": "#89cff0"
+   }
+  },
+  "star_game_default_30s": {
+   "ok": true,
+   "counts": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    6,
+    6,
+    6,
+    6,
+    7,
+    7,
+    7,
+    8,
+    8,
+    8,
+    9,
+    9,
+    9,
+    10,
+    10,
+    10,
+    11,
+    11,
+    11,
+    12,
+    12
+   ],
+   "durationSeconds": 30,
+   "initial": 5,
+   "shot": true,
+   "elapsed": 32,
+   "notebook": "Demo 1demo1@pixeltown.local별 보상 43개★ 별 조각×10★ 별 조각×8★ 별 조각×4★ 별 조각×6★ 별 조각×6★ 별 조각×9최근 기록오락실26. 10. 2. 오전 5:5410점오락실26. 10. 2. 오전 5:508점오락실26. 10. 2. 오전 5:464점오락실26. 10. 2. 오전 5:446점오락실26. 10. 2. 오전 5:426점오락실26. 10. 2. 오전 5:299점"
+  },
+  "viewports_no_scroll_integer_scale": {
+   "ok": true,
+   "desktop": {
+    "scroll": [
+     1280,
+     720
+    ],
+    "zoomDevicePx": 3,
+    "low": [
+     292,
+     182
+    ],
+    "canvas": [
+     874,
+     546
+    ],
+    "smoothing": false,
+    "galmuri": true
+   },
+   "mobileDpadMoved": 33,
+   "mobile": {
+    "scroll": [
+     390,
+     844
+    ],
+    "zoomDevicePx": 6,
+    "low": [
+     166,
+     332
+    ],
+    "canvas": [
+     996,
+     1989
+    ],
+    "smoothing": false,
+    "galmuri": true,
+    "sendButtonVisible": true
+   },
+   "landscapeDpadMoved": 36,
+   "landscape": {
+    "scroll": [
+     844,
+     390
+    ],
+    "zoomDevicePx": 6,
+    "low": [
+     352,
+     127
+    ],
+    "canvas": [
+     2112,
+     759
+    ],
+    "smoothing": false,
+    "galmuri": true,
+    "sendButtonVisible": true
+   },
+   "shortDpadMoved": 36,
+   "short": {
+    "scroll": [
+     390,
+     430
+    ],
+    "zoomDevicePx": 6,
+    "low": [
+     166,
+     125
+    ],
+    "canvas": [
+     996,
+     747
+    ],
+    "smoothing": false,
+    "galmuri": true,
+    "sendButtonVisible": true
+   }
+  }
+ },
+ "finishedAt": "2026-10-01T20:54:17.502Z",
+ "status": "passed"
+}

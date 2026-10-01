@@ -2,7 +2,7 @@ import { Room, ServerError } from '@colyseus/core';
 import { randomUUID, randomInt } from 'node:crypto';
 import { userClient, ZONES } from './config.js';
 import { outbox } from './outbox.js';
-import { getMap, moveActor, entryPoint, starSpots, COLLECT_RADIUS, STEP_PER_TICK, TICK_MS } from '../shared/world.js';
+import { getMap, blocked, moveActor, entryPoint, starSpots, COLLECT_RADIUS, STEP_PER_TICK, TICK_MS } from '../shared/world.js';
 // Random reachable, uncovered spot that is not right on top of another star.
 function starPosition(map,stars){
   const spots=starSpots(map);
@@ -87,7 +87,10 @@ export class Town extends Room {
   }
   onJoin(client,options,auth) {
     if([...this.players.values()].some(p=>p.id===auth.id))throw new ServerError(409,'User already joined this zone');
-    const at=entryPoint(this.map,typeof options?.entry==='string'?options.entry:'default');
+    const base=entryPoint(this.map,typeof options?.entry==='string'?options.entry:'default');
+    // Arrivals step aside so avatars and name tags do not stack on the same doorway.
+    const at=[[0,0],[16,0],[-16,0],[0,12],[16,12],[-16,12],[0,-12]].map(([dx,dy])=>({x:base.x+dx,y:base.y+dy}))
+      .find(q=>!blocked(this.map,q.x,q.y)&&![...this.players.values()].some(o=>Math.hypot(o.x-q.x,o.y-q.y)<12))||base;
     this.players.set(client.sessionId,{id:auth.id,name:auth.name,x:at.x,y:at.y,color:auth.color});
     if(this.game.active && !(auth.id in this.game.scores) && Object.keys(this.game.scores).length<64)this.game.scores[auth.id]=0;
     this.snapshot();

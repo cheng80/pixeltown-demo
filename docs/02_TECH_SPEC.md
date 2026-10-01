@@ -1,12 +1,13 @@
 # PixelTown 기술 명세
 
-기준: 2026-10-02의 로컬 소스. 이미 병렬 구현 중이며 아래 계약은 실제 코드에서 추출했다. 제품 요구는 [PRODUCT_SPEC](01_PRODUCT_SPEC.md)의 FR/BR를 참조한다. 실행 결과·현재 문제·인수인계는 메인 담당이 PROJECT_STATUS에 기록한다.
+기준: 2026-10-02 재제작(PLAN-002) 로컬 소스. 아래 계약은 실제 코드에서 추출했다. 제품 요구는 [PRODUCT_SPEC](01_PRODUCT_SPEC.md)의 FR/BR를 참조한다. 실행 결과·현재 문제·인수인계는 메인 담당이 PROJECT_STATUS에 기록한다.
 
 ## 1. 기술 스택과 파일 경계
 
 | 영역 | 기술 / 소스 | 제약 |
 |---|---|---|
-| 화면 | React 19, Vite 6, Canvas 2D; game/src/main.jsx, world.js, style.css | 자체 절차적 도트 렌더링, 전체 화면 게임·HUD |
+| 화면 | React 19, Vite 6, Canvas 2D; game/src/main.jsx(UI·입력), render.js(3계층 렌더러), sprites.js(도트 스프라이트), style.css; Galmuri11(OFL, npm `galmuri`) | 미니홈피 프레임, 정수배 도트 렌더링 (ADR-003) |
+| 공용 맵·충돌 | shared/world.js (의존성 없음) | 게임·서버·테스트가 같은 파일 import (ADR-002) |
 | PB 브라우저 | pocketbase SDK; root package.json/package-lock.json | 로그인 authStore와 사용자별 조회 |
 | 실시간 | colyseus.js 0.16 계열, @colyseus/core 0.16.26, @colyseus/ws-transport 0.16.5 | 설치 잠금파일 기준의 0.16 프로토콜 호환 |
 | 서버 PB SDK | pocketbase 0.28.1; colyseus/config.js | 사용자별 클라이언트와 관리자 저장 클라이언트 분리 |
@@ -18,7 +19,7 @@
 
 ## 2. 아키텍처
 
-프로젝트 루트 바로 아래 `game/`, `pocketbase/`, `colyseus/`, `docs/`를 형제로 둔다. 게임은 루트 Vite 설정에서 `game`을 root로 사용하며 환경변수는 프로젝트 루트에서 읽는다. PocketBase 바이너리·DB·관리자 파일은 pocketbase 안에, 게임 서버·outbox는 colyseus 안에 둔다. `scripts/dev.mjs`가 세 프로세스를 localhost에 함께 시작한다.
+프로젝트 루트 바로 아래 `game/`, `pocketbase/`, `colyseus/`, `docs/`를 형제로 둔다. 게임과 서버가 함께 쓰는 순수 맵·충돌 모듈은 형제 `shared/`에 둔다. 게임은 루트 Vite 설정에서 `game`을 root로 사용하며 환경변수는 프로젝트 루트에서 읽는다. PocketBase 바이너리·DB·관리자 파일은 pocketbase 안에, 게임 서버·outbox는 colyseus 안에 둔다. `scripts/dev.mjs`가 세 프로세스를 localhost에 함께 시작한다.
 
 
 ```text
@@ -33,9 +34,9 @@ React / Canvas
             → 성공 시 outbox 삭제
 ```
 
-`world.js`는 표시용 960×640 월드·지형·캐릭터·별을 그린다. 충돌 정본은 `colyseus/town.js`의 OBSTACLES와 blocked 함수다. 표시 지형과 서버 장애물 위치를 변경할 때 함께 확인한다. Canvas 보간은 서버 위치 사이를 부드럽게 그릴 뿐 권한 위치를 갱신하지 않는다.
+맵·충돌 정본은 `shared/world.js`다(ADR-002). 장소별 40×26 타일(16도트, 월드 640×416) 타일맵, 소품 배치와 정의(`w,h,ax,ay` 그림, `foot` 바닥 충돌, `layer` sort/fg/ground), 입구·출입구, `blocked`·`moveActor`·`findPath`·`starSpots`를 담는다. `game/src/render.js`가 ground(굽기) → 발밑 y 정렬(소품·별·아바타) → fg → 화면 해상도 글자 순서로 그린다. Canvas 보간은 서버 위치 사이를 부드럽게 그릴 뿐 권한 위치를 갱신하지 않는다. `?debug=collision`은 visual bounds(파랑)와 footprint·막힌 타일(빨강)을 겹쳐 그린다.
 
-`server.define('town',Town).filterBy(['zone'])`로 장소별 방을 만든다. 각 방 maxClients=32, maxMessagesPerSecond=40이며 메시지 snapshot은 100ms tick마다 전체 상태를 전송한다. 32명 제한은 32명 성능 검증을 의미하지 않는다.
+`server.define('town',Town).filterBy(['zone'])`로 장소별 방을 만든다. 각 방 maxClients=32, maxMessagesPerSecond=40이며 메시지 snapshot은 50ms tick마다 전체 상태를 전송한다. 32명 제한은 32명 성능 검증을 의미하지 않는다.
 
 ## 3. 인증·권한·보안
 
@@ -76,7 +77,7 @@ DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체
 
 ### API-002 방 입장
 
-`joinOrCreate('town', {token,zone})`, zone은 lobby/garden/arcade. 반환 room의 sessionId는 연결 식별자이며 플레이어 id는 인증된 PB 사용자 ID다.
+`joinOrCreate('town', {token,zone,entry?})`, zone은 lobby/garden/arcade. `entry`는 장소의 고정 입구 이름(`default`, lobby `west`/`east`, garden `west`, arcade `door`)만 쓰고 그 외 값은 `default`로 바꾼다. 같은 입구에 이미 사람이 있으면 서버가 16도트 이내 빈 자리로 비켜 세운다. 클라이언트는 409(이전 소켓 정리 전 재접속)를 700ms 간격 최대 6회 재시도한다. 반환 room의 sessionId는 연결 식별자이며 플레이어 id는 인증된 PB 사용자 ID다.
 
 | 방향 | 메시지 | payload / 서버 규칙 |
 |---|---|---|
@@ -84,7 +85,7 @@ DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체
 | C→S | chat | `{text}` 문자열, 제어문자 제거·trim·240자 제한, 사용자별 700ms cooldown; 프런트 입력 제한 200자 |
 | C→S | emote | `{}`; 서버 wave 이벤트, 1000ms cooldown |
 | C→S | startGame | `{}`; 진행 중 무시, 2000ms cooldown; 클라이언트 score/endsAt 무시 |
-| C→S | collect | `{id}` 별 ID; 진행·시간·존재·인증 위치 거리≤32 검증 |
+| C→S | collect | `{id}` 별 ID; 진행·시간·존재·인증 발밑 위치 거리≤16(`COLLECT_RADIUS`) 검증 |
 | S→C | snapshot | `{players,zone,game,persistence}` 전체 snapshot |
 | S→C | chat | `{id,name,text,at}` 서버 확정 발신자 |
 | S→C | emote | `{id,emote:'wave',at}` |
@@ -92,7 +93,7 @@ DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체
 
 player는 `{id,name,x,y,color}`. game은 `{active,endsAt,stars:[{id,x,y}],scores:{[userId]:integer}}`. persistence는 `{status:'pending'|'saved',pending,lastError}`이며 전체 outbox 상태이므로 특정 매치만의 상태는 아니다.
 
-서버는 100ms마다 방향×18 단위를 적용하며 입력이 300ms보다 오래되면 움직이지 않는다. 월드 경계는 x=16..944, y=16..624. 장애물 사각형에 기본 pad14를 적용해 x/y 축을 따로 판정한다. 시작 위치는 (480,400). 별은 장애물 여유 pad40을 피한다. 현재 소스는 초기 5개, 미회수 상한 12개, 1500ms마다 상한 미만이면 1개 생성이다. 회수 후 후속 주기에만 1개를 보충하고 별 0개 조기 종료를 제거한다. 마지막 소스 재대조에서 주기 생성·상한·별 0개 진행을 확인했다. 방의 전원 이탈·dispose에서는 저장을 위한 종료 처리가 별도로 있다. solo도 초기5·상한12·1500ms·30초와 충돌을 적용하며 DB 보상은 없다. default 30000ms, GAME_DURATION_MS override는 1000..60000 clamp다. 현재 참가자와 진행 중 합류자를 scores에 등록하고 이탈자의 점수는 유지한다.
+서버는 50ms마다 `moveActor(map,x,y,dx,dy,3)`을 적용하며 입력이 300ms보다 오래되면 움직이지 않는다. 이동은 1.5도트 이하로 쪼개 축별로 미끄러지고, 한 축만 막히면 수직 방향 6도트 이내 빈틈으로 비켜 간다. 플레이어 발 상자 10×6이 막힌 타일·소품 footprint·맵 경계와 겹치면 막힌다. 별은 `starSpots`(시작점에서 닿고 sort 소품 그림에 가리지 않은 타일 중심)에서 다른 별과 24도트 이상 떨어진 곳을 고른다. 현재 소스는 초기 5개, 미회수 상한 12개, 1500ms마다 상한 미만이면 1개 생성이다. 회수 후 후속 주기에만 1개를 보충하고 별 0개 조기 종료를 제거한다. 마지막 소스 재대조에서 주기 생성·상한·별 0개 진행을 확인했다. 방의 전원 이탈·dispose에서는 저장을 위한 종료 처리가 별도로 있다. solo도 초기5·상한12·1500ms·30초와 충돌을 적용하며 DB 보상은 없다. default 30000ms, GAME_DURATION_MS override는 1000..60000 clamp다. 현재 참가자와 진행 중 합류자를 scores에 등록하고 이탈자의 점수는 유지한다.
 
 ### API-003 원자적 결과 커밋
 
@@ -150,7 +151,7 @@ npm run build
 npm run test:integration
 ```
 
-macOS start.command도 로컬 실행 진입점이다. dev:all은 PB 18090, Colyseus 12567, Vite 5173을 loopback에 실행하며 점유 포트를 임의 종료하지 않는다. 초기화는 localhost PB만 허용하고 공식 고정 버전 바이너리의 SHA-256을 확인한다.
+macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090, Colyseus 12567, Vite 5173을 loopback에 실행하며 점유 포트를 임의 종료하지 않는다. `PIXELTOWN_PB_PORT`·`PIXELTOWN_GAME_PORT`·`PIXELTOWN_WEB_PORT`로 바꾸면 브라우저 `VITE_*` URL도 함께 맞춘다. 통합 테스트는 `PIXELTOWN_TEST_PB_PORT`·`PIXELTOWN_TEST_GAME_PORT`(기본 18090/12567)를 쓴다. 브라우저 검증 `tests/ui-check.mjs`는 실행 중인 dev 서버(`PIXELTOWN_WEB_PORT`)와 `CHROME_PATH`의 Chromium을 쓴다. 초기화는 localhost PB만 허용하고 공식 고정 버전 바이너리의 SHA-256을 확인한다.
 
 | 환경변수 | 실제 용도·기본값 |
 |---|---|
@@ -163,7 +164,9 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 PB 18090, Colys
 | PB_DATA_DIR | 로컬 PB 데이터, pocketbase/.local/pb_data |
 | OUTBOX_PATH | 영구 outbox 디렉터리, colyseus/.local/outbox |
 | GAME_DURATION_MS | 게임 기본 30000; 통합 검증은 24000으로 단축 |
+| PIXELTOWN_PB_PORT / PIXELTOWN_GAME_PORT / PIXELTOWN_WEB_PORT | dev:all 포트, 기본 18090 / 12567 / 5173 |
+| CHROME_PATH | ui-check용 Chromium 실행 파일, 없으면 시스템 Chrome |
 
-최종 형제 디렉터리 구조에서 `npm run test:integration`은 13개 통과, 실패0이었다. 신규 별 상한 유지·회수 후 재생성까지 실제 서버로 확인했다. `npm --prefix colyseus test`는 6개 통과했다. 테스트 날짜·리비전·UI 검증 근거와 미실행 공백은 PROJECT_STATUS에서 관리한다.
+테스트 날짜·리비전·결과·미실행 공백은 PROJECT_STATUS와 verification.md에서 관리한다.
 
 20명 smoke는 약 3초 입력 workload·10Hz 목표·단일 로컬 머신 기능 점검이다. 100명이나 인터넷 지연·실제 모바일 FPS를 보증하지 않는다. 이후 규모 확대는 schema delta/관심 영역, 방 분할, PB 저장량, 네트워크·CPU·모바일 렌더링 측정 후 결정한다. 공개 GitHub source push와 운영 배포를 구분한다.
