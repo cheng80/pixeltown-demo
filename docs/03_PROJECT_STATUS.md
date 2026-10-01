@@ -23,8 +23,8 @@
 - [x] S2 공용 맵·충돌 모듈 `shared/world.js`, 서버 연결, 포트 환경변수화 (`332ae9b`)
 - [x] S3 도트 렌더러: 3계층 깊이·자동 외곽선·정수배 스케일·2등신 아바타 (`216d963`)
 - [x] S4 미니홈피 UI·반응형·채팅·클릭 이동·출입구 (`216d963`)
-- [x] S5 단위14·통합13·UI5·build, 2유저·기본30초 라운드·4 뷰포트 검증과 스크린샷 (검증 커밋)
-- [x] S6 TECH_SPEC·README·현황 정리와 인계 (검증 커밋)
+- [x] S5 단위14·통합13·UI5·build, 2유저·기본30초 라운드·4 뷰포트 검증과 스크린샷 (`12aefce`)
+- [x] S6 TECH_SPEC·README·현황 정리와 인계 (`12aefce`)
 
 ## 4. 거절과 재제작 사유
 
@@ -72,13 +72,13 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 | 항목 | 결과 | 근거 | 날짜 | 리비전 | 유효성 | 출처 / 공백 |
 |---|---|---|---|---|---|---|
-| 단위 14개(맵·깊이·충돌 9 포함) | PASS | RECHECKED | 2026-10-02 | 검증 커밋 | CURRENT | `npm --prefix colyseus test` |
-| 통합 13개(별도 포트 18191/12668) | PASS | RECHECKED | 2026-10-02 | 검증 커밋 | CURRENT | `tests/report.json` |
-| 브라우저 UI 5개 | PASS | RECHECKED | 2026-10-02 | 검증 커밋 | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
-| 깊이·충돌·맵 AC-014/015 | PASS | RECHECKED | 2026-10-02 | 검증 커밋 | CURRENT | 실제 클릭·방향키 이동 좌표와 앞/뒤 스크린샷 |
-| 도트 스케일·4 뷰포트 AC-011/016 | PASS | RECHECKED | 2026-10-02 | 검증 커밋 | CURRENT | scroll=viewport, 정수 배율 3/6, smoothing false |
-| 기본 30초 라운드·상한·저장 | PASS | RECHECKED | 2026-10-02 | 검증 커밋 | CURRENT | 두 사용자, 단축 없음 |
-| 빌드 | PASS | RECHECKED | 2026-10-02 | 검증 커밋 | CURRENT | `npm run build` |
+| 단위 14개(맵·깊이·충돌 9 포함) | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | `npm --prefix colyseus test` |
+| 통합 13개(별도 포트 18191/12668) | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | `tests/report.json` |
+| 브라우저 UI 5개 | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
+| 깊이·충돌·맵 AC-014/015 | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | 실제 클릭·방향키 이동 좌표와 앞/뒤 스크린샷 |
+| 도트 스케일·4 뷰포트 AC-011/016 | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | scroll=viewport, 정수 배율 3/6, smoothing false |
+| 기본 30초 라운드·상한·저장 | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | 두 사용자, 단축 없음 |
+| 빌드 | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | `npm run build` |
 | 디자인 승인 | PENDING | NONE | - | - | UNKNOWN | 사용자 판단 |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
 | 인터넷 성능·100명·운영 배포 | NOT_RUN | NONE | - | - | UNKNOWN | 범위 밖 |

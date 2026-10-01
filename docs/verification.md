@@ -1,6 +1,6 @@
 # 검증 증거 (재제작판)
 
-검증일: 2026-10-02 (Asia/Seoul). 브랜치 `cheng80/cyworld-remake`, 게임 커밋 `216d963` + 입장 위치 비키기 수정(이 문서와 같은 커밋). 진행 상태 정본은 [PROJECT_STATUS](03_PROJECT_STATUS.md)다. 거절된 1차 판(`dc2e191`)의 화면 증거는 삭제했다.
+검증일: 2026-10-02 (Asia/Seoul). 브랜치 `cheng80/cyworld-remake`, 게임 `216d963` + 입장 위치 비키기 수정 `12aefce`. 진행 상태 정본은 [PROJECT_STATUS](03_PROJECT_STATUS.md)다. 거절된 1차 판(`dc2e191`)의 화면 증거는 삭제했다.
 
 실행 환경: 이 worktree 전용 개발 서버(Vite 5273, PB 18190, Colyseus 12667)와 통합 테스트 전용 서버(PB 18191, Colyseus 12668). 원래 체크아웃의 5173/18090/12567 프로세스와 데이터는 건드리지 않았다. 외부 접속은 PocketBase 공식 바이너리 다운로드(checksum 검증)와 원본 사이트 읽기 전용 관찰(MQTT 차단)뿐이다.
 
