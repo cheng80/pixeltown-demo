@@ -1,0 +1,20 @@
+{
+  "name": "pixeltown-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node ../scripts/dev-backend.mjs",
+    "init": "node ../scripts/init-pocketbase.mjs",
+    "test": "node --test test/*.test.js",
+    "verify": "node ../scripts/verify-backend.mjs"
+  },
+  "dependencies": {
+    "@colyseus/core": "0.16.26",
+    "@colyseus/ws-transport": "0.16.5",
+    "pocketbase": "0.28.1"
+  },
+  "devDependencies": {
+    "colyseus.js": "0.16.22"
+  }
+}

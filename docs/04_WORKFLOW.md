@@ -30,7 +30,7 @@
 
 ```sh
 npm ci
-npm --prefix backend ci
+npm --prefix colyseus ci
 npm run dev:all
 ```
 

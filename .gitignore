@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.env.local
+pocketbase/.env.local
+colyseus/.local/
+.playwright-cli/
+pocketbase/.local/
+.test-work/

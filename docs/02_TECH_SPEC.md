@@ -6,17 +6,20 @@
 
 | 영역 | 기술 / 소스 | 제약 |
 |---|---|---|
-| 화면 | React 19, Vite 6, Canvas 2D; src/main.jsx, world.js, style.css | 자체 절차적 도트 렌더링, 전체 화면 게임·HUD |
+| 화면 | React 19, Vite 6, Canvas 2D; game/src/main.jsx, world.js, style.css | 자체 절차적 도트 렌더링, 전체 화면 게임·HUD |
 | PB 브라우저 | pocketbase SDK; root package.json/package-lock.json | 로그인 authStore와 사용자별 조회 |
 | 실시간 | colyseus.js 0.16 계열, @colyseus/core 0.16.26, @colyseus/ws-transport 0.16.5 | 설치 잠금파일 기준의 0.16 프로토콜 호환 |
-| 서버 PB SDK | pocketbase 0.28.1; backend/config.js | 사용자별 클라이언트와 관리자 저장 클라이언트 분리 |
-| DB·훅 | PocketBase 실행기 고정 0.40.4, backend/pb_hooks/matches.pb.js | 결과·보상 트랜잭션과 superuser 전용 커밋 |
+| 서버 PB SDK | pocketbase 0.28.1; colyseus/config.js | 사용자별 클라이언트와 관리자 저장 클라이언트 분리 |
+| DB·훅 | PocketBase 실행기 고정 0.40.4, pocketbase/pb_hooks/matches.pb.js | 결과·보상 트랜잭션과 superuser 전용 커밋 |
 | 실행·seed | scripts/dev.mjs, dev-backend.mjs, init-pocketbase.mjs | macOS/Linux, curl/unzip, 바이너리 SHA-256 확인, localhost 제한 |
 | 검증 | tests/integration.mjs, tests/report.json | 별도 PB 데이터·outbox, 자기 프로세스만 관리 |
 
-라이브러리의 최신 버전 안내가 아니라 이 저장소의 설치·구현 계약이다. Colyseus 0.16 호환성에 따른 dependency 취약점 설명은 메인 담당의 루트 README를 확인하고 공개 배포 판단 전에 실제 audit 결과를 검토한다. 이 문서는 audit 통과를 주장하지 않는다.
+라이브러리의 최신 버전 안내가 아니라 이 저장소의 설치·구현 계약이다. Colyseus 0.16 호환성에 따른 dependency 취약점 설명은 PROJECT_STATUS와 colyseus/README.md를 확인하고 공개 배포 판단 전에 실제 audit 결과를 검토한다. 이 문서는 audit 통과를 주장하지 않는다.
 
 ## 2. 아키텍처
+
+프로젝트 루트 바로 아래 `game/`, `pocketbase/`, `colyseus/`, `docs/`를 형제로 둔다. 게임은 루트 Vite 설정에서 `game`을 root로 사용하며 환경변수는 프로젝트 루트에서 읽는다. PocketBase 바이너리·DB·관리자 파일은 pocketbase 안에, 게임 서버·outbox는 colyseus 안에 둔다. `scripts/dev.mjs`가 세 프로세스를 localhost에 함께 시작한다.
+
 
 ```text
 React / Canvas
@@ -30,7 +33,7 @@ React / Canvas
             → 성공 시 outbox 삭제
 ```
 
-`world.js`는 표시용 960×640 월드·지형·캐릭터·별을 그린다. 충돌 정본은 `backend/town.js`의 OBSTACLES와 blocked 함수다. 표시 지형과 서버 장애물 위치를 변경할 때 함께 확인한다. Canvas 보간은 서버 위치 사이를 부드럽게 그릴 뿐 권한 위치를 갱신하지 않는다.
+`world.js`는 표시용 960×640 월드·지형·캐릭터·별을 그린다. 충돌 정본은 `colyseus/town.js`의 OBSTACLES와 blocked 함수다. 표시 지형과 서버 장애물 위치를 변경할 때 함께 확인한다. Canvas 보간은 서버 위치 사이를 부드럽게 그릴 뿐 권한 위치를 갱신하지 않는다.
 
 `server.define('town',Town).filterBy(['zone'])`로 장소별 방을 만든다. 각 방 maxClients=32, maxMessagesPerSecond=40이며 메시지 snapshot은 100ms tick마다 전체 상태를 전송한다. 32명 제한은 32명 성능 검증을 의미하지 않는다.
 
@@ -44,19 +47,20 @@ React / Canvas
 
 users는 자신의 record만 list/view, profiles/results/inventory는 `user = @request.auth.id`에 한해 list/view한다. create/update/delete 규칙은 `null`로 일반 사용자 쓰기를 잠근다. 회원가입은 제외되며 공개 등록 API가 없다. 서버 저장은 별도 관리자 클라이언트가 `_superusers.authWithPassword` 후 수행한다.
 
-개발 seed 계정은 demo1/demo2@pixeltown.local, 공개 데모 비밀번호는 PixelTown123!다. 관리자 인증정보는 최초 실행 시 무작위 생성해 backend/.env.local(mode 0600)에 저장한다. 실제 값을 문서·로그·VITE_ 변수·Git에 넣지 않는다. PB 데이터·outbox·바이너리·node_modules는 공개 대상에서 제외한다.
+개발 seed 계정은 demo1/demo2@pixeltown.local, 공개 데모 비밀번호는 PixelTown123!다. 관리자 인증정보는 최초 실행 시 무작위 생성해 pocketbase/.env.local(mode 0600)에 저장한다. 실제 값을 문서·로그·VITE_ 변수·Git에 넣지 않는다. PB 데이터·outbox·바이너리·node_modules는 공개 대상에서 제외한다.
 
 ## 4. 데이터 모델
 
-seed가 관리하는 사용자 데이터 collection은 profiles/results/inventory다. 장소는 PB collection이 아닌 서버 상수·방 metadata다. PB rooms collection을 이미 구현한 것처럼 기록하지 않는다.
+seed는 users/profiles/rooms/results/inventory를 준비한다. rooms는 영구 장소 메타데이터이며 Colyseus의 실시간 방 인스턴스와 분리한다. 인증 후 rooms 조회로 장소 등록을 확인한다. rooms는 로그인 사용자만 읽고 일반 사용자 쓰기는 금지한다.
 
 | 엔터티 | 필드·제약 |
 |---|---|
 | users | PB auth collection, email/password 등 PB 인증 필드, name text max40; 사용자 ID 15자리 |
 | profiles | user relation(users, required, cascadeDelete), name required text max40, color required text; unique(user) |
+| rooms | zone required text unique(zone), title required text max80, max_players required number 1..32; 3개 장소 seed |
 | results | user relation, match_id required text, zone required text, score number min0, ended_at required date; unique(match_id,user) |
 | inventory | user relation, match_id required text, item required text, quantity number min0; unique(match_id,user) |
-| 공통 | profiles/results/inventory에 created autodate(onCreate), updated autodate(onCreate/onUpdate) |
+| 공통 | profiles/rooms/results/inventory에 created autodate(onCreate), updated autodate(onCreate/onUpdate) |
 
 현재 초기화 스크립트는 기존 collection에 누락된 created/updated 필드를 추가한다. 신규 schema 정의만 바꾸는 것으로 기존 데이터베이스의 `sort:'-created'` 오류가 해결되었다고 판단하지 않는다. 실제 초기화 재실행과 UI 조회 400 해소를 별도로 확인한다. 기존 collection의 모든 rule/index를 강제 재구성하는 일반 마이그레이션 도구는 아니다.
 
@@ -131,8 +135,8 @@ UI는 인증 실패 alert, 방 연결 실패·재연결, 저장 pending/재시�
 |---|---|---|
 | 해결 완료 | 브라우저와 `.env.example`은 모두 `VITE_GAME_URL` 사용 | 설정 예제와 실제 소스 대조 |
 | 구현 후 검증 필요 | 상위3 scoreboard·동점 순위·남은 별/상한은 최신 프런트 소스에 추가됨 | 종료 결과·동점 표시의 브라우저 확인 |
-| 구현 후 검증 필요 | 초기5·1500ms 주기·상한12·별0개 진행·개인/전체 score64를 최신 서버·훅에서 확인 | cap/재생성/30초·원장 점수 검증과 최신 증거 확인 |
-| 검증 후 재확인 | UI records 400 대응으로 created/updated 추가·기존 collection 보완 중 | 최종 schema 초기화 후 브라우저 조회 재확인; 통합 리포트로 UI 수정을 대신하지 않음 |
+| 해결·검증 완료 | 초기5·1500ms 주기·상한12·별0개 진행·개인/전체 score64 | 실제 WebSocket lifecycle, 단위 tick/점수 상한, 통합 재검증 |
+| 해결·검증 완료 | UI records 400 대응으로 created/updated 추가·기존 collection 보완 | 재seed 후 브라우저 프로필·결과 조회 성공, 오류0 |
 
 ## 8. 실행·검증·확장
 
@@ -140,7 +144,7 @@ UI는 인증 실패 alert, 방 연결 실패·재연결, 저장 pending/재시�
 
 ```sh
 npm ci
-npm --prefix backend ci
+npm --prefix colyseus ci
 npm run dev:all
 npm run build
 npm run test:integration
@@ -154,12 +158,12 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 PB 18090, Colys
 | VITE_GAME_URL | 승인된 브라우저 게임 URL 계약, ws://127.0.0.1:12567; 예제와 동일한 변수 |
 | PB_URL | 서버 PB URL, http://127.0.0.1:18090 |
 | SERVER_HOST / SERVER_PORT | Colyseus bind, 127.0.0.1 / 12567 |
-| PIXELTOWN_LOCAL_DIR | 바이너리·로컬 자산, backend/.local |
-| PIXELTOWN_ENV_FILE | 비공개 관리자 파일, backend/.env.local |
-| PB_DATA_DIR | 로컬 PB 데이터, backend/.local/pb_data |
-| OUTBOX_PATH | 영구 outbox 디렉터리, backend/.local/outbox |
-| GAME_DURATION_MS | 게임 기본 30000; 통합 검증은 12000으로 단축 |
+| PIXELTOWN_LOCAL_DIR | 바이너리·로컬 자산, pocketbase/.local |
+| PIXELTOWN_ENV_FILE | 비공개 관리자 파일, pocketbase/.env.local |
+| PB_DATA_DIR | 로컬 PB 데이터, pocketbase/.local/pb_data |
+| OUTBOX_PATH | 영구 outbox 디렉터리, colyseus/.local/outbox |
+| GAME_DURATION_MS | 게임 기본 30000; 통합 검증은 24000으로 단축 |
 
-`tests/report.json`을 읽어 12 passed / 0 failed를 확인했다. 리포트 범위는 서버 인증·동기화·방 격리·게임 저장·권한·중복·rollback·장애 재시작·20명 로컬 smoke이며, 이 문서 담당이 직접 재실행한 결과가 아니다. 상세 날짜·리비전·유효성·최신 UI 공백은 PROJECT_STATUS에 남긴다. 특히 UI records 400 수정 및 별 주기 생성·점수 상한 변경 이후에는 해당 리포트의 유효성을 재확인해야 한다. 기존 12개 통과는 신규 cap/no accumulation 규칙 통과의 증거가 아니다.
+최종 형제 디렉터리 구조에서 `npm run test:integration`은 13개 통과, 실패0이었다. 신규 별 상한 유지·회수 후 재생성까지 실제 서버로 확인했다. `npm --prefix colyseus test`는 6개 통과했다. 테스트 날짜·리비전·UI 검증 근거와 미실행 공백은 PROJECT_STATUS에서 관리한다.
 
 20명 smoke는 약 3초 입력 workload·10Hz 목표·단일 로컬 머신 기능 점검이다. 100명이나 인터넷 지연·실제 모바일 FPS를 보증하지 않는다. 이후 규모 확대는 schema delta/관심 영역, 방 분할, PB 저장량, 네트워크·CPU·모바일 렌더링 측정 후 결정한다. 공개 GitHub source push와 운영 배포를 구분한다.

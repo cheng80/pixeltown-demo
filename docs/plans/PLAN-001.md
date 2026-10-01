@@ -12,11 +12,14 @@
 
 ## 2. 현재 상태와 전제
 
-계획 작성 시 `src/main.jsx`, `src/world.js`, `backend/*.js`, `backend/pb_hooks/matches.pb.js`, 실행·seed·통합 스크립트가 이미 존재하며 병렬 변경 중이다. 이 계획은 개발 시작 전 작성된 계획처럼 소급하지 않는다. 실제 작업 상태·검증은 PROJECT_STATUS가 정본이다.
+계획 작성 시 `game/src/main.jsx`, `game/src/world.js`, `colyseus/*.js`, `pocketbase/pb_hooks/matches.pb.js`, 실행·seed·통합 스크립트가 이미 존재하며 병렬 변경 중이다. 이 계획은 개발 시작 전 작성된 계획처럼 소급하지 않는다. 실제 작업 상태·검증은 PROJECT_STATUS가 정본이다.
 
-회원가입 제외(개발 계정·기존 로그인만 제공)는 확정했다. 프런트엔드 `VITE_GAME_URL`, scoreboard 표시, 새 채팅 overlay 계약은 최종 소스 재대조가 필요하다. 신규 필수 규칙은 방별 초기 별 5개·미회수 상한 12개·1500ms마다 상한 미만에서 1개 생성·회수 후 후속 주기 재생성·기본 30초 종료(별 0개 조기 종료 없음)다. 점수 검증 상한도 64로 변경한다. 별·시간·위치·점수는 서버가 결정하며 사용자별 authRefresh 인스턴스, PB 트랜잭션, `(match_id,user)` unique, 디스크 outbox와 재시작 복구를 유지한다.
+회원가입 제외(개발 계정·기존 로그인만 제공)는 확정했다. 프런트엔드 `VITE_GAME_URL`, 상위3 scoreboard·동점 순위, 채팅 overlay 계약을 구현했다. 신규 필수 규칙은 방별 초기 별 5개·미회수 상한 12개·1500ms마다 상한 미만에서 1개 생성·회수 후 후속 주기 재생성·기본 30초 종료(별 0개 조기 종료 없음)다. 점수 검증 상한도 64로 변경한다. 별·시간·위치·점수는 서버가 결정하며 사용자별 authRefresh 인스턴스, PB 트랜잭션, `(match_id,user)` unique, 디스크 outbox와 재시작 복구를 유지한다.
 
 ## 3. 실행 단계
+
+추가 사용자 요청: 같은 부모 아래 game/pocketbase/colyseus/docs 형제 디렉터리로 구성하고 기존 개발 데이터를 보존한다. 루트 launcher·설정·통합 테스트·문서 경로를 함께 변경한 뒤 전체 핵심 흐름을 재검증한다.
+
 
 1. 문서: 게임기획·PRD를 한 정본에 작성하고 FR/BR/AC를 연결한다. 기술 계약과 미확정을 실제 코드에서 추출한다. 기존 analysis·상태·루트 README 담당 영역을 보존한다.
 2. 구현: 프런트엔드는 게임 중심 UI·모바일·채팅 overlay·scoreboard·환경변수·인증 UI, 백엔드는 인증·방·충돌·게임·저장 계약을 확정한다. 독립 변경은 병렬 수행한다.
@@ -28,8 +31,8 @@
 | 영역 | 파일 / 계약 영향 |
 |---|---|
 | 제품·문서 | AGENTS, docs/README, PRODUCT_SPEC, TECH_SPEC, WORKFLOW, PLAN, ADR |
-| 화면 | src/main.jsx, src/world.js, src/style.css; 입력·채팅·결과·수첩 |
-| 서버 | backend/config.js, town.js, server.js, outbox.js; 인증·메시지·게임 |
+| 화면 | game/src/main.jsx, game/src/world.js, game/src/style.css; 입력·채팅·결과·수첩 |
+| 서버 | colyseus/config.js, town.js, server.js, outbox.js; 인증·메시지·게임 |
 | DB | init-pocketbase.mjs, pb_hooks; 사용자/프로필/결과/보상·unique·트랜잭션 |
 | 실행·검증 | scripts, package scripts, tests; localhost 격리와 증거 |
 
