@@ -9,12 +9,16 @@ import { pathToFileURL } from 'node:url';
 import { createConnection } from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { randomBytes, randomUUID } from 'node:crypto';
+import { getMap, findPath } from '../shared/world.js';
 
 // Only self-spawned processes and dedicated loopback development ports are used.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const PB_URL = 'http://127.0.0.1:18090';
-const WS_URL = 'ws://127.0.0.1:12567';
-const HTTP_URL = 'http://127.0.0.1:12567';
+// Ports are overridable so the suite can run beside another checkout's development servers.
+const PB_PORT = Number(process.env.PIXELTOWN_TEST_PB_PORT || 18090);
+const GAME_PORT = Number(process.env.PIXELTOWN_TEST_GAME_PORT || 12567);
+const PB_URL = `http://127.0.0.1:${PB_PORT}`;
+const WS_URL = `ws://127.0.0.1:${GAME_PORT}`;
+const HTTP_URL = `http://127.0.0.1:${GAME_PORT}`;
 const reportPath = resolve(root, 'tests/report.json');
 const report = { startedAt: new Date().toISOString(), targets: { pocketbase: PB_URL, colyseus: WS_URL }, status: 'running', tests: [], load: null, cleanup: null };
 const rooms = new Set();
@@ -45,7 +49,7 @@ async function test(name, fn) {
   await saveReport();
 }
 async function assertPortsFree() {
-  for (const port of [18090, 12567]) {
+  for (const port of [PB_PORT, GAME_PORT]) {
     const occupied = await new Promise(resolveCheck => {
       const socket = createConnection({ host: '127.0.0.1', port });
       socket.once('connect', () => { socket.destroy(); resolveCheck(true); });
@@ -125,35 +129,18 @@ async function records(collection, account, filter = '') {
 }
 function player(state, account) { return state.snapshot.players.find(p => p.id === account.id); }
 async function moveTo(state, account, point) {
-  // Exercise the public movement protocol; never mutate server coordinates.
-  const obstacles = [[128,116,151,93],[664,119,148,94],[669,445,130,80],[158,450,123,78],[404,284,145,81]];
-  const blocked = (x, y) => x < 16 || x > 944 || y < 16 || y > 624 || obstacles.some(([rx, ry, w, h]) => x >= rx - 16 && x <= rx + w + 16 && y >= ry - 16 && y <= ry + h + 16);
-  const start = player(state, account);
-  const initial = [Math.round(start.x / 20), Math.round(start.y / 20)];
-  const queue = [initial], parent = new Map([[initial.join(','), null]]);
-  let goal;
-  for (let i = 0; i < queue.length; i++) {
-    const [x, y] = queue[i];
-    if (Math.hypot(x * 20 - point.x, y * 20 - point.y) < 24) { goal = queue[i]; break; }
-    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
-      const n = [x + dx, y + dy], key = n.join(',');
-      if (parent.has(key) || blocked(n[0] * 20, n[1] * 20)) continue;
-      parent.set(key, queue[i]); queue.push(n);
-    }
-  }
-  assert.ok(goal, 'No walkable path to collectible');
-  const path = [];
-  for (let node = goal; node; node = parent.get(node.join(','))) path.unshift({ x: node[0] * 20, y: node[1] * 20 });
+  // Exercise the public movement protocol with the shared walk grid; never mutate server coordinates.
+  const path = findPath(getMap(state.snapshot.zone), player(state, account), point);
   path.push(point);
   const started = performance.now();
   while (performance.now() - started < 18000) {
     const p = player(state, account);
-    while (path.length && Math.hypot(path[0].x - p.x, path[0].y - p.y) < 15) path.shift();
-    if (!path.length || Math.hypot(point.x - p.x, point.y - p.y) < 22) return;
+    while (path.length && Math.hypot(path[0].x - p.x, path[0].y - p.y) < 3) path.shift();
+    if (!path.length || Math.hypot(point.x - p.x, point.y - p.y) < 10) return;
     const dx = path[0].x - p.x, dy = path[0].y - p.y;
     const length = Math.hypot(dx, dy);
     state.room.send('input', { dx: dx / length, dy: dy / length });
-    await sleep(100);
+    await sleep(50);
   }
   throw new Error('Failed to reach game collectible using server movement');
 }
@@ -344,7 +331,7 @@ async function playMatch(state, account, { collect = true, verifyGeneration = fa
 }
 
 function startPB() {
-  return launch(runtime.binary, ['serve', '--http=127.0.0.1:18090', '--dir', runtime.dataDir, '--hooksDir', resolve(root, 'pocketbase/pb_hooks'), '--automigrate=0']);
+  return launch(runtime.binary, ['serve', `--http=127.0.0.1:${PB_PORT}`, '--dir', runtime.dataDir, '--hooksDir', resolve(root, 'pocketbase/pb_hooks'), '--automigrate=0']);
 }
 function startServer() {
   return launch(process.execPath, [resolve(root, 'colyseus/server.js')], { env: runtime.env });
@@ -353,7 +340,7 @@ async function setup() {
   await assertPortsFree();
   const requireBackend = createRequire(resolve(root, 'colyseus/package.json'));
   const { Client } = requireBackend('colyseus.js');
-  const base = resolve(root, '../../work/integration');
+  const base = resolve(root, '.test-work/integration');
   await mkdir(base, { recursive: true });
   const local = await mkdtemp(resolve(base, 'run-'));
   const envFile = resolve(local, '.env.local');
@@ -361,8 +348,8 @@ async function setup() {
   runtime = { runId: randomBytes(5).toString('hex'), local, dataDir: resolve(local, 'pb_data'), outboxDir: resolve(local, 'outbox'), binary: resolve(root, 'pocketbase/.local/pocketbase'), client: new Client(WS_URL) };
   assert.ok(existsSync(runtime.binary), 'Backend owner must prepare local PocketBase binary first; this test never downloads it');
   runtime.gameDurationMs = 24000; // Allows 10.5s growth, two capped periods, collection and refill.
-  runtime.env = { ...process.env, PIXELTOWN_LOCAL_DIR: local, PIXELTOWN_ENV_FILE: envFile, PB_DATA_DIR: runtime.dataDir, OUTBOX_PATH: runtime.outboxDir, GAME_DURATION_MS: String(runtime.gameDurationMs), PB_URL, POCKETBASE_URL: PB_URL, COLYSEUS_PORT: '12567', COLYSEUS_HOST: '127.0.0.1', SERVER_PORT: '12567', SERVER_HOST: '127.0.0.1' };
-  Object.assign(process.env, { PIXELTOWN_LOCAL_DIR: local, PIXELTOWN_ENV_FILE: envFile, PB_DATA_DIR: runtime.dataDir, OUTBOX_PATH: runtime.outboxDir, PB_URL, POCKETBASE_URL: PB_URL, COLYSEUS_PORT: '12567', COLYSEUS_HOST: '127.0.0.1' });
+  runtime.env = { ...process.env, PIXELTOWN_LOCAL_DIR: local, PIXELTOWN_ENV_FILE: envFile, PB_DATA_DIR: runtime.dataDir, OUTBOX_PATH: runtime.outboxDir, GAME_DURATION_MS: String(runtime.gameDurationMs), PB_URL, POCKETBASE_URL: PB_URL, COLYSEUS_PORT: String(GAME_PORT), COLYSEUS_HOST: '127.0.0.1', SERVER_PORT: String(GAME_PORT), SERVER_HOST: '127.0.0.1' };
+  Object.assign(process.env, { PIXELTOWN_LOCAL_DIR: local, PIXELTOWN_ENV_FILE: envFile, PB_DATA_DIR: runtime.dataDir, OUTBOX_PATH: runtime.outboxDir, PB_URL, POCKETBASE_URL: PB_URL, COLYSEUS_PORT: String(GAME_PORT), COLYSEUS_HOST: '127.0.0.1' });
   const config = await import(pathToFileURL(resolve(root, 'colyseus/config.js')).href);
   const credentials = config.credentials();
   const upsert = launch(runtime.binary, ['superuser', 'upsert', credentials.PB_ADMIN_EMAIL, credentials.PB_ADMIN_PASSWORD, '--dir', runtime.dataDir]);

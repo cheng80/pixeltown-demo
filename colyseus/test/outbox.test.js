@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Outbox } from '../outbox.js';
-import { blocked } from '../town.js';
 test('outbox keeps failed match on disk and fresh process state replays once',async()=>{
   const dir=mkdtempSync(join(tmpdir(),'pixeltown-outbox-'))+'/';
   try {
@@ -21,8 +20,4 @@ test('outbox keeps failed match on disk and fresh process state replays once',as
     assert.equal(restarted.status().pending,0);
     await restarted.flush();assert.equal(calls.length,1);
   } finally {rmSync(dir,{recursive:true,force:true});}
-});
-test('spawn is walkable and fountain/buildings block player radius',()=>{
-  assert.equal(blocked(480,400),false);assert.equal(blocked(480,320),true);
-  assert.equal(blocked(130,150),true);assert.equal(blocked(120,150),true);
 });

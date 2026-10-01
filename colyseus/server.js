@@ -9,7 +9,7 @@ const httpServer=http.createServer((req,res)=>{
 });
 const server=new Server({transport:new WebSocketTransport({server:httpServer,maxPayload:8192}),greet:false,gracefullyShutdown:false});
 server.define('town',Town).filterBy(['zone']);
-const port=Number(process.env.SERVER_PORT)||12567;
+const port=Number(process.env.SERVER_PORT || process.env.PIXELTOWN_GAME_PORT)||12567;
 const host=process.env.SERVER_HOST||'127.0.0.1';
 await server.listen(port,host);
 console.log(`Colyseus: ws://${host}:${port} (town: lobby/garden/arcade)`);

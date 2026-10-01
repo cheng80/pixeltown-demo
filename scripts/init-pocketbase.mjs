@@ -24,18 +24,18 @@ export async function download() {
   return binary;
 }
 export async function startPocketBase() {
-  if (!['http://127.0.0.1:18090','http://localhost:18090'].includes(PB_URL)) throw new Error('Development initializer rejects external PB_URL');
+  const pbURL = new URL(PB_URL);
+  if (pbURL.protocol !== 'http:' || !['127.0.0.1','localhost'].includes(pbURL.hostname) || !pbURL.port) throw new Error('Development initializer rejects external PB_URL');
   if (process.env.SERVER_HOST && !['127.0.0.1','localhost'].includes(process.env.SERVER_HOST)) throw new Error('Development launcher requires loopback SERVER_HOST');
-  if (process.env.SERVER_PORT && process.env.SERVER_PORT !== '12567') throw new Error('Development launcher requires port 12567');
   // Refuse any already running instance: initializer must only touch its own child.
-  try { await fetch(PB_URL+'/api/health',{signal:AbortSignal.timeout(1000)}); throw new Error('Port 18090 is already occupied; stop that local service first'); }
+  try { await fetch(PB_URL+'/api/health',{signal:AbortSignal.timeout(1000)}); throw new Error(`Port ${pbURL.port} is already occupied; stop that local service first`); }
   catch(e) { if (e.message.includes('occupied')) throw e; }
   const binary = await download();
   if (!existsSync(envFile)) writeFileSync(envFile,`PB_ADMIN_EMAIL=local-${randomBytes(8).toString('hex')}@pixeltown.local\nPB_ADMIN_PASSWORD=${randomBytes(32).toString('hex')}\n`,{mode:0o600});
   chmodSync(envFile,0o600);
   const env = credentials();
   execFileSync(binary,['superuser','upsert',env.PB_ADMIN_EMAIL,env.PB_ADMIN_PASSWORD,'--dir',pbDataDir],{stdio:'pipe'});
-  const child = spawn(binary,['serve','--http=127.0.0.1:18090','--dir',pbDataDir,'--automigrate=0','--hooksDir',pocketbaseDir+'pb_hooks'],{stdio:'inherit'});
+  const child = spawn(binary,['serve',`--http=127.0.0.1:${pbURL.port}`,'--dir',pbDataDir,'--automigrate=0','--hooksDir',pocketbaseDir+'pb_hooks'],{stdio:'inherit'});
   try {
     for(let n=0;n<100;n++) {
       if(child.exitCode!==null) throw new Error('PocketBase exited');

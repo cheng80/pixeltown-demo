@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Town, INITIAL_STARS, MAX_STARS, STAR_SPAWN_INTERVAL_MS, blocked } from '../town.js';
+import { Town, INITIAL_STARS, MAX_STARS, STAR_SPAWN_INTERVAL_MS } from '../town.js';
+import { getMap, blocked, starSpots } from '../../shared/world.js';
 function room() {
-  const r=Object.create(Town.prototype);
-  r.players=new Map([['session',{id:'player',x:480,y:400}]]);
+  const r=Object.create(Town.prototype);r.map=getMap('lobby');
+  r.players=new Map([['session',{id:'player',...r.map.spawn}]]);
   r.inputs=new Map();r.snapshot=()=>{};
   r.finish=()=>{r.finished=true;r.game.active=false;};
   r.startGame(1000);return r;
@@ -15,14 +16,20 @@ test('ticks cap uncollected stars, collection frees one slot, IDs never repeat',
   assert.equal(r.game.stars.length,MAX_STARS);
   const counter=r.starCounter;
   r.tick(19000);assert.equal(r.starCounter,counter);
-  const target=r.game.stars[0];assert.equal(r.collectStar({sessionId:'session'},{id:target.id},19001),true);
+  const target=r.game.stars[0];Object.assign(r.players.get('session'),{x:target.x+15,y:target.y});
+  assert.equal(r.collectStar({sessionId:'session'},{id:target.id},19000),true,'within 16px');
+  r.game.stars.unshift(target);r.game.scores.player=0;Object.assign(r.players.get('session'),{x:target.x+17,y:target.y});
+  assert.equal(r.collectStar({sessionId:'session'},{id:target.id},19000),false,'beyond 16px');
+  Object.assign(r.players.get('session'),{x:target.x,y:target.y});
+  assert.equal(r.collectStar({sessionId:'session'},{id:target.id},19001),true);
   assert.equal(r.game.stars.length,11);assert.equal(r.game.scores.player,1);
   assert.equal(r.collectStar({sessionId:'session'},{id:target.id},19002),false);
   r.tick(19002);assert.equal(r.game.stars.length,11);
   r.tick(20500);assert.equal(r.game.stars.length,12);
   assert.equal(r.starCounter,counter+1);assert(!r.game.stars.some(s=>s.id===initialIDs[0]));
   assert.equal(new Set(r.game.stars.map(s=>s.id)).size,12);
-  assert(r.game.stars.every(s=>!blocked(s.x,s.y,14)));
+  assert(r.game.stars.every(s=>!blocked(r.map,s.x,s.y)));
+  const spots=starSpots(r.map);assert(r.game.stars.every(s=>spots.some(p=>p.x===s.x&&p.y===s.y)));
 });
 test('empty field stays active, other zone is independent, deadline stops generator',()=>{
   const r=room(),other=room();
