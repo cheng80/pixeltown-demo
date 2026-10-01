@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "checkedAt": "2026-10-01T19:47:48.993Z",
+  "initial": 5,
+  "cap": 12,
+  "intervalMs": 1500,
+  "maxObserved": 12,
+  "capStableForTwoPeriods": true,
+  "collectFreedSlot": true,
+  "resumedGeneration": true,
+  "uniqueIDs": true,
+  "activeUntilTimer": true,
+  "score13Persisted": true,
+  "score65Rejected": true,
+  "roomsMetadataAndACL": true,
+  "mainProcessesTouched": false,
+  "mainDatabaseWrites": false,
+  "serverPort": 12568,
+  "pbPort": 18091
+}

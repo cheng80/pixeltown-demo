@@ -64,11 +64,15 @@ PocketBase는 사용자·프로필·방 메타데이터·결과·보상 원장�
 개발 서버를 종료한 상태에서 실행한다. 테스트는 자신이 시작한 프로세스와 별도 테스트 DB만 사용하며 기존 DB를 수정하지 않는다.
 
 ```sh
+npm --prefix colyseus run init  # 아직 한 번도 실행하지 않았다면 바이너리와 시드 준비
 npm run test:integration
+npm --prefix colyseus test
 npm run build
 ```
 
 자동 테스트 결과는 `tests/report.json`에 기록한다. 두 사용자 로그인·이동·채팅·방 분리·미니게임·결과 조회, 잘못된 토큰·ID 위조·결과 조작·중복 저장, 저장 장애와 복구를 검증한다. 20개 클라이언트의 짧은 localhost 부하 검증은 실제 인터넷 성능이나 최대 수용량을 뜻하지 않는다. 상세 측정과 화면 확인 결과는 `docs/verification.md`를 참고한다.
+
+공개 저장소: [cheng80/pixeltown-demo](https://github.com/cheng80/pixeltown-demo). 게임기획·PRD는 [docs 안내](docs/README.md), 최신 검증과 인수인계는 [프로젝트 현황](docs/03_PROJECT_STATUS.md)을 참고한다.
 
 ## 파일과 확장
 

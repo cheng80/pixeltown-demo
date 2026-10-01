@@ -1,30 +1,35 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-02 (Asia/Seoul). 리비전: 최초 공개 전 작업 트리.
+갱신일: 2026-10-02 (Asia/Seoul). 리비전: 검증 대상 게임 리비전 `9bc3d66`; 검증 증거는 후속 커밋에 추가.
 
 ## 1. 로드맵
 
 | 단계 | 마일스톤 | 상태 |
 |---|---|---|
-| M1 | 원본 읽기 전용 조사·기획·PRD·기술 계약·개발 계획 | 문서 정리 중 |
-| M2 | 자체 도트 게임·PocketBase/Colyseus 연동·3개 방 | 구현 완료, UI 보완 검증 중 |
-| M3 | 보안·복구·20명 로컬·모바일 검증 | 12개 통합·2개 단위 통과, 최종 회귀 예정 |
-| M4 | 공개 GitHub 연결·단계별 한국어 커밋/push·인수인계 | 공개 저장소 생성 완료, 커밋 준비 중 |
+| M1 | 원본 읽기 전용 조사·기획·PRD·기술 계약·개발 계획 | 문서 작성·첫 커밋 push 완료 |
+| M2 | 자체 도트 게임·PocketBase/Colyseus 연동·3개 방 | 완료 (`9bc3d66`) |
+| M3 | 보안·복구·20명 로컬·모바일 검증 | 완료: 통합13·단위6·빌드·UI 통과 |
+| M4 | 공개 GitHub 연결·단계별 한국어 커밋/push·인수인계 | 기획·게임 단계 push 완료, 검증 증거 게시 |
 
 최초 요청에 따른 구현이 진행된 뒤 사용자가 Lite 문서 팩과 공개 저장소를 추가 요청했다. 따라서 문서 정리 이전의 구현을 기획 이후에 시작했다고 소급 표현하지 않는다. 이 계획은 현재 구현을 정리하고 남은 검증·배포를 완료하는 기준이다.
 
-## 2. 진행 중인 계획
+## 2. 완료된 계획
 
-`plans/PLAN-001.md` — 로컬 멀티플레이 데모 완성과 단계별 게시.
+`plans/PLAN-001.md` — DONE. 로컬 멀티플레이 데모 완성과 단계별 게시.
 
 ## 3. 현재 작업
 
-- [ ] 첨부 Lite 템플릿에 맞춘 정본 문서 정리·검토
-- [ ] 최종 스키마 변경 후 통합 검증 재실행
-- [ ] 채팅 오버레이·설정 유지·모바일·가로 화면 검증 증거 정리
-- [ ] 문서 / 게임 구현 / 검증 단계 커밋·push
+- [x] 첨부 Lite 템플릿에 맞춘 정본 문서 정리·검토
+- [x] 최종 스키마·형제 폴더 구조·별 생성 변경 후 통합 검증 재실행
+- [x] 채팅 오버레이·설정 유지·모바일·가로 화면 검증 증거 정리
+- [x] 문서 / 게임 구현 / 검증 단계 커밋·push
 
 ## 4. 완료
+
+- 기본 30초 브라우저 플레이에서 키보드 수집·점수0→1·순위·저장완료·수첩 결과/보상 조회를 확인했다. 타이머 초기31초 표시를 수정하고 30초 이하 표시를 재확인했다.
+- 저장 조회 schema 날짜필드·환경변수 불일치·재배치 후 테스트 훅 경로를 수정했다. 최종 build와 관련 검증이 통과했다.
+- 공개 커밋: 기획 `5fa022a`, 게임 `9bc3d66`, 검증은 이 현황과 증거를 포함한 후속 커밋. GitHub main에 단계별 push.
+
 
 - 원본 HTML/공개 클라이언트·설정 화면·무통신 로컬 사본 조사. 외부 브로커 입장·메시지 수집 없음.
 - React/Vite + 자체 Canvas 도트 타운, 로비·정원·아케이드, 키보드·터치, 추적 카메라.
@@ -49,11 +54,15 @@
 
 변경하면 안 되는 경계: 운영 PocketBase·Oracle 작업·외부 브로커·클라우드 인증에는 접근하지 않는다. 개발 launcher는 18090/12567/5173을 loopback으로만 사용하고 포트 점유 시 종료한다. `.env.local`, `.local`, DB, 다운로드 바이너리와 node_modules를 공개 저장소에 넣지 않는다.
 
-주요 파일은 `src/main.jsx`, `src/world.js`, `backend/town.js`, `backend/outbox.js`, `backend/pb_hooks/matches.pb.js`, `scripts/init-pocketbase.mjs`, `tests/integration.mjs`다. 실제 명령은 루트 README에 있다.
+주요 파일은 `game/src/main.jsx`, `game/src/world.js`, `colyseus/town.js`, `colyseus/outbox.js`, `pocketbase/pb_hooks/matches.pb.js`, `scripts/init-pocketbase.mjs`, `tests/integration.mjs`다. 실제 명령은 루트 README에 있다.
 
 UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketBase collection에 날짜 필드가 없었던 원인으로, seed가 기존/신규 schema의 created/updated autodate를 보완하도록 수정했다. 재seed 후 프로필 조회·기록 패널 오류 0을 확인했다. 이전 실패 증거는 최종 검증의 성공으로 덮어 쓰지 않고 이 원인과 수정을 보존한다.
 
 ## 8. 변경된 계약
+
+- 추가 요청에 따라 root/game, root/pocketbase, root/colyseus, root/docs 형제 구조로 재배치했다. 기존 개발 DB·바이너리·관리자 파일은 pocketbase로 보존했으며 outbox는 colyseus에 보존했다.
+- 별 생성은 초기5·1500ms마다1개·방별 미회수12개 상한, 회수 후 다음 주기 보충이다. 누적 burst와 별0개 즉시 종료를 하지 않는다. DB는 개인/전체 점수 합계64 상한으로 저장을 검증한다.
+
 
 - 최신 Colyseus 문서의 static JWT 훅을 기본 사용하지 않는다. 설치 0.16의 인스턴스 `onAuth(client, options)`에서 PocketBase 토큰을 검증한다.
 - `gameEnded`는 outbox 디스크 저장 완료이며 PB 저장 완료가 아니다. `snapshot.persistence.status`가 saved로 전환될 때 기록을 조회한다.
@@ -64,10 +73,10 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 | 항목 | 결과 | 근거 | 날짜 | 리비전 | 유효성 | 출처 / 공백 |
 |---|---|---|---|---|---|---|
-| 통합 12개 | PASS | RECHECKED | 2026-10-02 | 최초 작업 트리 | CURRENT | `tests/report.json`; 날짜 필드 최종 회귀 예정 |
-| 단위 2개 | PASS | RECHECKED | 2026-10-02 | 최초 작업 트리 | CURRENT | `npm --prefix backend test` |
-| 빌드 | PASS | RECHECKED | 2026-10-02 | 최초 작업 트리 | CURRENT | `npm run build` |
-| UI 1280×720 / 390×844 / 844×390 / 390×430 | PASS | RECHECKED | 2026-10-02 | 최초 작업 트리 | CURRENT | 페이지 scrollWidth/Height=viewport, 오버레이·설정·두 브라우저 채팅, `assets/` |
+| 통합 13개 | PASS | RECHECKED | 2026-10-02 | `9bc3d66` | CURRENT | `tests/report.json`; 형제 폴더·날짜필드·별 상한 재검증 |
+| 단위 6개 | PASS | RECHECKED | 2026-10-02 | `9bc3d66` | CURRENT | `npm --prefix colyseus test` |
+| 빌드 | PASS | RECHECKED | 2026-10-02 | `9bc3d66` | CURRENT | `npm run build` |
+| UI 1280×720 / 390×844 / 844×390 / 390×430 | PASS | RECHECKED | 2026-10-02 | `9bc3d66` | CURRENT | 페이지 scrollWidth/Height=viewport, 오버레이·설정·두 브라우저 채팅, `assets/` |
 | 실제 모바일 키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 브라우저 높이 축소 모의만 수행 |
 | 인터넷 성능·100명·운영 배포 | NOT_RUN | NONE | - | - | UNKNOWN | 20명은 짧은 동일 머신 검증 |
 
@@ -77,6 +86,6 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 npm run dev:all
 # 서버를 종료하고 자동 검증
 npm run test:integration
-npm --prefix backend test
+npm --prefix colyseus test
 npm run build
 ```

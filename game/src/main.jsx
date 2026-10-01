@@ -801,7 +801,7 @@ function App() {
                         ✦{" "}
                         {item.name ||
                           item.itemName ||
-                          item.item ||
+                          (item.item === 'star' ? '별 조각' : item.item) ||
                           item.kind ||
                           "별 조각"}
                       </span>
@@ -840,8 +840,7 @@ function App() {
             </aside>
           )}
           <div className="world-credit">
-            PIXEL TOWN <span>·</span> {zone.toUpperCase()} <span>·</span> 960 ×
-            640
+            PIXEL TOWN <span>·</span> {ZONES.find(z=>z[0]===zone)[2]}
           </div>
         </>
       )}
