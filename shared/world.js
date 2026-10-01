@@ -43,6 +43,10 @@ export const PROPS = {
   sofa: { w: 50, h: 26, ax: 25, ay: 24, foot: [-25, -10, 50, 10] },
   vending: { w: 26, h: 46, ax: 13, ay: 44, foot: [-13, -10, 26, 10] },
   plant: { w: 16, h: 30, ax: 8, ay: 28, foot: [-5, -4, 10, 5] },
+  // Flat wall decorations baked into the ground layer (walls are already solid tiles).
+  neon: { w: 136, h: 30, ax: 68, ay: 30, foot: null, layer: 'ground' },
+  window: { w: 40, h: 26, ax: 20, ay: 26, foot: null, layer: 'ground' },
+  poster: { w: 20, h: 26, ax: 10, ay: 26, foot: null, layer: 'ground' },
 };
 
 function grid(fill) { return Array.from({ length: ROWS }, () => Array(COLS).fill(fill)); }
@@ -70,7 +74,7 @@ function lobby() {
     P('pot', 96, 102), P('pot', 144, 102), P('pot', 496, 102), P('pot', 544, 102), P('mailbox', 174, 106),
     P('bench', 260, 178), P('bench', 380, 178), P('bench', 260, 288), P('bench', 380, 288),
     P('lamp', 228, 184), P('lamp', 412, 184), P('lamp', 228, 276), P('lamp', 412, 276), P('lamp', 270, 92), P('lamp', 370, 120),
-    P('post', 280, 356), P('post', 360, 356), P('arch', 320, 356, { label: '픽셀타운' }),
+    P('post', 280, 392), P('post', 360, 392), P('arch', 320, 392, { label: '픽셀타운' }),
     P('sign', 46, 186, { label: '오락실', dir: -1 }), P('sign', 594, 186, { label: '정원', dir: 1 }),
     // groves: between shop street and main street, and the southern meadows
     P('tree', 44, 178), P('tree', 92, 168), P('tree', 146, 182), P('tree', 198, 172), P('bush', 240, 150),
@@ -121,17 +125,20 @@ function garden() {
 function arcade() {
   const g = grid('w');
   rect(g, 'W', 0, 0, COLS - 1, 2); rect(g, 'W', 0, 0, 0, ROWS - 1); rect(g, 'W', COLS - 1, 0, COLS - 1, ROWS - 1); rect(g, 'W', 0, ROWS - 1, COLS - 1, ROWS - 1);
-  rect(g, 'r', 14, 10, 25, 16); // star stage
-  rect(g, 'c', 18, 17, 21, 24); // entrance carpet
+  rect(g, 'r', 15, 10, 24, 14); // star stage
+  rect(g, 'c', 18, 15, 21, 24); // entrance carpet
   rect(g, 'P', 18, 25, 21, 25);
   const props = [
     ...[56, 84, 112, 140, 168].map(x => P('cabinet', x, 74, { hue: x / 28 })),
     ...[456, 484, 512].map(x => P('cabinet', x, 74, { hue: x / 28 })),
     P('claw', 564, 84), P('claw', 604, 84),
     ...[64, 92, 120, 148].map(x => P('cabinet', x, 208, { hue: x / 28 + 1 })),
+    ...[492, 520, 548].map(x => P('cabinet', x, 208, { hue: x / 28 + 2 })),
+    P('vending', 252, 378), P('plant', 390, 380), P('plant', 236, 250), P('plant', 404, 250),
     P('pillar', 200, 140), P('pillar', 440, 140), P('pillar', 200, 304), P('pillar', 440, 304),
     P('shelf', 540, 290), P('counter', 540, 340), P('sofa', 96, 344), P('vending', 608, 222),
     P('plant', 28, 76), P('plant', 28, 388), P('plant', 612, 388), P('plant', 268, 72), P('plant', 372, 72),
+    P('neon', 320, 40, { label: 'STAR ARCADE' }), P('window', 236, 38), P('window', 404, 38), P('poster', 40, 40), P('poster', 600, 40),
   ];
   return {
     id: 'arcade', title: '스타 오락실', slug: 'arcade', tiles: g, props,
@@ -269,7 +276,7 @@ export function starSpots(map) {
   for (let r = 1; r < ROWS - 1; r++) for (let c = 1; c < COLS - 1; c++) {
     const x = c * TILE + 8, y = r * TILE + 10;
     if (tileAt(map, x, y) === 'P' || blocked(map, x, y) || prev[cellOf(x, y)] === -2) continue;
-    if (map.props.some(p => x > p.visual.x - 6 && x < p.visual.x + p.visual.w + 6 && y - 12 < p.visual.y + p.visual.h && y > p.visual.y - 4)) continue;
+    if (map.props.some(p => p.layer !== 'ground' && x > p.visual.x - 6 && x < p.visual.x + p.visual.w + 6 && y - 12 < p.visual.y + p.visual.h && y > p.visual.y - 4)) continue;
     map.stars.push({ x, y });
   }
   return map.stars;
