@@ -80,6 +80,8 @@ kbd { display: inline-block; padding: 0 4px; border: 2px solid var(--line); back
 .timer { padding: 0 6px; background: var(--line); color: var(--star); font-weight: 700; }
 .star-line { margin: 0; font-size: 12px; }
 .star-line b { color: var(--pink); font-size: 14px; }
+.star-line .pending { color: var(--muted); font-size: 11px; }
+.shop-pending { margin: 0; padding: 6px 12px; font-size: 12px; color: var(--muted); border-bottom: 3px dashed var(--dash); }
 .ranking { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
 .ranking li { display: flex; gap: 6px; align-items: center; padding: 1px 4px; background: #fff; border: 2px solid var(--line); }
 .ranking li.mine { background: var(--star-l); }

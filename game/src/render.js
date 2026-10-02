@@ -96,6 +96,7 @@ function draw(view, sc, f, lc, dc, display) {
   }
   for (const p of sc.fg) lc.drawImage(propSprite(p), p.visual.x - 1 - cx, p.visual.y - 1 - cy);
   for (const p of f.pops || []) { // star pickup sparkle: four dots fly out from the star for 0.4s
+    if (Date.now() - p.at >= 400) continue;
     const k = Math.min(1, (Date.now() - p.at) / 400), r = 3 + Math.round(k * 9), x = p.x - cx, y = p.y - 10 - cy;
     lc.globalAlpha = 1 - k; lc.fillStyle = '#ffd23f';
     for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r]]) lc.fillRect(x + dx - 1, y + dy - 1, 2, 2);
@@ -130,6 +131,10 @@ function draw(view, sc, f, lc, dc, display) {
     dc.fillText(p.label, sx, sy);
   }
   dc.font = `${fs}px Galmuri11, monospace`;
+  for (const p of f.pops || []) { // "+1" rises over a picked star for 0.8 s
+    const k = Math.min(1, (Date.now() - p.at) / 800), [sx, sy] = S(p.x, p.y - 20 - k * 10);
+    dc.globalAlpha = 1 - k * k; dc.fillStyle = LINE; dc.fillText('+1', sx + u, sy + u); dc.fillStyle = '#ffd23f'; dc.fillText('+1', sx, sy); dc.globalAlpha = 1;
+  }
   for (const a of f.avatars) {
     const [sx, sy] = S(Math.floor(a.x), Math.floor(a.y)); // same whole-pixel spot as the sprite
     const w = Math.ceil(dc.measureText(a.name).width) + pad * 2, h = fs + pad + u;

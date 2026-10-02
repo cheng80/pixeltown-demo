@@ -70,6 +70,8 @@ function App() {
   const stall = useRef({ x: 0, y: 0, n: 0 }), route = useRef([]), marker = useRef(null), state = useRef({ players: [], game: {} }), bubbles = useRef({}), emotes = useRef({});
   const trails = useRef({}), selfId = useRef("me"), soloPos = useRef(null), entry = useRef("default"), portalArmed = useRef(false), chatVisible = useRef(chatOpen);
   const [joinTry, setJoinTry] = useState(0), rejoining = useRef(false), lastAutoJoin = useRef(0);
+  // Stars I collected that are not in my inventory yet (settled every 3 minutes): period id -> my score in it.
+  const ledger = useRef({});
   const picked = useRef({}), corrections = useRef([]), persistStatus = useRef(null), chatInput = useRef(null), lastSent = useRef("");
   const profile = records.profiles[0], outfit = profile?.outfit || {};
   // First entry (FR-014): a signed-in user whose profile has no chosen look makes a character before joining a room.
@@ -78,6 +80,15 @@ function App() {
   const myLook = { ...outfit, ...profile?.avatar };
   const owned = useMemo(() => new Set(records.purchases.map(p => p.item)), [records.purchases]);
   const earned = records.inventory.reduce((n, i) => n + (i.quantity || 0), 0), wallet = earned - records.purchases.reduce((n, p) => n + (p.price || 0), 0);
+  // The wallet shows a star the moment the server counts it; the part not saved yet cannot be spent until settlement.
+  const savedPeriods = new Set(records.inventory.map(i => i.match_id));
+  const unsaved = Object.entries(ledger.current).reduce((n, [id, k]) => n + (savedPeriods.has(id) ? 0 : k), 0);
+  // Settlement happens in whichever zone room the stars were collected, maybe one I already left: look for it now and then.
+  useEffect(() => {
+    if (!unsaved) return;
+    const poll = setInterval(loadRecords, 20000);
+    return () => clearInterval(poll);
+  }, [unsaved > 0]);
   const placements = edit ? edit.placements : Array.isArray(profile?.room) ? profile.room : [];
   const home = useMemo(() => homeMap(placements), [JSON.stringify(placements)]);
   const map = zone === "home" ? home : getMap(zone), mapRef = useRef(map), profileRef = useRef(profile);
@@ -178,6 +189,8 @@ function App() {
           setPred(p, !pred.current || Math.hypot(p.x - pred.current.x, p.y - pred.current.y) > 40);
         }
         for (const p of data.players) if (p.id !== user.id) { const b = (trails.current[p.id] ||= []); b.push({ t: data.t, x: p.x, y: p.y }); if (b.length > 40) b.shift(); }
+        const my = data.game?.scores?.[user.id];
+        if (data.game?.id && my) ledger.current[data.game.id] = Math.max(ledger.current[data.game.id] || 0, my);
         state.current = data; setSnap(data);
         const p = data.persistence;
         if (p?.status === "saved" && persistStatus.current === "pending") { loadRecords(); notify("기록과 별 보상이 저장되었어요! 수첩에서 확인하세요."); }
@@ -185,7 +198,7 @@ function App() {
       });
       r.onMessage("chat", d => !cancelled && append({ id: d.id, name: d.name || "이웃", text: d.text, mine: d.id === user.id }));
       r.onMessage("emote", d => { if (!cancelled) emotes.current[d.id] = Date.now() + 2500; });
-      r.onMessage("gameEnded", m => { const n = m.scores?.[user.id]; if (n) { persistStatus.current = "pending"; notify(`별 ${n}개 정산! 기록을 저장하는 중이에요.`); } });
+      r.onMessage("gameEnded", m => { const n = m.scores?.[user.id]; if (n) ledger.current[m.match_id] = n; if (n) { persistStatus.current = "pending"; notify(`별 ${n}개 정산! 기록을 저장하는 중이에요.`); } });
       // While the socket is down nothing moves or predicts on its own and a dialog blocks the page.
       // 1. Drop: the SDK reconnects into the same server session (kept 15 s), so nothing is lost.
       // 2. That fails (session gone, socket refused) or hangs: join again automatically; the login is still valid.
@@ -316,7 +329,7 @@ function App() {
         if (me && touchesStar(me, star)) { picked.current[star.id] = { until: now + 1000, at: now, x: star.x, y: star.y }; return false; }
         return true;
       }) : [];
-      const pops = Object.values(picked.current).filter(p => now - p.at < 400);
+      const pops = Object.values(picked.current).filter(p => now - p.at < 800);
       view.draw(sc, { focus: me, avatars, stars, pops, time: t, dt, marker: marker.current });
       raf = requestAnimationFrame(frame);
     };
@@ -410,7 +423,7 @@ function App() {
   const starCard = (
     <section className="star-card" aria-label="별 모으기">
       <div className="star-card-head"><b>★ 별 모으기</b><span className="muted">상시 이벤트</span></div>
-      <p className="star-line">내 별 <b>{myScore}</b>개 · 맵의 별 {game.stars?.length || 0}/12</p>
+      <p className="star-line">지갑 ★ <b className="wallet-live">{wallet + unsaved}</b>{unsaved > 0 && <span className="pending" title="정산되면 상점에서 쓸 수 있어요"> (정산 대기 {unsaved})</span>} · 이번 판 {myScore}개 · 맵의 별 {game.stars?.length || 0}/12</p>
       <p className="star-line muted">{game.active ? `다음 정산까지 ${clock}` : "별 가까이 걸어가면 모아요"}</p>
       {ranking.length > 0 && <ol className="ranking">{ranking.slice(0, 3).map(p => <li key={p.id} className={p.id === selfId.current ? "mine" : ""}><span>{ranking.filter(q => q.score > p.score).length + 1}</span>{p.name}<b>{p.score}★</b></li>)}</ol>}
       {saving && <p className="save-state" role="status">{snap.persistence.lastError ? "기록 저장 재시도 중…" : "기록 저장 중…"}</p>}
@@ -420,11 +433,11 @@ function App() {
     <main className="page">
       <div className="hompy">
         <aside className="profile paper">
-          <div className="today">TODAY <b>{online}</b> <span>|</span> TOTAL <b>{totalStars}</b></div>
+          <div className="today">TODAY <b>{online}</b> <span>|</span> TOTAL <b>{totalStars + unsaved}</b></div>
           <Portrait player={me} />
           <h2 className="me-name">{me.name}</h2>
           <p className="mood">♪ {zoneInfo[3]}</p>
-          <div className="row-badges"><span className="stars-badge" title="쓸 수 있는 별">지갑 ★ {wallet}</span></div>
+          <div className="row-badges"><span className="stars-badge" title={unsaved ? `쓸 수 있는 별 ${wallet} + 정산 대기 ${unsaved}` : "쓸 수 있는 별"}>지갑 ★ {wallet + unsaved}</span></div>
           {zone !== "home" && starCard}
           <button className="btn wide" onClick={openShop}>🛍 별 상점 · 옷장</button>
           <button className="btn ghost wide" onClick={() => setSetup(true)}>🎨 캐릭터 꾸미기</button>
@@ -478,7 +491,7 @@ function App() {
           {status === "disconnected" && <div className="notebook-foot"><button className="btn wide" autoFocus onClick={() => { rejoining.current = true; setJoinTry(n => n + 1); }}>다시 연결</button></div>}
         </div>
       </div>}
-      {shop && <Shop {...{ wallet, owned, outfit, buy, wear, me, close: () => setShop(false) }} />}
+      {shop && <Shop {...{ wallet, unsaved, owned, outfit, buy, wear, me, close: () => setShop(false) }} />}
       {notebook && <Notebook {...{ records, recordError, loadRecords, me, close: () => setNotebook(false) }} />}
       {setup && <CharacterSetup profile={profile} userId={user.id} save={saveCharacter} close={() => setSetup(false)} />}
     </main>
@@ -531,13 +544,14 @@ function ItemIcon({ item, player }) {
   return <canvas ref={ref} width={64} height={64} className="item-icon" aria-hidden="true" />;
 }
 
-function Shop({ wallet, owned, outfit, buy, wear, me, close }) {
+function Shop({ wallet, unsaved, owned, outfit, buy, wear, me, close }) {
   const [tab, setTab] = useState("hat"), [busy, setBusy] = useState("");
   const run = async (id, fn) => { setBusy(id); try { await fn(); } finally { setBusy(""); } };
   return (
     <div className="sheet-backdrop" onClick={close}>
       <aside className="notebook shop paper" role="dialog" aria-label="별 상점" onClick={e => e.stopPropagation()}>
-        <div className="notebook-head"><b>🛍 별 상점 · 옷장</b><span className="stars-badge">지갑 ★ {wallet}</span><button className="btn tiny ghost" onClick={close} aria-label="상점 닫기">닫기</button></div>
+        <div className="notebook-head"><b>🛍 별 상점 · 옷장</b><span className="stars-badge" title="쓸 수 있는 별">지갑 ★ {wallet}</span><button className="btn tiny ghost" onClick={close} aria-label="상점 닫기">닫기</button></div>
+        {unsaved > 0 && <p className="shop-pending">정산 대기 ★{unsaved}: 3분마다 정산되면 쓸 수 있어요.</p>}
         <div className="shop-tabs" role="tablist">{SLOTS.map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>)}</div>
         <div className="notebook-body shop-grid">
           {CATALOG.items.filter(i => i.slot === tab).map(i => {
