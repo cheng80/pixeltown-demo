@@ -2,7 +2,7 @@ import { Room, ServerError } from '@colyseus/core';
 import { randomUUID } from 'node:crypto';
 import { userClient, ZONES } from './config.js';
 import { outbox } from './outbox.js';
-import { getMap, blocked, moveActor, entryPoint, spreadSpot, COLLECT_RADIUS, STAR_SPAWN_MS, ITEMS, CATALOG, STEP_PER_TICK, TICK_MS, WORLD } from '../shared/world.js';
+import { getMap, blocked, stepInput, entryPoint, spreadSpot, COLLECT_RADIUS, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS, WORLD } from '../shared/world.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Outfit shown to everyone comes from the PocketBase profile (written only by the shop hook), never from the client.
 // Outfit and character look (FR-014 avatar indexes) both come from the profile; invalid values fall back to null.
@@ -29,7 +29,12 @@ export class Town extends Room {
       // Optional final target of a click route: the server steers to it from the real position and stops on it,
       // so network lag cannot carry the avatar past the clicked spot. Speed and collision rules are unchanged.
       const to=data.to&&Number.isFinite(data.to.x)&&Number.isFinite(data.to.y)?{x:clamp(data.to.x,0,WORLD.width),y:clamp(data.to.y,0,WORLD.height)}:null;
-      this.moveInputs.set(client.sessionId,{dx,dy,to,at:Date.now()});
+      // Each input is one step, applied in order. `seq` comes back as the player's `ack` so the client can reconcile its
+      // prediction. The queue is short (stale input is dropped) and steps are paced by credit, so sending faster never moves faster.
+      const entry=this.moveInputs.get(client.sessionId)||{queue:[],credit:1};
+      entry.queue.push({dx,dy,to,seq:Number.isSafeInteger(data.seq)?data.seq:null});
+      if(entry.queue.length>6)entry.queue.shift();
+      this.moveInputs.set(client.sessionId,entry);
     });
     this.onMessage('chat',(client,data)=>{
       if(typeof data?.text!=='string' || !this.allow(client,'chat',700))return;
@@ -125,13 +130,15 @@ export class Town extends Room {
   }
   tick(now=Date.now()) {
     for(const [session,p] of this.players) {
-      const input=this.moveInputs.get(session);
-      if(!input || now-input.at>300 || !(input.dx || input.dy))continue;
-      if(input.to) {
-        const ox=input.to.x-p.x,oy=input.to.y-p.y,left=Math.hypot(ox,oy);
-        if(left<0.5){input.dx=input.dy=0;continue;}
-        Object.assign(p,moveActor(this.map,p.x,p.y,ox/left,oy/left,Math.min(STEP_PER_TICK,left)));
-      } else Object.assign(p,moveActor(this.map,p.x,p.y,input.dx,input.dy,STEP_PER_TICK));
+      const entry=this.moveInputs.get(session);
+      if(!entry)continue;
+      // One step per tick on average; a tick that got no input lets the next one catch up by one (network jitter).
+      entry.credit=Math.min(2,entry.credit+1);
+      while(entry.credit>=1&&entry.queue.length){
+        const input=entry.queue.shift();entry.credit--;
+        Object.assign(p,stepInput(this.map,p,input));
+        if(input.seq!==null)p.ack=input.seq;
+      }
     }
     if(this.game.active && now>=this.game.endsAt)this.settle(now);
     else this.generateStars(now);
@@ -155,7 +162,8 @@ export class Town extends Room {
     this.game.active=false;this.game.stars=[];
     return true;
   }
-  snapshot() {this.broadcast('snapshot',{players:[...this.players.values()],zone:this.zone,game:this.game,persistence:outbox.status()});}
+  // `t` (server clock) lets clients interpolate other players at an even pace whatever the network jitter.
+  snapshot() {this.broadcast('snapshot',{t:Date.now(),players:[...this.players.values()],zone:this.zone,game:this.game,persistence:outbox.status()});}
   onLeave(client) {
     this.players.delete(client.sessionId);this.moveInputs.delete(client.sessionId);
     for(const key of this.cooldowns.keys())if(key.startsWith(client.sessionId+':'))this.cooldowns.delete(key);

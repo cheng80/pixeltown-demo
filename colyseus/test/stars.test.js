@@ -90,9 +90,21 @@ test('a click route ends exactly on its target even when the client reacts late 
   const r=room(),p=r.players.get('session'),target={x:p.x+10,y:p.y};
   assert(!blocked(r.map,target.x,target.y));
   // The client keeps sending the same input while it still sees an old position; the server must not walk past the target.
-  for(let t=1;t<=8;t++){r.moveInputs.set('session',{dx:1,dy:0,at:1000+t*50,to:target});r.tick(1000+t*50);}
+  for(let t=1;t<=8;t++){r.moveInputs.set('session',{queue:[{dx:1,dy:0,to:target,seq:t}],credit:0});r.tick(1000+t*50);}
   assert.deepEqual([p.x,p.y],[target.x,target.y]);
   // A stale direction is corrected toward the target, and `to` never makes a step longer than a normal one.
-  const q={x:p.x-6,y:p.y-2};r.moveInputs.set('session',{dx:0,dy:1,at:2000,to:q});const before={x:p.x,y:p.y};r.tick(2000);
+  const q={x:p.x-6,y:p.y-2};r.moveInputs.set('session',{queue:[{dx:0,dy:1,to:q,seq:9}],credit:0});const before={x:p.x,y:p.y};r.tick(2000);
   assert(p.x<before.x && Math.hypot(p.x-before.x,p.y-before.y)<=3.01);
+});
+
+test('inputs are one step each, acknowledged, and sending faster never moves faster',()=>{
+  const r=room(),p=r.players.get('session'),send=(n,seq)=>{const e=r.moveInputs.get('session')||{queue:[],credit:1};for(let i=0;i<n;i++)e.queue.push({dx:1,dy:0,to:null,seq:seq+i});if(e.queue.length>6)e.queue.splice(0,e.queue.length-6);r.moveInputs.set('session',e);};
+  const x0=p.x;send(1,1);r.tick(1050);
+  assert.equal(p.ack,1);assert(Math.abs(p.x-x0-3)<0.01,'one input = one 3-dot step');
+  // A client flooding 4 inputs per tick for 10 ticks still moves at most ~1 step per tick.
+  const x1=p.x;for(let t=0;t<10;t++){send(4,10+t*4);r.tick(2000+t*50);}
+  assert(p.x-x1<=33.01,`moved ${p.x-x1}`);
+  // A tick without input lets the next tick catch up by one step (jitter), not more.
+  const x2=p.x;r.moveInputs.set('session',{queue:[],credit:r.moveInputs.get('session').credit});r.tick(3000);
+  send(3,100);r.tick(3050);assert(p.x-x2<=6.01);
 });

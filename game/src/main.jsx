@@ -4,7 +4,7 @@ import PocketBase from "pocketbase";
 import { Client } from "@colyseus/sdk";
 import g11 from "galmuri/dist/Galmuri11.woff2";
 import g11b from "galmuri/dist/Galmuri11-Bold.woff2";
-import { getMap, moveActor, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, COLLECT_RADIUS, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
+import { getMap, moveActor, stepInput, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, COLLECT_RADIUS, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
 import { scene, createView } from "./render.js";
 import { avatarSprite, lookFor, petSprite, propSprite } from "./sprites.js";
 import "./style.css";
@@ -64,8 +64,11 @@ function App() {
   const [toast, setToast] = useState("");
   const [, setNow] = useState(0);
   const canvasRef = useRef(null), viewRef = useRef(null), room = useRef(null), keys = useRef(new Set()), touch = useRef({ dx: 0, dy: 0 });
+  // Smooth movement: my avatar is predicted from my own inputs (reconciled with the server's `ack`), drawn with an even
+  // per-tick glide; other players are drawn ~100 ms behind server time, interpolated between snapshots.
+  const pred = useRef(null), pending = useRef([]), seq = useRef(0), glide = useRef(null), serverClock = useRef({ samples: [], offset: 0 });
   const stall = useRef({ x: 0, y: 0, n: 0 }), route = useRef([]), marker = useRef(null), state = useRef({ players: [], game: {} }), bubbles = useRef({}), emotes = useRef({});
-  const selfId = useRef("me"), soloPos = useRef(null), entry = useRef("default"), portalArmed = useRef(false), chatVisible = useRef(chatOpen);
+  const trails = useRef({}), selfId = useRef("me"), soloPos = useRef(null), entry = useRef("default"), portalArmed = useRef(false), chatVisible = useRef(chatOpen);
   const collectTimes = useRef({}), persistStatus = useRef(null), chatInput = useRef(null), lastSent = useRef("");
   const profile = records.profiles[0], outfit = profile?.outfit || {};
   // First entry (FR-014): a signed-in user whose profile has no chosen look makes a character before joining a room.
@@ -144,7 +147,7 @@ function App() {
     state.current = { players: [], game: {}, zone }; setSnap(state.current);
     persistStatus.current = null; setMessages([]); setUnread(0);
     collectTimes.current = {}; bubbles.current = {}; emotes.current = {}; keys.current.clear(); touch.current = { dx: 0, dy: 0 };
-    route.current = []; portalArmed.current = false; lastSent.current = "";
+    route.current = []; portalArmed.current = false; lastSent.current = ""; pred.current = null; pending.current = []; glide.current = null; trails.current = {};
     const via = entry.current; entry.current = "default";
     if (zone === "home") { selfId.current = user.id; soloPos.current = entryPoint(mapRef.current, via); return; }
     // A reload can race the server noticing the previous socket closed (409): retry briefly.
@@ -156,6 +159,15 @@ function App() {
       room.current = r; selfId.current = user.id; setStatus("online");
       r.onMessage("snapshot", data => {
         if (data.zone !== zone) return;
+        const c = serverClock.current; c.samples.push(Date.now() - data.t); if (c.samples.length > 60) c.samples.shift(); c.offset = Math.min(...c.samples);
+        const mine = data.players.find(p => p.id === user.id);
+        if (mine) { // server position + my inputs it has not applied yet = where I am now
+          pending.current = pending.current.filter(i => i.seq > (mine.ack ?? -1));
+          let p = { x: mine.x, y: mine.y };
+          for (const i of pending.current) p = stepInput(mapRef.current, p, i);
+          setPred(p, !pred.current || Math.hypot(p.x - pred.current.x, p.y - pred.current.y) > 40);
+        }
+        for (const p of data.players) if (p.id !== user.id) { const b = (trails.current[p.id] ||= []); b.push({ t: data.t, x: p.x, y: p.y }); if (b.length > 40) b.shift(); }
         state.current = data; setSnap(data);
         const p = data.persistence;
         if (p?.status === "saved" && persistStatus.current === "pending") { loadRecords(); notify("기록과 별 보상이 저장되었어요! 수첩에서 확인하세요."); }
@@ -187,7 +199,7 @@ function App() {
       const m = mapRef.current, s = state.current;
       let dx = touch.current.dx, dy = touch.current.dy, to = null;
       for (const k of keys.current) if (MOVE_KEYS[k]) { dx += MOVE_KEYS[k][0]; dy += MOVE_KEYS[k][1]; }
-      const me = local ? soloPos.current : s.players?.find(p => p.id === selfId.current);
+      const me = local ? soloPos.current : pred.current;
       if (!me) return;
       if (!dx && !dy && route.current.length) {
         // Re-plan from where the avatar really is when it has not moved for half a second (lag or a corner pushed it off the line).
@@ -202,13 +214,18 @@ function App() {
       if (len > 1e-6) { dx /= len; dy /= len; } else { dx = 0; dy = 0; }
       if (local) {
         if (blocked(m, me.x, me.y)) Object.assign(soloPos.current, nearestFree(m, me.x, me.y)); // furniture placed on top of me
-        if (dx || dy) Object.assign(soloPos.current, moveActor(m, me.x, me.y, dx, dy, STEP_PER_TICK));
+        if (dx || dy) { Object.assign(soloPos.current, moveActor(m, me.x, me.y, dx, dy, STEP_PER_TICK)); setPred(soloPos.current); }
         s.players = [{ id: user.id, name: profileRef.current?.name || user.name || "나", color: profileRef.current?.color, look: { ...profileRef.current?.outfit, ...profileRef.current?.avatar }, ...soloPos.current }];
         setSnap({ ...s });
       } else if (room.current) {
         const msg = `${dx.toFixed(2)},${dy.toFixed(2)}`;
         // On the last leg the server steers to `to` itself and stops on it, so lag cannot carry the avatar past the click.
-        if (dx || dy || msg !== lastSent.current) room.current.send("input", to ? { dx, dy, to: { x: to.x, y: to.y } } : { dx, dy });
+        if (dx || dy || msg !== lastSent.current) {
+          const input = { dx, dy, seq: ++seq.current, ...(to ? { to: { x: to.x, y: to.y } } : {}) };
+          room.current.send("input", input);
+          pending.current.push(input); if (pending.current.length > 40) pending.current.shift();
+          setPred(stepInput(m, me, input)); // show the step now; the server confirms it with `ack`
+        }
         lastSent.current = msg;
         if (s.game?.active) for (const star of s.game.stars || [])
           if (Math.hypot(star.x - me.x, star.y - me.y) <= COLLECT_RADIUS - 1 && Date.now() - (collectTimes.current[star.id] || 0) > 600) {
@@ -227,18 +244,19 @@ function App() {
   useEffect(() => {
     if (!entered || !canvasRef.current) return;
     const view = (viewRef.current = createView(canvasRef.current)), sc = scene(map), anim = new Map();
-    let raf, last = performance.now(), first = true;
-    window.__pixeltown = { view, zone, anim, state, route, marker }; // read-only hooks for UI verification scripts
+    let raf, last = performance.now();
+    window.__pixeltown = { view, zone, anim, state, route, marker, self: selfId }; // read-only hooks for UI verification scripts
     const frame = t => {
       const dt = Math.min(0.05, (t - last) / 1000); last = t;
-      const s = state.current, now = Date.now(), avatars = [];
+      const s = state.current, now = Date.now(), avatars = [], renderT = now - serverClock.current.offset - 100;
       for (const p of s.players || []) {
         let a = anim.get(p.id);
         if (!a) { a = { x: p.x, y: p.y, dir: 0, walk: 0, moving: 0 }; anim.set(p.id, a); }
-        const ddx = p.x - a.x, ddy = p.y - a.y, dist = Math.hypot(ddx, ddy);
-        if (dist > 40) { a.x = p.x; a.y = p.y; } else { const k = Math.min(1, dt * 16); a.x += ddx * k; a.y += ddy * k; }
-        if (dist > 0.6) { a.dir = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 2 : 3) : (ddy > 0 ? 0 : 1); a.moving = now + 120; }
-        if (a.moving > now) a.walk += dist * k2(dt); else a.walk = 0;
+        const target = p.id === selfId.current ? glidePos(performance.now()) || p : trailPos(trails.current[p.id], renderT) || p;
+        const ddx = target.x - a.x, ddy = target.y - a.y, dist = Math.hypot(ddx, ddy);
+        a.x = target.x; a.y = target.y;
+        if (dist > 0.05) { a.dir = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 2 : 3) : (ddy > 0 ? 0 : 1); a.moving = now + 120; }
+        if (a.moving > now) a.walk += dist; else a.walk = 0;
         const self = p.id === selfId.current, look = lookFor(p);
         // pets trot to a spot just behind their owner; facing the camera they sit beside, not hidden behind the body
         let pet = null;
@@ -255,19 +273,37 @@ function App() {
           bubble: bubbles.current[p.id]?.until > now ? bubbles.current[p.id].text : null, emote: emotes.current[p.id] > now });
       }
       const me = avatars.find(a => a.self);
-      view.draw(sc, { focus: me, avatars, stars: s.game?.active ? s.game.stars : [], time: t, dt, snap: first && Boolean(me), marker: marker.current });
-      if (me) first = false;
+      view.draw(sc, { focus: me, avatars, stars: s.game?.active ? s.game.stars : [], time: t, dt, marker: marker.current });
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
   }, [entered, zone, map]);
 
+  // My drawn position glides evenly from where it was to the latest prediction over one server tick.
+  function setPred(p, jump = false) {
+    const at = performance.now(), from = jump ? p : glidePos(at) || p;
+    pred.current = { x: p.x, y: p.y }; glide.current = { from, to: pred.current, at };
+  }
+  function glidePos(t) {
+    const g = glide.current; if (!g) return null;
+    const k = Math.min(1, (t - g.at) / TICK_MS);
+    return { x: g.from.x + (g.to.x - g.from.x) * k, y: g.from.y + (g.to.y - g.from.y) * k };
+  }
+  function trailPos(b, t) { // linear interpolation between the two server samples around t
+    if (!b?.length) return null;
+    if (t <= b[0].t) return b[0];
+    for (let i = b.length - 1; i > 0; i--) if (b[i - 1].t <= t) {
+      const q = b[i - 1], r = b[i]; if (t >= r.t) return r;
+      const k = (t - q.t) / (r.t - q.t); return { x: q.x + (r.x - q.x) * k, y: q.y + (r.y - q.y) * k };
+    }
+    return b[b.length - 1];
+  }
   function onStagePointer(e) {
     if (e.button > 0 || !viewRef.current) return;
     const r = e.currentTarget.getBoundingClientRect(), target = viewRef.current.toWorld(e.clientX - r.left, e.clientY - r.top);
     if (edit) { editAt(target); return; }
-    const me = local ? soloPos.current : state.current.players?.find(p => p.id === selfId.current);
+    const me = local ? soloPos.current : pred.current;
     if (!me) return;
     document.activeElement?.blur?.();
     route.current = findPath(map, me, target); marker.current = route.current.at(-1) || null;
@@ -398,7 +434,6 @@ function App() {
     </main>
   );
 }
-const k2 = dt => Math.min(1, dt * 16);
 
 function Chat({ chatOpen, setChatOpen, unread, chatOpacity, setChatOpacity, messages, chat, setChat, sendChat, chatInput, keys, route, online, canSend }) {
   const end = useRef(null);

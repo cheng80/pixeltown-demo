@@ -18,7 +18,7 @@ const LABEL_AT = { house: [44, 49], shop: [44, 49], greenhouse: [40, 38], arch: 
 
 export function createView(display) {
   const low = document.createElement('canvas'), lc = low.getContext('2d'), dc = display.getContext('2d');
-  const view = { z: 3, cam: { x: 0, y: 0 }, camF: null, low, debug: /debug=collision/.test(location.search) };
+  const view = { z: 3, cam: { x: 0, y: 0 }, low, debug: /debug=collision/.test(location.search) };
   view.toWorld = (cssX, cssY) => ({ x: view.cam.x + (cssX * view.dpr) / view.z, y: view.cam.y + (cssY * view.dpr) / view.z });
   view.draw = (sc, frame) => draw(view, sc, frame, lc, dc, display);
   return view;
@@ -37,12 +37,11 @@ function draw(view, sc, f, lc, dc, display) {
 
   // camera: follow the local avatar, clamp to the map, centre small maps
   const focus = fr ? { x: fr.x + fr.w / 2, y: fr.y + fr.h / 2 + 12 } : f.focus || sc.map.spawn;
-  const tx = WORLD.width <= lw ? (WORLD.width - lw) / 2 : Math.max(0, Math.min(WORLD.width - lw, focus.x - lw / 2));
-  const ty = WORLD.height <= lh ? (WORLD.height - lh) / 2 : Math.max(0, Math.min(WORLD.height - lh, focus.y - 12 - lh / 2));
-  if (!view.camF || f.snap) view.camF = { x: tx, y: ty };
-  const k = Math.min(1, (f.dt || 0.016) * 8);
-  view.camF.x += (tx - view.camF.x) * k; view.camF.y += (ty - view.camF.y) * k;
-  const cx = Math.round(view.camF.x), cy = Math.round(view.camF.y);
+  // Camera locked to the avatar in whole art pixels: both use floor() with an integer offset, so the avatar never wobbles
+  // a pixel against the screen while the map scrolls (a lagging, separately rounded camera made the view shake).
+  const hx = Math.floor(lw / 2), hy = Math.floor(lh / 2) + 12;
+  const cx = WORLD.width <= lw ? Math.floor((WORLD.width - lw) / 2) : Math.max(0, Math.min(WORLD.width - lw, Math.floor(focus.x) - hx));
+  const cy = WORLD.height <= lh ? Math.floor((WORLD.height - lh) / 2) : Math.max(0, Math.min(WORLD.height - lh, Math.floor(focus.y) - hy));
   view.cam = { x: cx, y: cy };
 
   lc.imageSmoothingEnabled = false;
@@ -71,8 +70,8 @@ function draw(view, sc, f, lc, dc, display) {
     if (it.pet) {
       const q = it.pet, spr = petSprite(q.id, q.frame);
       if (!spr) continue;
-      lc.globalAlpha = 0.25; lc.fillStyle = '#2a2238'; lc.fillRect(Math.round(q.x) - 4 - cx, Math.round(q.y) - 1 - cy, 8, 2); lc.globalAlpha = 1;
-      const dx = Math.round(q.x) - 7 - cx, dy = Math.round(q.y) - 13 - cy;
+      lc.globalAlpha = 0.25; lc.fillStyle = '#2a2238'; lc.fillRect(Math.floor(q.x) - 4 - cx, Math.floor(q.y) - 1 - cy, 8, 2); lc.globalAlpha = 1;
+      const dx = Math.floor(q.x) - 7 - cx, dy = Math.floor(q.y) - 13 - cy;
       if (q.flip) { lc.save(); lc.translate(dx + spr.width, dy); lc.scale(-1, 1); lc.drawImage(spr, 0, 0); lc.restore(); }
       else lc.drawImage(spr, dx, dy);
     } else if (it.p) {
@@ -88,9 +87,9 @@ function draw(view, sc, f, lc, dc, display) {
       lc.drawImage(starSprite(), s.x - 7 - cx, s.y - 16 - bob - cy);
     } else {
       const a = it.a;
-      lc.globalAlpha = 0.25; lc.fillStyle = '#2a2238'; lc.fillRect(Math.round(a.x) - 5 - cx, Math.round(a.y) - 2 - cy, 10, 3); lc.fillRect(Math.round(a.x) - 6 - cx, Math.round(a.y) - 1 - cy, 12, 1); lc.globalAlpha = 1;
+      lc.globalAlpha = 0.25; lc.fillStyle = '#2a2238'; lc.fillRect(Math.floor(a.x) - 5 - cx, Math.floor(a.y) - 2 - cy, 10, 3); lc.fillRect(Math.floor(a.x) - 6 - cx, Math.floor(a.y) - 1 - cy, 12, 1); lc.globalAlpha = 1;
       const spr = avatarSprite(a.look, a.dir === 3 ? 2 : a.dir, a.frame);
-      const dx = Math.round(a.x) - 9 - cx, dy = Math.round(a.y) - 30 - cy;
+      const dx = Math.floor(a.x) - 9 - cx, dy = Math.floor(a.y) - 30 - cy;
       if (a.dir === 3) { lc.save(); lc.translate(dx + spr.width, dy); lc.scale(-1, 1); lc.drawImage(spr, 0, 0); lc.restore(); }
       else lc.drawImage(spr, dx, dy);
     }
@@ -126,7 +125,7 @@ function draw(view, sc, f, lc, dc, display) {
   }
   dc.font = `${fs}px Galmuri11, monospace`;
   for (const a of f.avatars) {
-    const [sx, sy] = S(a.x, a.y);
+    const [sx, sy] = S(Math.floor(a.x), Math.floor(a.y)); // same whole-pixel spot as the sprite
     const w = Math.ceil(dc.measureText(a.name).width) + pad * 2, h = fs + pad + u;
     dc.fillStyle = a.self ? '#ff5c93' : 'rgba(58,36,64,.82)';
     dc.fillRect(sx - Math.round(w / 2), sy + 2 * u, w, h);

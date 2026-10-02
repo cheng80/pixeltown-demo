@@ -19,7 +19,7 @@ npm run test --prefix colyseus   # outbox 재시작/실패 복구와 지형 검�
 |---|---|
 | `PB_URL` (또는 `POCKETBASE_URL`) | `http://127.0.0.1:18090`; 서버의 PB 연결 주소. Mac mini `.env`는 `POCKETBASE_URL=http://127.0.0.1:8091` |
 | `SERVER_HOST` / `SERVER_PORT` (또는 `PORT`) | `127.0.0.1` / `12567`; 서버 바인드. Mac mini는 `PORT=2567` |
-| `ALLOWED_ORIGINS` | 정확한 브라우저 Origin 목록(쉼표). 미지정 시 `https://pixeltown.fastmake.net`만. Origin 없는 요청(노드 클라이언트·curl)은 통과하고 인증은 그대로 적용. `dev:all`은 Vite 주소를 넣는다 |
+| `ALLOWED_ORIGINS` | 정확한 브라우저 Origin 목록(쉼표). 미지정 시 `https://pixeltown.fastmake.net`(게임 배포 주소)만. Origin 없는 요청(노드 클라이언트·curl)은 통과하고 인증은 그대로 적용. `dev:all`은 Vite 주소를 넣는다 |
 | `MONITOR_ORIGINS` | `/monitor/` 관리 요청 허용 Origin. 기본 `https://pixeltown-rt.fastmake.net`과 서버 포트의 127.0.0.1/localhost |
 | `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` | outbox 저장용 superuser. 지정하면 `PIXELTOWN_ENV_FILE`보다 우선(Mac mini `.env`, 0600) |
 | `GAME_DURATION_MS` | 정산 주기 `180000`; 1000~300000. 통합 테스트는 `30000` |

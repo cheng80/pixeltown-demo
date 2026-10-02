@@ -3,9 +3,10 @@
 //   CHROME_PATH=/path/to/chromium node tests/remote-ui.mjs
 import { chromium } from 'playwright-core';
 import { readFile, writeFile } from 'node:fs/promises';
-const root = new URL('..', import.meta.url).pathname, BASE = 'http://127.0.0.1:5173/';
+const root = new URL('..', import.meta.url).pathname, BASE = process.env.BASE || 'http://127.0.0.1:5173/';
 const accounts = JSON.parse(await readFile(root + 'pocketbase/.local/remote-accounts.json', 'utf8'));
-const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' });
+// CHROME_HOST_RULES (e.g. "MAP pixeltown-pb.fastmake.net 104.21.83.7") bypasses a stale local DNS cache after a hostname move.
+const browser = await chromium.launch({ ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' }), args: process.env.CHROME_HOST_RULES ? [`--host-resolver-rules=${process.env.CHROME_HOST_RULES}`] : [] });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const out = { url: BASE, hosts: new Set() };
 async function open({ email, password }) {

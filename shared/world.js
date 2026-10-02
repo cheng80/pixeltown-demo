@@ -315,6 +315,16 @@ function walkCellNear(map, walk, p) {
   }
   return best >= 0 ? best : any; // in a one-dot slot no centre is straight ahead; sliding movement gets there
 }
+// One movement step for one input. The server applies exactly one step per received input and the client predicts its
+// own avatar with the same function, so prediction and server agree. `to` (last leg of a click route) steers from the real
+// position and stops on the target.
+export function stepInput(map, p, input) {
+  if (input.to) {
+    const ox = input.to.x - p.x, oy = input.to.y - p.y, left = Math.hypot(ox, oy);
+    return left < 0.5 ? { x: p.x, y: p.y } : moveActor(map, p.x, p.y, ox / left, oy / left, Math.min(STEP_PER_TICK, left));
+  }
+  return input.dx || input.dy ? moveActor(map, p.x, p.y, input.dx, input.dy, STEP_PER_TICK) : { x: p.x, y: p.y };
+}
 export function findPath(map, from, to) {
   const start = nearestFree(map, from.x, from.y, 12), walk = walkGrid(map);
   const own = cellOf(start.x, start.y), near = walkCellNear(map, walk, start), s = near >= 0 ? near : walk[own] ? own : -1;
