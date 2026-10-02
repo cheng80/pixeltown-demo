@@ -140,7 +140,6 @@ kbd { display: inline-block; padding: 0 4px; border: 2px solid var(--line); back
 .pad:active { background: var(--pink-l); }
 .pad.위 { grid-area: 1 / 2; } .pad.왼쪽 { grid-area: 2 / 1; } .pad.아래 { grid-area: 3 / 2; } .pad.오른쪽 { grid-area: 2 / 3; }
 .toast { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 16px); padding: 6px 12px; background: var(--line); color: #fff; border: 3px solid #fff; font-size: 12px; text-align: center; }
-.notice { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: #fff; border: 3px solid #e0344f; white-space: nowrap; cursor: auto; }
 
 /* ---------- star shop / closet ---------- */
 .shop { width: min(560px, 100%); }
@@ -167,6 +166,7 @@ kbd { display: inline-block; padding: 0 4px; border: 2px solid var(--line); back
 
 /* ---------- notebook sheet ---------- */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(58, 36, 64, .35); }
+.sheet-backdrop.offline { z-index: 40; } /* above shop/notebook: nothing else is usable while offline */
 .notebook { width: min(400px, 100%); max-height: 100%; display: flex; flex-direction: column; box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 5px var(--dash), 0 8px 0 var(--line); }
 .notebook-head, .notebook-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; }
 .notebook-head { border-bottom: 3px dashed var(--dash); color: var(--pink-d); }
@@ -217,7 +217,6 @@ kbd { display: inline-block; padding: 0 4px; border: 2px solid var(--line); back
   .strip .save-state { flex-basis: 100%; order: 6; }
   .chat { width: min(380px, calc(100% - 148px)); min-width: 180px; height: 55%; }
   .opacity input { width: 54px; }
-  .notice { top: 64px; }
 }
 @media (max-width: 420px) { .chat { width: calc(100% - 140px); min-width: 0; } .chat-head b { display: none; } }
 @media (max-height: 519px) and (orientation: landscape) {

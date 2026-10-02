@@ -11,6 +11,8 @@ export const lookOf=profile=>{const o=profile?.outfit||{},a=profile?.avatar||{},
   return {...Object.fromEntries(['hat','top','pet'].map(s=>[s,ITEMS[o[s]]?.slot===s?o[s]:null])),skin:pickIndex(a.skin,A.skins),hair:pickIndex(a.hair,A.hairs),style:pickIndex(a.style,A.styles)};};
 export const INITIAL_STARS=5;
 export const MAX_STARS=12;
+export const RECONNECT_SECONDS=8;
+export const MAX_QUEUED_INPUTS=20; // 1 s of 50 ms steps
 export const MAX_MATCH_SCORE=64; // PocketBase hook limit per settlement
 export const STAR_SPAWN_INTERVAL_MS=clamp(Number(process.env.STAR_SPAWN_INTERVAL_MS)||STAR_SPAWN_MS,1000,60000);
 // The star event never stops; scores are settled (saved) every period and the next period starts right away.
@@ -20,6 +22,7 @@ export class Town extends Room {
     if(!ZONES.includes(options.zone))throw new ServerError(400,'Invalid zone');
     this.zone=options.zone;this.map=getMap(this.zone);this.maxClients=32;this.maxMessagesPerSecond=40;
     this.players=new Map();this.moveInputs=new Map();this.cooldowns=new Map(); // `inputs` is reserved by Colyseus 0.18
+    this.held=new Map(); // dropped sessions waiting to reconnect
     this.game={active:false,endsAt:0,stars:[],scores:{}};
     this.setMetadata({zone:this.zone});
     this.onMessage('input',(client,data)=>{
@@ -30,10 +33,12 @@ export class Town extends Room {
       // so network lag cannot carry the avatar past the clicked spot. Speed and collision rules are unchanged.
       const to=data.to&&Number.isFinite(data.to.x)&&Number.isFinite(data.to.y)?{x:clamp(data.to.x,0,WORLD.width),y:clamp(data.to.y,0,WORLD.height)}:null;
       // Each input is one step, applied in order. `seq` comes back as the player's `ack` so the client can reconcile its
-      // prediction. The queue is short (stale input is dropped) and steps are paced by credit, so sending faster never moves faster.
+      // prediction. Steps are paced by credit, so sending faster never moves faster. The queue holds up to 1 s of input:
+      // on an unstable connection inputs arrive in bursts, and dropping them made the server fall behind the client's
+      // prediction, which then snapped back (the screen shook).
       const entry=this.moveInputs.get(client.sessionId)||{queue:[],credit:1};
       entry.queue.push({dx,dy,to,seq:Number.isSafeInteger(data.seq)?data.seq:null});
-      if(entry.queue.length>6)entry.queue.shift();
+      if(entry.queue.length>MAX_QUEUED_INPUTS)entry.queue.shift();
       this.moveInputs.set(client.sessionId,entry);
     });
     this.onMessage('chat',(client,data)=>{
@@ -120,6 +125,8 @@ export class Town extends Room {
     } catch {throw new ServerError(401,'Invalid PocketBase token or profile');}
   }
   onJoin(client,options,auth) {
+    // A reload or new tab replaces a dropped session of the same user that is still waiting to reconnect.
+    for(const [session,p] of this.players)if(p.id===auth.id&&this.held.has(session)){this.held.get(session).reject();this.held.delete(session);this.players.delete(session);}
     if([...this.players.values()].some(p=>p.id===auth.id))throw new ServerError(409,'User already joined this zone');
     const base=entryPoint(this.map,typeof options?.entry==='string'?options.entry:'default');
     // Arrivals step aside so avatars and name tags do not stack on the same doorway.
@@ -171,6 +178,16 @@ export class Town extends Room {
   }
   // `t` (server clock) lets clients interpolate other players at an even pace whatever the network jitter.
   snapshot() {this.broadcast('snapshot',{t:Date.now(),players:[...this.players.values()],zone:this.zone,game:this.game,persistence:outbox.status()});}
+  // A dropped socket keeps its avatar (standing still) for a short window; the SDK reconnects into the same session.
+  // If it does not come back in time, onLeave removes the player as usual.
+  // A join refused in onJoin (e.g. 409) also lands here: it was never joined, so there is nothing to keep, and a rejected
+  // allowReconnection must never escape (an unhandled rejection stops the whole server).
+  onDrop(client) {
+    this.moveInputs.delete(client.sessionId);
+    if(!this.players.has(client.sessionId))return;
+    const wait=this.allowReconnection(client,RECONNECT_SECONDS);this.held.set(client.sessionId,wait);
+    wait.then(()=>this.held.delete(client.sessionId),()=>this.held.delete(client.sessionId));
+  }
   onLeave(client) {
     this.players.delete(client.sessionId);this.moveInputs.delete(client.sessionId);
     for(const key of this.cooldowns.keys())if(key.startsWith(client.sessionId+':'))this.cooldowns.delete(key);

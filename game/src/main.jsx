@@ -69,7 +69,7 @@ function App() {
   const pred = useRef(null), pending = useRef([]), seq = useRef(0), glide = useRef(null), serverClock = useRef({ samples: [], offset: 0 });
   const stall = useRef({ x: 0, y: 0, n: 0 }), route = useRef([]), marker = useRef(null), state = useRef({ players: [], game: {} }), bubbles = useRef({}), emotes = useRef({});
   const trails = useRef({}), selfId = useRef("me"), soloPos = useRef(null), entry = useRef("default"), portalArmed = useRef(false), chatVisible = useRef(chatOpen);
-  const picked = useRef({}), persistStatus = useRef(null), chatInput = useRef(null), lastSent = useRef("");
+  const picked = useRef({}), corrections = useRef([]), persistStatus = useRef(null), chatInput = useRef(null), lastSent = useRef("");
   const profile = records.profiles[0], outfit = profile?.outfit || {};
   // First entry (FR-014): a signed-in user whose profile has no chosen look makes a character before joining a room.
   const needsSetup = Boolean(user && loaded && profile && !profile.avatar);
@@ -165,6 +165,7 @@ function App() {
           pending.current = pending.current.filter(i => i.seq > (mine.ack ?? -1));
           let p = { x: mine.x, y: mine.y };
           for (const i of pending.current) p = stepInput(mapRef.current, p, i);
+          if (pred.current) { const err = Math.hypot(p.x - pred.current.x, p.y - pred.current.y); if (err > 0.5) { corrections.current.push({ at: Date.now(), err: +err.toFixed(1), ack: mine.ack, pending: pending.current.length }); if (corrections.current.length > 100) corrections.current.shift(); } }
           setPred(p, !pred.current || Math.hypot(p.x - pred.current.x, p.y - pred.current.y) > 40);
         }
         for (const p of data.players) if (p.id !== user.id) { const b = (trails.current[p.id] ||= []); b.push({ t: data.t, x: p.x, y: p.y }); if (b.length > 40) b.shift(); }
@@ -176,8 +177,14 @@ function App() {
       r.onMessage("chat", d => append({ id: d.id, name: d.name || "이웃", text: d.text, mine: d.id === user.id }));
       r.onMessage("emote", d => { emotes.current[d.id] = Date.now() + 2500; });
       r.onMessage("gameEnded", m => { const n = m.scores?.[user.id]; if (n) { persistStatus.current = "pending"; notify(`별 ${n}개 정산! 기록을 저장하는 중이에요.`); } });
-      r.onLeave(() => { if (!cancelled) setStatus("disconnected"); });
-      r.onError((code, message) => { if (!cancelled) { setStatus("disconnected"); notify(message || `연결 오류 (${code})`); } });
+      // While the socket is down nothing moves or predicts on its own and a dialog blocks the page. The SDK retries a few
+      // times into the same server session (kept RECONNECT_SECONDS); after that the dialog offers a fresh join.
+      const halt = next => { keys.current.clear(); touch.current = { dx: 0, dy: 0 }; route.current = []; marker.current = null; pending.current = []; setStatus(next); };
+      r.reconnection.maxRetries = 5;
+      r.onDrop(() => { if (!cancelled) { room.current = null; halt("reconnecting"); } });
+      r.onReconnect(() => { if (!cancelled) { room.current = r; lastSent.current = ""; setStatus("online"); } });
+      r.onLeave(() => { if (!cancelled) { room.current = null; halt("disconnected"); } });
+      r.onError((code, message) => { if (!cancelled) { room.current = null; halt("disconnected"); notify(message || `연결 오류 (${code})`); } });
     }).catch(e => { if (!cancelled) { setStatus("disconnected"); notify(`마을 연결 실패: ${e.message}`); } });
     return () => { cancelled = true; room.current?.leave(); room.current = null; };
   }, [entered, user, zone]);
@@ -186,7 +193,7 @@ function App() {
   useEffect(() => {
     if (!entered) return;
     const down = e => {
-      if (isTyping(e.target)) return;
+      if (isTyping(e.target) || (!local && status !== "online")) return;
       const k = e.key.toLowerCase();
       if (MOVE_KEYS[k]) { e.preventDefault(); keys.current.add(k); route.current = []; marker.current = null; }
       else if (k === " " && e.target.tagName !== "BUTTON") { e.preventDefault(); if (!e.repeat) sendEmote(); }
@@ -241,7 +248,7 @@ function App() {
     if (!entered || !canvasRef.current) return;
     const view = (viewRef.current = createView(canvasRef.current)), sc = scene(map), anim = new Map();
     let raf, last = performance.now();
-    window.__pixeltown = { view, zone, anim, state, route, marker, picked, self: selfId }; // read-only hooks for UI verification scripts
+    window.__pixeltown = { view, zone, anim, state, route, marker, picked, corrections, self: selfId }; // read-only hooks for UI verification scripts
     const frame = t => {
       const dt = Math.min(0.05, (t - last) / 1000); last = t;
       const s = state.current, now = Date.now(), avatars = [], renderT = now - serverClock.current.offset - 100;
@@ -413,7 +420,6 @@ function App() {
               </div>
               <div className="row"><button className="btn small" onClick={saveRoom}>저장</button><button className="btn small ghost" onClick={() => setEdit(null)}>취소</button></div>
             </div>}
-            {status === "disconnected" && <div className="notice" role="alert" onPointerDown={e => e.stopPropagation()}>서버 연결이 끊겼어요. <button className="btn small" onClick={() => setUser({ ...user })}>다시 연결</button></div>}
             {!edit && <Chat {...{ chatOpen, setChatOpen, unread, chatOpacity, setChatOpacity, messages, chat, setChat, sendChat, chatInput, keys, route, online, canSend: local || status === "online" }} />}
             <div className="dpad" aria-label="방향 이동" onPointerDown={e => e.stopPropagation()}>
               {[["▲", 0, -1, "위"], ["◀", -1, 0, "왼쪽"], ["▼", 0, 1, "아래"], ["▶", 1, 0, "오른쪽"]].map(([label, dx, dy, name]) => (
@@ -436,6 +442,13 @@ function App() {
           {ZONES.map(([id, icon, label]) => <button key={id} aria-pressed={zone === id} onClick={() => goZone(id)}><span aria-hidden="true">{icon}</span>{label}</button>)}
         </nav>
       </div>
+      {(status === "disconnected" || status === "reconnecting") && !local && <div className="sheet-backdrop offline">
+        <div className="notebook paper" role="alertdialog" aria-modal="true" aria-labelledby="offline-title">
+          <div className="notebook-head"><b id="offline-title">{status === "reconnecting" ? "서버에 다시 연결하는 중…" : "서버 연결이 끊겼어요"}</b></div>
+          <p className="notebook-body">연결될 때까지 이동·채팅·장소 이동을 할 수 없어요.</p>
+          {status === "disconnected" && <div className="notebook-foot"><button className="btn wide" autoFocus onClick={() => setUser({ ...user })}>다시 연결</button></div>}
+        </div>
+      </div>}
       {shop && <Shop {...{ wallet, owned, outfit, buy, wear, me, close: () => setShop(false) }} />}
       {notebook && <Notebook {...{ records, recordError, loadRecords, me, close: () => setNotebook(false) }} />}
       {setup && <CharacterSetup profile={profile} userId={user.id} save={saveCharacter} close={() => setSetup(false)} />}

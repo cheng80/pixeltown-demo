@@ -9,7 +9,7 @@ import { getMap, blocked, starSpots, touchesStar } from '../../shared/world.js';
 function room() {
   const r=Object.create(Town.prototype);r.map=getMap('lobby');
   r.players=new Map([['session',{id:'player',...r.map.spawn}]]);
-  r.moveInputs=new Map();r.snapshot=()=>{};
+  r.moveInputs=new Map();r.held=new Map();r.snapshot=()=>{};
   r.broadcast=()=>{};
   r.startGame(1000);return r;
 }
@@ -117,4 +117,21 @@ test('inputs are one step each, acknowledged, and sending faster never moves fas
   // A tick without input lets the next tick catch up by one step (jitter), not more.
   const x2=p.x;r.moveInputs.set('session',{queue:[],credit:r.moveInputs.get('session').credit});r.tick(3000);
   send(3,100);r.tick(3050);assert(p.x-x2<=6.01);
+});
+
+test('a dropped player is kept for reconnection; a join refused in onJoin is not (its rejection crashed the server)',async()=>{
+  const r=room(),held=[];r.allowReconnection=(c,s)=>{held.push([c.sessionId,s]);const d=Promise.reject(new Error('not joined'));d.reject=()=>{};return d;};
+  r.moveInputs.set('session',{queue:[{dx:1,dy:0}],credit:1});
+  r.onDrop({sessionId:'session'});r.onDrop({sessionId:'refused'});
+  await new Promise(done=>setImmediate(done)); // a rejection escaping onDrop would fail the test as unhandled
+  assert.deepEqual(held,[['session',8]]);assert(r.players.has('session'),'avatar stays while it may come back');
+  assert(!r.moveInputs.has('session'),'queued steps are dropped');
+});
+
+test('a reload replaces a dropped session of the same user that is still waiting to reconnect',()=>{
+  const r=room();let rejected=0;r.allowReconnection=()=>{const d=new Promise(()=>{});d.reject=()=>rejected++;return d;};
+  r.onDrop({sessionId:'session'});assert(r.held.has('session'));
+  r.onJoin({sessionId:'fresh'},{},{id:'player',name:'P',look:{}});
+  assert.equal(rejected,1);assert(!r.players.has('session'));assert(r.players.has('fresh'));
+  assert.throws(()=>r.onJoin({sessionId:'third'},{},{id:'player',name:'P',look:{}}),/already joined/,'a live session still blocks a second tab');
 });

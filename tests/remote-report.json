@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-02T07:43:03.996Z",
+  "startedAt": "2026-10-02T10:53:35.556Z",
   "pocketbase": "https://pixeltown-pb.fastmake.net",
   "realtime": "wss://pixeltown-rt.fastmake.net",
   "checks": {
@@ -15,14 +15,14 @@
       "forgedPurchase": 403,
       "commitAsUser": 403,
       "publicSignup": 403,
-      "ms": 2620
+      "ms": 11567
     },
     "two_users_move_chat": {
       "ok": true,
-      "movedBy": 30,
+      "movedBy": 18,
       "target": 360,
       "chatSenderIsServerId": true,
-      "ms": 2130
+      "ms": 4177
     },
     "zone_separation": {
       "ok": true,
@@ -30,40 +30,40 @@
       "lobbyPlayers": 1,
       "gardenPlayers": 1,
       "crossZoneChat": false,
-      "ms": 1627
+      "ms": 4020
     },
     "star_cap_collect_and_refill": {
       "ok": true,
-      "startCountSeen": 5,
+      "startCountSeen": 6,
       "cap": 12,
       "maxObservedAtCap": 12,
       "collected": 10,
       "refillId": true,
       "serverScore": 10,
-      "ms": 70054
+      "ms": 100069
     },
     "default_3min_settlement_saved": {
       "ok": true,
-      "matchId": "21cbcf1f-dee3-42e4-996c-37ff4be4f38c",
+      "matchId": "91c59e77-42e3-4edc-a1ee-7d0390198722",
       "scoreSaved": 10,
       "inventoryQuantity": 10,
       "serverScores": {
         "bfibz83fzdylm8m": 10
       },
-      "measuredPeriodMs": 177714,
+      "measuredPeriodMs": 177695,
       "starsKeptIntoNextPeriod": true,
       "otherUserCanRead": false,
-      "ms": 107350
+      "ms": 76304
     },
     "shop_equip_room_and_relogin": {
       "ok": true,
       "bought": [
-        "top_sailor"
+        "pet_puppy"
       ],
-      "wear": "top_sailor",
+      "wear": "pet_puppy",
       "furniture": "f_chair",
-      "walletBefore": 21,
-      "walletAfter": 6,
+      "walletBefore": 20,
+      "walletAfter": 0,
       "duplicateBuy": 400,
       "unaffordable": 400,
       "notOwnedEquip": 400,
@@ -76,7 +76,7 @@
         }
       ],
       "otherSeesOutfit": true,
-      "ms": 3559
+      "ms": 19578
     },
     "character_setup_profile": {
       "ok": true,
@@ -90,7 +90,7 @@
         "style": 1,
         "color": "#ffb347"
       },
-      "ms": 393
+      "ms": 2458
     },
     "monitor_admin_only": {
       "ok": true,
@@ -101,15 +101,15 @@
       "adminApi": 200,
       "adminApiReturnsRooms": true,
       "crossOriginWithAdmin": 403,
-      "ms": 1487
+      "ms": 4300
     }
   },
   "users": {
     "user1": "bfibz83fzdylm8m",
     "user2": "p2srnojs4omvb9g"
   },
-  "matchId": "21cbcf1f-dee3-42e4-996c-37ff4be4f38c",
-  "finishedAt": "2026-10-02T07:46:13.925Z",
+  "matchId": "91c59e77-42e3-4edc-a1ee-7d0390198722",
+  "finishedAt": "2026-10-02T10:57:20.693Z",
   "summary": {
     "passed": 8,
     "failed": 0

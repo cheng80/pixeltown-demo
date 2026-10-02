@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-02T07:37:55.560Z",
+ "startedAt": "2026-10-02T10:27:23.918Z",
  "url": "http://127.0.0.1:5273/",
  "checks": {
   "depth_and_collision_lobby": {
@@ -101,13 +101,13 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 107
+    "ack": 108
    },
    "frontCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 107.66,
-    "y": 222.9,
+    "x": 107.77,
+    "y": 222.91,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -117,7 +117,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 164
+    "ack": 162
    },
    "behindPillar": {
     "id": "4l0ykfu34v14g2t",
@@ -133,13 +133,13 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 226
+    "ack": 225
    },
    "behindCounter": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 540.98,
-    "y": 312.99,
+    "x": 540.29,
+    "y": 312.81,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -149,7 +149,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 362
+    "ack": 361
    },
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
@@ -165,7 +165,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 526
+    "ack": 528
    },
    "underPergola": {
     "id": "4l0ykfu34v14g2t",
@@ -181,7 +181,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 546
+    "ack": 548
    },
    "pondStop": {
     "id": "4l0ykfu34v14g2t",
@@ -197,7 +197,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 624
+    "ack": 625
    }
   },
   "two_users_move_chat_portal": {
@@ -227,21 +227,6 @@
    "chatTextOpacity": "1",
    "opacityMax": "95",
    "opacityAfterReload": "75",
-   "portalArrival": {
-    "id": "f87ubkhwf2u1c4p",
-    "name": "Demo 2",
-    "x": 44,
-    "y": 218,
-    "color": "#89cff0",
-    "look": {
-     "hat": null,
-     "top": null,
-     "pet": null,
-     "skin": 1,
-     "hair": 5,
-     "style": 1
-    }
-   },
    "otherZoneHidden": true,
    "portalBack": {
     "id": "f87ubkhwf2u1c4p",
@@ -257,7 +242,7 @@
      "hair": 5,
      "style": 1
     },
-    "ack": 125
+    "ack": 124
    }
   },
   "click_move_shortest_marker_and_key_cancel": {
@@ -272,8 +257,8 @@
    "stoppedAt": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 123.97,
-    "y": 100.21,
+    "x": 123.91,
+    "y": 100.85,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -285,7 +270,7 @@
     },
     "ack": 114
    },
-   "starCount": 6
+   "starCount": 8
   },
   "star_event_always_on": {
    "ok": true,
@@ -307,11 +292,11 @@
    "startButton": false,
    "activeOnJoin": true,
    "initial": 5,
-   "minimumSpacing": 176,
+   "minimumSpacing": 158,
    "secondsToNextSettlement": 167,
    "myScore": 3,
    "stillActiveAfterSettlement": true,
-   "notebook": "Demo 1이 브라우저에 저장된 내 캐릭터별 보상 40개★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없"
+   "notebook": "Demo 1이 브라우저에 저장된 내 캐릭터별 보상 43개★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직"
   },
   "shop_dress_pet_and_miniroom": {
    "ok": true,
@@ -354,8 +339,8 @@
     "dy": -3
    },
    "besideBed": {
-    "id": "p0cfvum2pvsvvll",
-    "name": "쇼핑왕nld8",
+    "id": "2q883fnywzanyki",
+    "name": "쇼핑왕pioe",
     "color": "#9fd0ff",
     "look": {
      "hat": "hat_crown",
@@ -380,7 +365,7 @@
    "guestSaved": true,
    "reloadSameCharacter": true,
    "seenByOther": {
-    "name": "별돌이wfm",
+    "name": "별돌이tl9",
     "color": "#9be38c",
     "look": {
      "hat": null,
@@ -391,7 +376,7 @@
      "style": 2
     }
    },
-   "editedName": "별돌이wfm2",
+   "editedName": "별돌이tl92",
    "pageErrors": []
   },
   "viewports_no_scroll_integer_scale": {
@@ -413,7 +398,7 @@
     "smoothing": false,
     "galmuri": true
    },
-   "mobileDpadMoved": 36,
+   "mobileDpadMoved": 39,
    "mobile": {
     "scroll": [
      390,
@@ -472,6 +457,6 @@
    }
   }
  },
- "finishedAt": "2026-10-02T07:42:39.629Z",
+ "finishedAt": "2026-10-02T10:32:07.090Z",
  "status": "passed"
 }

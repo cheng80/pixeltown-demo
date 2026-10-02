@@ -50,15 +50,20 @@ async function join(pb, zone = 'lobby') {
 }
 const me = (s, pb) => s.snapshot.players.find(p => p.id === pb.authStore.record.id);
 async function walk(s, pb, target, timeout = 25000) {
-  const map = getMap(s.snapshot.zone), path = [...findPath(map, me(s, pb), target), target], end = Date.now() + timeout;
+  const map = getMap(s.snapshot.zone), start = me(s, pb), path = [...findPath(map, start, target), target], end = Date.now() + timeout;
   while (Date.now() < end) {
     const p = me(s, pb);
     while (path.length > 1 && Math.hypot(path[0].x - p.x, path[0].y - p.y) < 3) path.shift();
     if (touchesStar(p, target)) return p; // the server picks the star up on its own tick
-    const dx = path[0].x - p.x, dy = path[0].y - p.y, l = Math.hypot(dx, dy) || 1;
-    s.room.send('input', { dx: dx / l, dy: dy / l }); await sleep(50);
+    // Like the game client: at most 2 steps the server has not confirmed yet, so lag never piles up stale directions.
+    if ((s.seq || 0) - (p.ack ?? 0) <= 2) {
+      const dx = path[0].x - p.x, dy = path[0].y - p.y, l = Math.hypot(dx, dy) || 1;
+      s.room.send('input', { dx: dx / l, dy: dy / l, seq: (s.seq = (s.seq || 0) + 1) });
+    }
+    await sleep(50);
   }
-  throw new Error('walk timeout');
+  const p = me(s, pb);
+  throw new Error(`walk timeout: from ${Math.round(start.x)},${Math.round(start.y)} to ${target.x},${target.y}, at ${Math.round(p.x)},${Math.round(p.y)}, ${path.length} waypoints left`);
 }
 const pbFetch = (path, { token, method = 'GET', body } = {}) => fetch(PB_URL + path, {
   method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: token } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}),
