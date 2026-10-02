@@ -343,3 +343,4 @@ Demo 1이 오락실에 들어가자 시작 버튼 없이 바로 진행 중이었
 | 이후 | 800 | 60–99ms | 2455–2479ms | 64도트, 되돌림 없음 | 0 |
 
 - 회귀(JITTER 1000): motion-check PASS(튐 0, 보정 0). others-check 튐 0·최대 한 프레임 1.4도트, 멈춘 프레임 82/658(기존 기준 FAIL은 23절과 같은 이유). 걷는 쪽 2.5초 194도트(약 78px/s).
+- 배포 주소(https://pixeltown.fastmake.net, 커밋 `bf0a56c`, 서버 `deploy-macmini.sh` 반영, Tester 2, JITTER 없음): zone-check PASS. 내 아바타 표시 59–93ms, 연결 완료 1359–2490ms, 연결 중 걸음 64도트 유지, 보정 0.
