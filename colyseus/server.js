@@ -1,16 +1,53 @@
+// One entry for the local launcher and the Mac mini service (launchd runs it through server.mjs with --env-file=.env).
 import http from 'node:http';
+import express from 'express';
 import { Server } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
+import { monitor } from '@colyseus/monitor';
 import { Town } from './town.js';
 import { outbox } from './outbox.js';
-const httpServer=http.createServer((req,res)=>{
-  if(req.url==='/health') {res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({ok:true,persistence:outbox.status()}));}
-  else {res.writeHead(404);res.end();}
-});
-const server=new Server({transport:new WebSocketTransport({server:httpServer,maxPayload:8192}),greet:false,gracefullyShutdown:false});
-server.define('town',Town).filterBy(['zone']);
-const port=Number(process.env.SERVER_PORT || process.env.PIXELTOWN_GAME_PORT)||12567;
+import { PB_URL, userClient } from './config.js';
+import { pocketbaseAdminGuard } from './monitor-auth.js';
+
+const port=Number(process.env.SERVER_PORT||process.env.PORT)||12567;
 const host=process.env.SERVER_HOST||'127.0.0.1';
+// Exact browser origins only (no wildcard). Requests without Origin (node clients, curl, health probes) pass; auth still applies.
+const origins=new Set((process.env.ALLOWED_ORIGINS||'https://pixeltown.fastmake.net').split(',').map(x=>x.trim()).filter(Boolean));
+const allowed=origin=>!origin||origins.has(origin);
+const monitorOrigins=new Set((process.env.MONITOR_ORIGINS||`https://pixeltown-rt.fastmake.net,http://127.0.0.1:${port},http://localhost:${port}`).split(',').map(x=>x.trim()));
+
+const app=express();
+app.disable('x-powered-by');
+app.use((req,res,next)=>{
+  if(!allowed(req.headers.origin))return res.status(403).json({error:'Origin not allowed'});
+  if(req.headers.origin)res.setHeader('Access-Control-Allow-Origin',req.headers.origin);
+  res.setHeader('Vary','Origin');
+  res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');
+  res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');
+  if(req.method==='OPTIONS')return res.sendStatus(204);
+  next();
+});
+app.use('/monitor',pocketbaseAdminGuard(PB_URL,monitorOrigins),monitor({prefix:'/monitor'}));
+app.get('/health',(_req,res)=>res.json({ok:true,service:'pixeltown-colyseus',persistence:outbox.status()}));
+app.get('/health/pocketbase',async(_req,res)=>{
+  try {
+    const r=await fetch(`${PB_URL}/api/health`,{signal:AbortSignal.timeout(5000)});
+    if(!r.ok)throw new Error();
+    res.json({ok:true,pocketbase:'connected'});
+  } catch {res.status(503).json({ok:false,pocketbase:'unavailable'});}
+});
+app.get('/me',async(req,res)=>{
+  try {
+    const token=req.headers.authorization?.replace(/^Bearer\s+/i,'');
+    if(typeof token!=='string'||!token||token.length>8192)throw new Error();
+    const {record}=await userClient(token).collection('users').authRefresh();
+    res.json({id:record.id,name:record.name||'Player'});
+  } catch {res.status(401).json({error:'PocketBase user login required'});}
+});
+
+const httpServer=http.createServer(app);
+const server=new Server({transport:new WebSocketTransport({server:httpServer,maxPayload:8192,verifyClient:info=>allowed(info.origin)}),greet:false,gracefullyShutdown:false});
+server.define('town',Town).filterBy(['zone']);
 await server.listen(port,host);
 console.log(`Colyseus: ws://${host}:${port} (town: lobby/garden/arcade)`);
 void outbox.flush();const retry=setInterval(()=>void outbox.flush(),2000);

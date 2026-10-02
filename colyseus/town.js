@@ -16,14 +16,14 @@ export class Town extends Room {
   onCreate(options) {
     if(!ZONES.includes(options.zone))throw new ServerError(400,'Invalid zone');
     this.zone=options.zone;this.map=getMap(this.zone);this.maxClients=32;this.maxMessagesPerSecond=40;
-    this.players=new Map();this.inputs=new Map();this.cooldowns=new Map();
+    this.players=new Map();this.moveInputs=new Map();this.cooldowns=new Map(); // `inputs` is reserved by Colyseus 0.18
     this.game={active:false,endsAt:0,stars:[],scores:{}};
     this.setMetadata({zone:this.zone});
     this.onMessage('input',(client,data)=>{
       if(!data || !Number.isFinite(data.dx) || !Number.isFinite(data.dy))return;
       let dx=clamp(data.dx,-1,1),dy=clamp(data.dy,-1,1);const len=Math.hypot(dx,dy);
       if(len>1){dx/=len;dy/=len;}
-      this.inputs.set(client.sessionId,{dx,dy,at:Date.now()});
+      this.moveInputs.set(client.sessionId,{dx,dy,at:Date.now()});
     });
     this.onMessage('chat',(client,data)=>{
       if(typeof data?.text!=='string' || !this.allow(client,'chat',700))return;
@@ -87,9 +87,11 @@ export class Town extends Room {
     if(Object.values(this.game.scores).reduce((a,b)=>a+b,0)>=MAX_MATCH_SCORE)this.settle(now);
     this.snapshot();return true;
   }
-  async onAuth(client,options) {
-    if(options.zone!==this.zone || typeof options.token!=='string')throw new ServerError(401,'Authentication required');
-    const pb=userClient(options.token);
+  // Colyseus 0.18: the SDK sends `client.auth.token` as context.token; it never travels in join options.
+  async onAuth(client,options,context) {
+    const token=context?.token;
+    if(options?.zone!==this.zone || typeof token!=='string' || !token || token.length>8192)throw new ServerError(401,'Authentication required');
+    const pb=userClient(token);
     try {
       const {record}=await pb.collection('users').authRefresh();
       const metadata=await pb.collection('rooms').getFirstListItem(pb.filter('zone={:zone}',{zone:options.zone}));
@@ -116,7 +118,7 @@ export class Town extends Room {
   }
   tick(now=Date.now()) {
     for(const [session,p] of this.players) {
-      const input=this.inputs.get(session);
+      const input=this.moveInputs.get(session);
       if(input && now-input.at<=300 && (input.dx || input.dy)) Object.assign(p,moveActor(this.map,p.x,p.y,input.dx,input.dy,STEP_PER_TICK));
     }
     if(this.game.active && now>=this.game.endsAt)this.settle(now);
@@ -143,7 +145,7 @@ export class Town extends Room {
   }
   snapshot() {this.broadcast('snapshot',{players:[...this.players.values()],zone:this.zone,game:this.game,persistence:outbox.status()});}
   onLeave(client) {
-    this.players.delete(client.sessionId);this.inputs.delete(client.sessionId);
+    this.players.delete(client.sessionId);this.moveInputs.delete(client.sessionId);
     for(const key of this.cooldowns.keys())if(key.startsWith(client.sessionId+':'))this.cooldowns.delete(key);
     if(!this.players.size && this.game.active)this.finish();
     this.snapshot();

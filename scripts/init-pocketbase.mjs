@@ -45,7 +45,8 @@ export async function startPocketBase() {
     throw new Error('PocketBase startup timed out');
   } catch(e) {child.kill();throw e;}
 }
-export async function seed(client) {
+// remote: true keeps the existing users collection rules and accounts (Mac mini install) and only adds game schema.
+export async function seed(client, { remote = false } = {}) {
   const target=new URL(client?.baseURL || PB_URL);
   if (!['127.0.0.1','localhost'].includes(target.hostname) || target.protocol!=='http:') throw new Error('Development seed rejects external PB_URL');
   const pb = client || await adminClient();
@@ -53,7 +54,7 @@ export async function seed(client) {
   if (!users.fields.some(f=>f.name==='name')) {
     users = await pb.collections.update(users.id,{fields:[...users.fields,{name:'name',type:'text',max:40}]});
   }
-  await pb.collections.update(users.id,{listRule:'id = @request.auth.id',viewRule:'id = @request.auth.id',createRule:null,updateRule:null,deleteRule:null});
+  if (!remote) await pb.collections.update(users.id,{listRule:'id = @request.auth.id',viewRule:'id = @request.auth.id',createRule:null,updateRule:null,deleteRule:null});
   const ownerRule = 'user = @request.auth.id';
   const relation = {name:'user',type:'relation',collectionId:users.id,maxSelect:1,required:true,cascadeDelete:true};
   const timestamps = [
@@ -81,6 +82,7 @@ export async function seed(client) {
     try {await pb.collection('rooms').getFirstListItem(pb.filter('zone={:zone}',{zone}));}
     catch(e) {if(e.status!==404)throw e;await pb.collection('rooms').create({zone,title,max_players:32});}
   }
+  if (remote) { console.log('Game schema ready (existing users and rules kept)'); return; }
   for(let n=1;n<=2;n++) {
     const email = `demo${n}@pixeltown.local`;
     let user;

@@ -1,7 +1,10 @@
 // Helpers for shop.pb.js (CommonJS, loaded with require inside each handler).
 // Same catalogue and room rules as shared/world.js (roomProblem); colyseus/test/shop.test.js checks they agree.
+// Repo layout reads shared/catalog.json; a server install copies it next to the hooks (pb_hooks/catalog.json).
 function catalog() {
-  return JSON.parse(toString($os.readFile(__hooks + "/../../shared/catalog.json")));
+  let raw;
+  try { raw = $os.readFile(__hooks + "/catalog.json"); } catch (e) { raw = $os.readFile(__hooks + "/../../shared/catalog.json"); }
+  return JSON.parse(toString(raw));
 }
 function rows(tx, collection, user) {
   return tx.findRecordsByFilter(collection, "user = {:user}", "", 0, 0, { user: user });

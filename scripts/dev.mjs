@@ -4,7 +4,7 @@ import { createConnection } from 'node:net';
 const root = fileURLToPath(new URL('..', import.meta.url));
 // Ports are overridable so a second checkout can run next to an existing one without stopping it.
 const PB_PORT=process.env.PIXELTOWN_PB_PORT||'18090',GAME_PORT=process.env.PIXELTOWN_GAME_PORT||'12567',WEB_PORT=process.env.PIXELTOWN_WEB_PORT||'5173';
-const developmentEnv={...process.env,PB_URL:`http://127.0.0.1:${PB_PORT}`,SERVER_HOST:'127.0.0.1',SERVER_PORT:GAME_PORT,VITE_PB_URL:`http://127.0.0.1:${PB_PORT}`,VITE_GAME_URL:`ws://127.0.0.1:${GAME_PORT}`,PIXELTOWN_LOCAL_DIR:root+'pocketbase/.local',PIXELTOWN_ENV_FILE:root+'pocketbase/.env.local',PB_DATA_DIR:root+'pocketbase/.local/pb_data',OUTBOX_PATH:root+'colyseus/.local/outbox'};
+const developmentEnv={...process.env,PB_URL:`http://127.0.0.1:${PB_PORT}`,SERVER_HOST:'127.0.0.1',SERVER_PORT:GAME_PORT,VITE_PB_URL:`http://127.0.0.1:${PB_PORT}`,VITE_GAME_URL:`ws://127.0.0.1:${GAME_PORT}`,PIXELTOWN_LOCAL_DIR:root+'pocketbase/.local',PIXELTOWN_ENV_FILE:root+'pocketbase/.env.local',PB_DATA_DIR:root+'pocketbase/.local/pb_data',OUTBOX_PATH:root+'colyseus/.local/outbox',ALLOWED_ORIGINS:`http://127.0.0.1:${WEB_PORT},http://localhost:${WEB_PORT}`};
 const children=[];
 let ending=false;
 async function free(port) {

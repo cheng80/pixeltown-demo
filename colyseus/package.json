@@ -9,15 +9,14 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "@colyseus/core": "0.16.26",
-    "@colyseus/ws-transport": "0.16.5",
-    "pocketbase": "0.28.1",
-    "nanoid": "file:./vendor/nanoid"
+    "@colyseus/core": "0.18.18",
+    "@colyseus/monitor": "0.18.6",
+    "@colyseus/schema": "5.0.35",
+    "@colyseus/ws-transport": "0.18.4",
+    "express": "5.2.1",
+    "pocketbase": "0.28.1"
   },
   "devDependencies": {
-    "colyseus.js": "0.16.22"
-  },
-  "overrides": {
-    "nanoid": "$nanoid"
+    "@colyseus/sdk": "0.18.4"
   }
 }

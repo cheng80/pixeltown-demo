@@ -17,9 +17,12 @@ npm run test --prefix colyseus   # outbox 재시작/실패 복구와 지형 검�
 
 | 환경변수 | 기본값 / 용도 |
 |---|---|
-| `PB_URL` | `http://127.0.0.1:18090`; 독립 `colyseus/server.js`의 PB 연결 주소 |
-| `SERVER_HOST` / `SERVER_PORT` | `127.0.0.1` / `12567`; 독립 서버 바인드 |
-| `GAME_DURATION_MS` | `30000`; 테스트에서 `3000` 가능, 1000~60000 범위 |
+| `PB_URL` (또는 `POCKETBASE_URL`) | `http://127.0.0.1:18090`; 서버의 PB 연결 주소. Mac mini `.env`는 `POCKETBASE_URL=http://127.0.0.1:8091` |
+| `SERVER_HOST` / `SERVER_PORT` (또는 `PORT`) | `127.0.0.1` / `12567`; 서버 바인드. Mac mini는 `PORT=2567` |
+| `ALLOWED_ORIGINS` | 정확한 브라우저 Origin 목록(쉼표). 미지정 시 `https://pixeltown.fastmake.net`만. Origin 없는 요청(노드 클라이언트·curl)은 통과하고 인증은 그대로 적용. `dev:all`은 Vite 주소를 넣는다 |
+| `MONITOR_ORIGINS` | `/monitor/` 관리 요청 허용 Origin. 기본 `https://pixeltown-rt.fastmake.net`과 서버 포트의 127.0.0.1/localhost |
+| `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` | outbox 저장용 superuser. 지정하면 `PIXELTOWN_ENV_FILE`보다 우선(Mac mini `.env`, 0600) |
+| `GAME_DURATION_MS` | 정산 주기 `180000`; 1000~300000. 통합 테스트는 `30000` |
 | `PIXELTOWN_LOCAL_DIR` | `pocketbase/.local`; 테스트 데이터 격리 |
 | `PIXELTOWN_ENV_FILE` | `pocketbase/.env.local`; 관리자 credential 파일, 반드시 gitignored 경로 사용 |
 | `PB_DATA_DIR` | `${PIXELTOWN_LOCAL_DIR}/pb_data`; 개발 PB DB |
@@ -50,11 +53,16 @@ npm run test --prefix colyseus   # outbox 재시작/실패 복구와 지형 검�
 
 ## Colyseus 계약
 
-설치 버전: `@colyseus/core 0.16.26`, `@colyseus/ws-transport 0.16.5`, 프런트 `colyseus.js 0.16.x`. 설치된 `Room`/`MatchMaker` 소스에서 인스턴스 `onAuth(client,options,context)` 호출을 확인했으며 해당 규약을 사용한다.
+설치 버전(Mac mini와 동일): `@colyseus/core 0.18.18`, `@colyseus/ws-transport 0.18.4`, `@colyseus/schema 5.0.35`, `@colyseus/monitor 0.18.6`, `express 5.2.1`, 프런트·테스트 `@colyseus/sdk 0.18.4`. 설치된 0.18 `Room` 소스에서 인스턴스 `onAuth(client, options, context)`와 `context.token` 전달을 확인했다. 토큰은 join 옵션에 넣지 않는다. 0.18의 `Room.inputs`는 입력 API 예약 이름이라 이동 입력은 `moveInputs`에 둔다.
 
 ```js
-const room = await client.joinOrCreate('town', { token: pb.authStore.token, zone: 'lobby' });
+import { Client } from '@colyseus/sdk';
+const client = new Client(VITE_GAME_URL);
+client.auth.token = pb.authStore.token;
+const room = await client.joinOrCreate('town', { zone: 'lobby' });
 ```
+
+`server.js`는 express 위에 `/health`(outbox 상태 포함), `/health/pocketbase`, `/me`(Bearer 사용자 토큰), PocketBase `_superusers` Basic 인증으로 보호한 `/monitor/`(`monitor-auth.js`), Origin allowlist(HTTP·WebSocket)를 둔다. 로컬과 Mac mini가 같은 파일을 쓴다.
 
 zone은 `lobby` / `garden` / `arcade`; `filterBy(['zone'])`로 분리. zone 변경은 기존 room을 leave한 후 새 zone으로 join한다. 동일 사용자의 같은 zone 중복 접속은 거부한다. 최대 32명, 서버 스냅샷 10Hz.
 
@@ -97,7 +105,7 @@ world `960×640`, spawn `(480,400)`, 속도 `180px/s`, 경계 여백 16px, 충�
 
 각 실행 폴더는 부모 프로젝트 루트에서 해석한다. PB를 직접 실행하는 경우 `--hooksDir=pocketbase/pb_hooks`를 반드시 지정한다. 독립 테스트는 임시 DB/env/outbox를 사용하고 자신이 만든 프로세스만 제어한다.
 
-`GET http://127.0.0.1:12567/health` → `{ok:true,persistence:{status:'saved'|'pending',pending,lastError}}`.
+`GET http://127.0.0.1:12567/health` → `{ok:true,service:'pixeltown-colyseus',persistence:{status:'saved'|'pending',pending,lastError}}`.
 
 별 생성·상한·정산은 루트 `npm run test:integration`이 별도 포트와 임시 DB로 검증한다.
 
@@ -105,6 +113,6 @@ world `960×640`, spawn `(480,400)`, 속도 `180px/s`, 경계 여백 16px, 충�
 
 실제 PocketBase/Colyseus에서 로그인, 잘못된 토큰 거부, 2명 WebSocket, 이동, chat/emote, 원거리 수집 거부, 게임 마감, results+inventory 저장, 같은 경기 재전송, 일반 사용자 write/endpoint 거부, transaction 롤백을 검증했다. `npm test`는 outbox 실패·재구성·단일 replay와 충돌 지형을 검증한다. 별도 통합 `tests/report.json`은 12/12 통과했으며 PB 장애→서버 재시작→복구, 사용자별 접근 격리, 양수 수집/보상, 중복 replay, 20명 10Hz 입력을 검증했다. 20명 검증은 단일 로컬 머신의 짧은 기능 부하 검사로 수용량 보장은 아니다.
 
-Colyseus 0.16의 전이 의존성 `nanoid 2.1.11`은 npm audit 경고(2 moderate, 1 high) 대상이다. 3.x override는 default export API가 달라 실행에 실패한다. 그래서 `vendor/nanoid`에 같은 API(`nanoid(size)`)의 로컬 대체 모듈을 두고 `package.json`의 `overrides: {nanoid: "$nanoid"}`로 교체했다. `node:crypto` 난수와 64자 알파벳(`byte & 63`, 편향 없음)을 쓰고 정수 1..1024 외 길이는 거부한다. `npm audit` 0건, `test/ids.test.js`가 Colyseus `generateId()` 경로를 검사한다. Colyseus 0.17+ 업그레이드 때 이 override와 `vendor/nanoid`를 제거한다.
+Colyseus 0.18은 패치된 `nanoid 3.3.19`를 쓴다. 0.16 때 두었던 `vendor/nanoid` 대체 모듈은 0.18 전환(PLAN-004)으로 제거했다. 루트·colyseus `npm audit` 0건.
 
-참고: [PocketBase custom routing](https://pocketbase.io/docs/js-routing/), [PocketBase records/transactions](https://pocketbase.io/docs/js-records/), [Colyseus room authentication](https://docs.colyseus.io/auth/room). 런타임 인증 규약은 설치된 0.16 소스를 기준으로 확인했다.
+참고: [PocketBase custom routing](https://pocketbase.io/docs/js-routing/), [PocketBase records/transactions](https://pocketbase.io/docs/js-records/), [Colyseus room authentication](https://docs.colyseus.io/auth/room). 런타임 인증 규약은 설치된 0.18.18 소스를 기준으로 확인했다.

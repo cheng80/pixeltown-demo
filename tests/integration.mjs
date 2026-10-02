@@ -117,8 +117,11 @@ async function createAccount(index) {
   assert.equal(auth.data.record.id, created.id);
   return { id: auth.data.record.id, token: auth.data.token, name: auth.data.record.name };
 }
+// Colyseus 0.18 sends the PocketBase token as client.auth.token, so each user gets its own SDK client.
+let runtime_Client;
+function gameClient(token) { const client = new runtime_Client(WS_URL); client.auth.token = token; return client; }
 async function join(account, zone = 'lobby', extra = {}) {
-  const state = watch(await runtime.client.joinOrCreate('town', { token: account.token, zone, ...extra }));
+  const state = watch(await gameClient(account.token).joinOrCreate('town', { zone, ...extra }));
   await waitUntil(() => state.snapshot?.players?.some(p => p.id === account.id), 'authenticated player snapshot');
   return state;
 }
@@ -155,7 +158,7 @@ async function functionalChecks() {
   if (!a || !b) return;
   await test('invalid_token_rejected', async () => {
     let accepted;
-    try { accepted = await runtime.client.joinOrCreate('town', { token: 'invalid.integration.token', zone: 'lobby' }); }
+    try { accepted = await gameClient('invalid.integration.token').joinOrCreate('town', { zone: 'lobby' }); }
     catch (error) { return { rejected: true, errorCode: error.code ?? null }; }
     await accepted.leave();
     assert.fail('Invalid token was accepted');
@@ -369,13 +372,14 @@ function startServer() {
 async function setup() {
   await assertPortsFree();
   const requireBackend = createRequire(resolve(root, 'colyseus/package.json'));
-  const { Client } = requireBackend('colyseus.js');
+  const { Client } = requireBackend('@colyseus/sdk');
+  runtime_Client = Client;
   const base = resolve(root, '.test-work/integration');
   await mkdir(base, { recursive: true });
   const local = await mkdtemp(resolve(base, 'run-'));
   const envFile = resolve(local, '.env.local');
   await writeFile(envFile, `PB_ADMIN_EMAIL=integration-${randomBytes(8).toString('hex')}@pixeltown.local\nPB_ADMIN_PASSWORD=${randomBytes(32).toString('hex')}\n`, { mode: 0o600 });
-  runtime = { runId: randomBytes(5).toString('hex'), local, dataDir: resolve(local, 'pb_data'), outboxDir: resolve(local, 'outbox'), binary: resolve(root, 'pocketbase/.local/pocketbase'), client: new Client(WS_URL) };
+  runtime = { runId: randomBytes(5).toString('hex'), local, dataDir: resolve(local, 'pb_data'), outboxDir: resolve(local, 'outbox'), binary: resolve(process.env.PIXELTOWN_PB_BINARY || resolve(root, 'pocketbase/.local/pocketbase')) };
   assert.ok(existsSync(runtime.binary), 'Backend owner must prepare local PocketBase binary first; this test never downloads it');
   runtime.gameDurationMs = 30000; // Settlement period: growth to the cap, two capped periods, collection and refill fit in one or two periods.
   runtime.starSpawnMs = 1500; // Shortened from the 6s default so growth to the cap is observable in seconds.

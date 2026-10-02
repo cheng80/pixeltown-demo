@@ -9,7 +9,7 @@ import { getMap, blocked, starSpots } from '../../shared/world.js';
 function room() {
   const r=Object.create(Town.prototype);r.map=getMap('lobby');
   r.players=new Map([['session',{id:'player',...r.map.spawn}]]);
-  r.inputs=new Map();r.snapshot=()=>{};
+  r.moveInputs=new Map();r.snapshot=()=>{};
   r.broadcast=()=>{};
   r.startGame(1000);return r;
 }

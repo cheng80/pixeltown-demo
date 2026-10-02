@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import PocketBase from "pocketbase";
-import { Client } from "colyseus.js";
+import { Client } from "@colyseus/sdk";
 import g11 from "galmuri/dist/Galmuri11.woff2";
 import g11b from "galmuri/dist/Galmuri11-Bold.woff2";
 import { getMap, moveActor, blocked, nearestFree, findPath, portalAt, entryPoint, spreadSpot, homeMap, roomProblem, CATALOG, ITEMS, COLLECT_RADIUS, STAR_SPAWN_MS, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
@@ -137,7 +137,8 @@ function App() {
       return;
     }
     // A reload can race the server noticing the previous socket closed (409): retry briefly.
-    const join = (n = 0) => client.joinOrCreate("town", { token: pb.authStore.token, zone, entry: via })
+    client.auth.token = pb.authStore.token; // Colyseus 0.18: verified by the room's onAuth, not sent in join options
+    const join = (n = 0) => client.joinOrCreate("town", { zone, entry: via })
       .catch(e => (e.code === 409 && n < 6 && !cancelled ? new Promise(r => setTimeout(r, 700)).then(() => join(n + 1)) : Promise.reject(e)));
     join().then(r => {
       if (cancelled) { r.leave(); return; }
