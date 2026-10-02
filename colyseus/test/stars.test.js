@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Town, INITIAL_STARS, MAX_STARS, STAR_SPAWN_INTERVAL_MS, RECONNECT_SECONDS, MAX_QUEUED_INPUTS, connectionSummary } from '../town.js';
+import { Town, INITIAL_STARS, MAX_STARS, STAR_SPAWN_INTERVAL_MS, RECONNECT_SECONDS, connectionSummary } from '../town.js';
 const T=STAR_SPAWN_INTERVAL_MS;
 import { outbox } from '../outbox.js';
 // Never touch the real outbox directory from unit tests.
 const queued=[];outbox.enqueue=m=>queued.push(m);outbox.flush=async()=>{};
-import { getMap, blocked, starSpots, touchesStar } from '../../shared/world.js';
+import { getMap, blocked, starSpots, touchesStar, stepInput, findPath, MOVE_BURST_MS, MOVE_SLACK, STEP_PER_TICK, TICK_MS } from '../../shared/world.js';
 function room() {
   const r=Object.create(Town.prototype);r.map=getMap('lobby');
-  r.players=new Map([['session',{id:'player',...r.map.spawn}]]);
-  r.moveInputs=new Map();r.held=new Map();r.dropped=new Set();r.cooldowns=new Map();r.zone='lobby';r.snapshot=()=>{};
+  r.players=new Map([['session',{id:'player',...r.map.spawn,fix:0}]]);
+  r.moves=new Map();r.held=new Map();r.dropped=new Set();r.cooldowns=new Map();r.zone='lobby';r.snapshot=()=>{};
   r.broadcast=()=>{};
   r.startGame(1000);return r;
 }
@@ -96,42 +96,51 @@ test('PocketBase hook accepts score >12 and rejects over-64 total',async()=>{
   assert.equal(rows.length,2);
 });
 
-test('a click route ends exactly on its target even when the client reacts late (network lag)',()=>{
-  const r=room(),p=r.players.get('session'),target={x:p.x+10,y:p.y};
-  assert(!blocked(r.map,target.x,target.y));
-  // The client keeps sending the same input while it still sees an old position; the server must not walk past the target.
-  for(let t=1;t<=8;t++){r.moveInputs.set('session',{queue:[{dx:1,dy:0,to:target,seq:t}],credit:0});r.tick(1000+t*50);}
-  assert.deepEqual([p.x,p.y],[target.x,target.y]);
-  // A stale direction is corrected toward the target, and `to` never makes a step longer than a normal one.
-  const q={x:p.x-6,y:p.y-2};r.moveInputs.set('session',{queue:[{dx:0,dy:1,to:q,seq:9}],credit:0});const before={x:p.x,y:p.y};r.tick(2000);
-  assert(p.x<before.x && Math.hypot(p.x-before.x,p.y-before.y)<=3.01);
+const C={sessionId:'session'};
+test('local-first movement: walking steps are accepted and acknowledged, impossible ones are sent back',()=>{
+  const r=room(),p=r.players.get('session');let at={x:p.x,y:p.y},t=1000,seq=0;
+  // A client walking a real route (with corner slides) at walking pace is never corrected.
+  const path=findPath(r.map,at,{x:p.x+200,y:p.y+120});
+  for(const w of path)for(let n=0;n<200&&Math.hypot(w.x-at.x,w.y-at.y)>=0.5;n++){at=stepInput(r.map,at,{dx:1,dy:0,to:w});r.move(C,{...at,seq:++seq,fix:0},t+=50);}
+  assert.equal(p.fix,0);assert.deepEqual([p.x,p.y],[at.x,at.y]);assert.equal(p.ack,seq);
+  // A teleport, a step into a wall and a report sent before the correction are all refused.
+  r.move(C,{x:p.x+40,y:p.y,seq:++seq,fix:0},t+=50);assert.equal(p.fix,1);assert.deepEqual([p.x,p.y],[at.x,at.y]);
+  r.move(C,{x:p.x+3,y:p.y,seq:++seq,fix:0},t+=50);assert.equal(p.fix,1,'stale report ignored');assert.deepEqual([p.x,p.y],[at.x,at.y]);
+  const wall=[[3,0],[-3,0],[0,3],[0,-3]].map(([dx,dy])=>({x:p.x+dx,y:p.y+dy})).find(q=>blocked(r.map,q.x,q.y));
+  if(wall){r.move(C,{...wall,seq:++seq,fix:1},t+=50);assert.equal(p.fix,2);}
+  for(const bad of [{x:'1',y:2},{x:NaN,y:p.y},null,{x:p.x}])r.move(C,{...bad,fix:p.fix},t+=50);
+  assert(Number.isFinite(p.x)&&Number.isFinite(p.y));
 });
-
-test('inputs are one step each, acknowledged, and sending faster never moves faster',()=>{
-  const r=room(),p=r.players.get('session'),e={queue:[],credit:1};r.moveInputs.set('session',e);
-  let seq=0,consumed=0;const send=n=>{for(let i=0;i<n;i++)e.queue.push({dx:i%2?1:-1,dy:0,to:null,seq:++seq});if(e.queue.length>MAX_QUEUED_INPUTS)e.queue.splice(0,e.queue.length-MAX_QUEUED_INPUTS);};
-  const tick=t=>{const before=e.queue.length;r.tick(t);consumed+=before-e.queue.length;};
-  const x0=p.x;send(1);tick(1050);
-  assert.equal(p.ack,1);assert(Math.abs(p.x-x0+3)<0.01,'one input = one 3-dot step');
-  // A client flooding 4 inputs every tick for 10 s gets at most one step per 50 ms plus the 3 s burst allowance.
-  consumed=0;for(let t=0;t<200;t++){send(4);tick(2000+t*50);}
-  assert(consumed<=200+MAX_QUEUED_INPUTS,`consumed ${consumed} steps in 200 ticks`);
+test('walking anywhere is never corrected: random key presses and click routes in every zone, pushing into walls',()=>{
+  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  for(const zone of ['lobby','garden','arcade']){
+    const r=room();r.map=getMap(zone);const p=r.players.get('session');Object.assign(p,r.map.spawn);
+    let at={x:p.x,y:p.y},t=1000,seq=0;
+    for(let k=0;k<60;k++){
+      if(k%2){const route=findPath(r.map,at,{x:rnd()*r.map.width,y:rnd()*r.map.height});
+        for(const w of route)for(let n=0;n<300&&Math.hypot(w.x-at.x,w.y-at.y)>=0.5;n++){at=stepInput(r.map,at,{dx:1,dy:0,to:w});r.move(C,{...at,seq:++seq,fix:0},t+=50);}}
+      else{const a=Math.floor(rnd()*8)*Math.PI/4;for(let n=0;n<40;n++){at=stepInput(r.map,at,{dx:Math.cos(a),dy:Math.sin(a)});r.move(C,{...at,seq:++seq,fix:0},t+=50);}}
+    }
+    assert.equal(p.fix,0,`${zone}: a walking step was refused`);assert(seq>1000);
+  }
 });
-
-test('inputs that stall and then arrive in a burst are caught up at once (no backlog, no overflow)',()=>{
-  const r=room(),e={queue:[],credit:1};r.moveInputs.set('session',e);let seq=0;
-  // The server ticks every 50 ms; the client's 50 ms steps reach it in bursts of 12 every 600 ms.
-  for(let t=1000,k=0;k<9;t+=50){if((t-1000)%600===0&&t>1000){for(let i=0;i<12;i++)e.queue.push({dx:0,dy:0,to:null,seq:++seq});r.tick(t);assert.equal(e.queue.length,0,`backlog ${e.queue.length} after burst ${k}`);k++;}else r.tick(t);}
-  assert.equal(r.players.get('session').ack,seq);
+test('speed: reports in a burst after a stall pass, sending faster than walking does not',()=>{
+  const r=room(),p=r.players.get('session');let t=1000,seq=0;
+  // 2 s of 3-dot steps (40) stalled on the way, then arriving within a few ms: all accepted.
+  r.move(C,{x:p.x+1,y:p.y,seq:++seq,fix:0},t);
+  t+=2000;for(let i=0;i<40;i++){const q=stepInput(r.map,p,{dx:1,dy:0});r.move(C,{...q,seq:++seq,fix:p.fix},t+=1);}
+  assert.equal(p.fix,0,'stall burst refused');
+  // A cheat sending 6-dot hops (back and forth) 40 times a second for 10 s moves no farther than the allowance.
+  const x1=p.x;assert(!blocked(r.map,x1+6,p.y));let moved=0;
+  for(let i=0;i<400;i++){const from=p.x;r.move(C,{x:p.x===x1?x1+6:x1,y:p.y,seq:++seq,fix:p.fix},t+=25);moved+=Math.abs(p.x-from);}
+  const allowance=STEP_PER_TICK*MOVE_SLACK*(MOVE_BURST_MS+10000)/TICK_MS;
+  assert(moved<=allowance+0.01,`moved ${moved} > ${allowance}`);
 });
-
 test('a dropped player is kept for reconnection; a join refused in onJoin is not (its rejection crashed the server)',async()=>{
   const r=room(),held=[];r.allowReconnection=(c,s)=>{held.push([c.sessionId,s]);const d=Promise.reject(new Error('not joined'));d.reject=()=>{};return d;};
-  r.moveInputs.set('session',{queue:[{dx:1,dy:0}],credit:1});
   r.onDrop({sessionId:'session'});r.onDrop({sessionId:'refused'});
   await new Promise(done=>setImmediate(done)); // a rejection escaping onDrop would fail the test as unhandled
   assert.deepEqual(held,[['session',RECONNECT_SECONDS]]);assert(r.players.has('session'),'avatar stays while it may come back');
-  assert(!r.moveInputs.has('session'),'queued steps are dropped');
 });
 
 test('a reload replaces a dropped session of the same user that is still waiting to reconnect',()=>{
@@ -140,16 +149,6 @@ test('a reload replaces a dropped session of the same user that is still waiting
   r.onJoin({sessionId:'fresh'},{},{id:'player',name:'P',look:{}});
   assert.equal(rejected,1);assert(!r.players.has('session'));assert(r.players.has('fresh'));
   assert.throws(()=>r.onJoin({sessionId:'third'},{},{id:'player',name:'P',look:{}}),/already joined/,'a live session still blocks a second tab');
-});
-
-test('steps follow real time, not tick count: late ticks (52 ms) never let a walking client fall behind',()=>{
-  const r=room(),p=r.players.get('session'),x0=p.x;let seq=0,t=1000;
-  // The client sends one step every 50 ms for 60 s; the server ticks every 52 ms.
-  const e={queue:[],credit:1};r.moveInputs.set('session',e);
-  for(let sent=0;t<61000;t+=52){while(sent*50<t-1000){e.queue.push({dx:1,dy:0,to:null,seq:++seq});sent++;}r.tick(t);}
-  assert(e.queue.length<=2,`queued ${e.queue.length} steps behind`);
-  assert(p.ack>=seq-2,'acknowledged up to the latest steps');
-  assert(p.x-x0<=3*seq+0.01,'never more than one step per input');
 });
 
 test('connection stats: a drop that comes back counts as reconnect, one that does not as lost',()=>{

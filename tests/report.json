@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-02T13:17:37.555Z",
+  "startedAt": "2026-10-02T16:25:53.394Z",
   "targets": {
     "pocketbase": "http://127.0.0.1:18191",
     "colyseus": "ws://127.0.0.1:12668"
@@ -9,7 +9,7 @@
     {
       "name": "isolated_development_setup",
       "status": "passed",
-      "durationMs": 616
+      "durationMs": 660
     },
     {
       "name": "two_real_users_login",
@@ -31,25 +31,26 @@
     {
       "name": "two_players_join_and_move_sync",
       "status": "passed",
-      "durationMs": 135,
+      "durationMs": 255,
       "evidence": {
         "sameRoom": true,
-        "observedDisplacement": 3
+        "observedDisplacement": 9
       }
     },
     {
       "name": "chat_delivery_and_user_spoof_denied",
       "status": "passed",
-      "durationMs": 344,
+      "durationMs": 82,
       "evidence": {
         "senderAuthenticated": true,
-        "anotherPlayerUnchanged": true
+        "anotherPlayerUnchanged": true,
+        "teleportRefused": true
       }
     },
     {
       "name": "zone_switch_isolation",
       "status": "passed",
-      "durationMs": 471,
+      "durationMs": 462,
       "evidence": {
         "leftOldZone": true,
         "independentRooms": true,
@@ -64,18 +65,18 @@
         "cap": 12,
         "periodMs": 1500,
         "startCount": 5,
-        "timeToCapMs": 10105,
+        "timeToCapMs": 10110,
         "observedGenerationIntervalsMs": [
-          1532,
-          1534,
-          1527,
           1526,
+          1527,
           1530,
+          1526,
+          1529,
           1531
         ],
         "stableAtCapMs": 3100,
-        "minimumStarSpacing": 113,
-        "refillDelayMs": 613,
+        "minimumStarSpacing": 96,
+        "refillDelayMs": 289,
         "collectionFreedSlot": true,
         "regeneratedWithFreshId": true,
         "maximumObservedStars": 12,
@@ -86,9 +87,9 @@
     {
       "name": "game_finish_result_and_inventory_query",
       "status": "passed",
-      "durationMs": 90,
+      "durationMs": 45,
       "evidence": {
-        "matchId": "5ed672df-9402-4c84-8b21-b2feebc3762b",
+        "matchId": "3f05a5b5-fdcb-4e5c-9007-aad996bfbbca",
         "serverScore": 1,
         "resultsPerScoringUser": 1,
         "rewardPerScoringUser": 1,
@@ -98,7 +99,7 @@
     {
       "name": "result_tamper_and_cross_user_access_denied",
       "status": "passed",
-      "durationMs": 175,
+      "durationMs": 6,
       "evidence": {
         "attempts": [
           {
@@ -129,7 +130,7 @@
     {
       "name": "duplicate_delivery_idempotency",
       "status": "passed",
-      "durationMs": 3103,
+      "durationMs": 3500,
       "evidence": {
         "outboxReplayCount": 2,
         "adminApiReplayCount": 2,
@@ -151,9 +152,9 @@
     {
       "name": "storage_outage_durable_queue_restart_recovery",
       "status": "passed",
-      "durationMs": 29077,
+      "durationMs": 28801,
       "evidence": {
-        "persistedMatchId": "29bca195-7a96-4a5f-9a05-6bd315ba8130",
+        "persistedMatchId": "c5f90a4f-8f61-4ea0-bee1-78f56a75008b",
         "queuedOnDisk": true,
         "survivedServerRestart": true,
         "resultsAndInventoryRecovered": true,
@@ -163,12 +164,12 @@
     {
       "name": "shop_purchase_wallet_and_forgery_denied",
       "status": "passed",
-      "durationMs": 150,
+      "durationMs": 149,
       "evidence": {
         "grantedStars": 40,
         "crownPrice": 30,
         "burstAccepted": 1,
-        "walletAfterBurst": 2,
+        "walletAfterBurst": 4,
         "poorRejected": 400,
         "forgedStatuses": [
           403,
@@ -180,7 +181,7 @@
     {
       "name": "shop_equip_look_sync_and_room_rules",
       "status": "passed",
-      "durationMs": 143,
+      "durationMs": 147,
       "evidence": {
         "wrongSlotOrUnownedRejected": true,
         "directProfileWrite": 403,
@@ -198,7 +199,7 @@
     {
       "name": "character_setup_profile_rules",
       "status": "passed",
-      "durationMs": 345,
+      "durationMs": 363,
       "evidence": {
         "rejected": {
           "anonymous": 401,
@@ -211,9 +212,9 @@
         "duplicateMessage": "이미 쓰는 닉네임이에요. 다른 이름을 지어 주세요.",
         "caseVariant": 400,
         "spacingVariants": {
-          "S tar020f": 400,
-          "Star_020f": 400,
-          "st-ar020f": 400
+          "S tar95da": 400,
+          "Star_95da": 400,
+          "st-ar95da": 400
         },
         "guest": {
           "created": true,
@@ -279,14 +280,14 @@
     {
       "name": "twenty_client_local_load",
       "status": "passed",
-      "durationMs": 5869,
+      "durationMs": 5812,
       "evidence": {
         "clients": 20,
-        "joinedMs": 61,
+        "joinedMs": 65,
         "sentInputs": 600,
         "targetInputHzPerClient": 10,
-        "durationMs": 3006,
-        "effectiveInputHzPerClient": 9.98,
+        "durationMs": 3014,
+        "effectiveInputHzPerClient": 9.95,
         "minimumSnapshots": 59,
         "chatBroadcastP95Ms": 42,
         "scope": "single local machine; short functional load, not capacity benchmark"
@@ -295,11 +296,11 @@
   ],
   "load": {
     "clients": 20,
-    "joinedMs": 61,
+    "joinedMs": 65,
     "sentInputs": 600,
     "targetInputHzPerClient": 10,
-    "durationMs": 3006,
-    "effectiveInputHzPerClient": 9.98,
+    "durationMs": 3014,
+    "effectiveInputHzPerClient": 9.95,
     "minimumSnapshots": 59,
     "chatBroadcastP95Ms": 42,
     "scope": "single local machine; short functional load, not capacity benchmark"
@@ -317,7 +318,7 @@
     "operatingInstancesTouched": false,
     "externalSiteAccess": false
   },
-  "finishedAt": "2026-10-02T13:18:48.104Z",
+  "finishedAt": "2026-10-02T16:27:03.713Z",
   "summary": {
     "passed": 17,
     "failed": 0

@@ -23,7 +23,7 @@ try {
           };
           const inbound = lane(), outbound = lane(); let replay = false;
           this.addEventListener('message', e => { if (replay) return; e.stopImmediatePropagation(); inbound(() => { replay = true; this.dispatchEvent(new MessageEvent('message', { data: e.data })); replay = false; }); });
-          const send = this.send.bind(this); this.send = data => outbound(() => { if (this.readyState === 1) send(data); });
+          const send = this.send.bind(this); this.send = data => { const copy = ArrayBuffer.isView(data) ? data.slice() : data; outbound(() => { if (this.readyState === 1) send(copy); }); }; // copy now: the SDK reuses its encode buffer, and a late send carried the bytes of a later message (the join confirmation was lost)
         }
       };
     }, JITTER);

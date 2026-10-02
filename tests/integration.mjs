@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 import { createConnection } from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { getMap, findPath } from '../shared/world.js';
+import { getMap, findPath, stepInput } from '../shared/world.js';
 
 // Only self-spawned processes and dedicated loopback development ports are used.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -133,18 +133,23 @@ async function records(collection, account, filter = '') {
   return result.data.items;
 }
 function player(state, account) { return state.snapshot.players.find(p => p.id === account.id); }
+// Local-first movement like the game client: move my own position one step and report it; a server correction resets it.
+function step(state, account, input) {
+  const p = player(state, account);
+  if (!state.pos || p.fix !== state.fix) { state.pos = { x: p.x, y: p.y }; state.fix = p.fix; }
+  state.pos = stepInput(getMap(state.snapshot.zone), state.pos, input);
+  state.room.send('move', { ...state.pos, seq: (state.seq = (state.seq || 0) + 1), fix: state.fix });
+}
 async function moveTo(state, account, point) {
   // Exercise the public movement protocol with the shared walk grid; never mutate server coordinates.
   const path = findPath(getMap(state.snapshot.zone), player(state, account), point);
   path.push(point);
   const started = performance.now();
   while (performance.now() - started < 18000) {
-    const p = player(state, account);
-    while (path.length && Math.hypot(path[0].x - p.x, path[0].y - p.y) < 3) path.shift();
-    if (!path.length || Math.hypot(point.x - p.x, point.y - p.y) < 10) return;
-    const dx = path[0].x - p.x, dy = path[0].y - p.y;
-    const length = Math.hypot(dx, dy);
-    state.room.send('input', { dx: dx / length, dy: dy / length });
+    const p = player(state, account), at = state.pos || p;
+    if (Math.hypot(point.x - p.x, point.y - p.y) < 10) return; // the server's position, which picks up stars
+    while (path.length > 1 && Math.hypot(path[0].x - at.x, path[0].y - at.y) < 0.5) path.shift();
+    step(state, account, { dx: 0, dy: 0, to: path[0] });
     await sleep(50);
   }
   throw new Error('Failed to reach game collectible using server movement');
@@ -171,7 +176,7 @@ async function functionalChecks() {
     assert.equal(ra.room.roomId, rb.room.roomId);
     assert.notEqual(player(ra, a).name, 'SPOOFED');
     const before = { ...player(ra, a) };
-    ra.room.send('input', { dx: 1, dy: 0 });
+    for (let i = 0; i < 4; i++) { step(ra, a, { dx: 1, dy: 0 }); await sleep(50); }
     await waitUntil(() => player(rb, a)?.x > before.x, 'remote movement sync');
     const own = player(ra, a), remote = player(rb, a);
     assert.ok(Math.abs(own.x - remote.x) < 20);
@@ -186,10 +191,12 @@ async function functionalChecks() {
     assert.ok(!Object.values(message.payload).includes(b.id), 'Chat must not attribute to supplied spoofed ID');
     assert.notEqual(message.payload.name, 'SPOOFED');
     const previous = { ...player(rb, b) };
-    ra.room.send('input', { dx: 1, dy: 0, id: b.id, userId: b.id, x: 99999, y: 99999 });
-    await sleep(300);
+    const own = { ...player(ra, a) };
+    ra.room.send('move', { id: b.id, userId: b.id, x: own.x + 400, y: own.y, seq: 1, fix: own.fix });
+    await waitUntil(() => player(ra, a).fix > own.fix, 'teleport sent back');
     assert.deepEqual(player(rb, b), previous, 'Spoofed movement changed another user');
-    return { senderAuthenticated: true, anotherPlayerUnchanged: true };
+    assert.deepEqual([player(ra, a).x, player(ra, a).y], [own.x, own.y], 'Teleport accepted');
+    return { senderAuthenticated: true, anotherPlayerUnchanged: true, teleportRefused: true };
   });
   await test('zone_switch_isolation', async () => {
     await leave(ra);
@@ -224,7 +231,7 @@ async function loadChecks() {
     let sentInputs = 0;
     for (let tick = 0; tick < durationMs / 100; tick++) {
       const tickStarted = performance.now();
-      clients.forEach(s => { s.room.send('input', { dx: tick % 2 ? -1 : 1, dy: 0 }); sentInputs++; });
+      clients.forEach((s, i) => { step(s, accounts[i], { dx: tick % 2 ? -1 : 1, dy: 0 }); sentInputs++; });
       if (tick % 5 === 0) {
         const text = `load-${runtime.runId}-${tick}`;
         const sendTime = performance.now();
@@ -265,7 +272,7 @@ async function hundredClientCheck() {
     let sentInputs = 0;
     for (let tick = 0; tick < durationMs / 100; tick++) {
       const tickStarted = performance.now();
-      clients.forEach(s => { s.room.send('input', { dx: tick % 2 ? -1 : 1, dy: 0 }); sentInputs++; });
+      clients.forEach((s, i) => { step(s, accounts[i], { dx: tick % 2 ? -1 : 1, dy: 0 }); sentInputs++; });
       if (tick % 5 === 0) {
         const members = [...byRoom.values()][tick / 5 % byRoom.size], text = `load100-${runtime.runId}-${tick}`, sendTime = performance.now();
         members[0].room.send('chat', { text });
@@ -334,7 +341,6 @@ async function playMatch(state, account, { verifyGeneration = false } = {}) {
     assert.ok(!state.snapshot.game.scores[account.id], 'Out-of-range collection accepted');
   }
   await moveTo(state, account, nearest);
-  state.room.send('input', { dx: 0, dy: 0 });
   const beforeCollectIds = state.snapshot.game.stars.map(s => s.id);
   const collectOffset = state.snapshots.length;
   const collectedAt = performance.now();

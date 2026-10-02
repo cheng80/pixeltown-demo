@@ -9,7 +9,11 @@ export const ZONE_IDS = ['lobby', 'garden', 'arcade'];
 export const FOOT = { hw: 5, hh: 3 }; // player ground box half extents
 export const STEP_PER_TICK = 3; // px per 50ms server tick (60 px/s)
 export const TICK_MS = 50;
-export const MAX_QUEUED_INPUTS = 60; // 3 s of steps: the server keeps that many, a client stops predicting a few steps before (a 1 s ping alone keeps ~20 in flight)
+// Local-first movement: the browser moves its own avatar and reports each step; the server only checks it. A report may
+// hop at most MAX_HOP dots (one step is <= 4.3 with a corner slide). That is less than the 6-dot foot box height, so a hop
+// can never pass through a blocker. Over time the avatar may cover MOVE_SLACK x walking speed, with up to MOVE_BURST_MS of
+// saved-up distance for reports that arrive in a burst after the connection stalled.
+export const MAX_HOP = 6, MOVE_SLACK = 1.5, MOVE_BURST_MS = 3000;
 // Star pickup = the avatar body box overlaps the drawn star box. Boxes are [x, y, w, h] from the foot point and
 // match the sprites (render.js draws the avatar body ~25 dots tall, the 13x13 star 3-16 dots above its foot point).
 export const BODY_BOX = [-7, -25, 14, 25];
@@ -321,9 +325,8 @@ function walkCellNear(map, walk, p) {
   }
   return best >= 0 ? best : any; // in a one-dot slot no centre is straight ahead; sliding movement gets there
 }
-// One movement step for one input. The server applies exactly one step per received input and the client predicts its
-// own avatar with the same function, so prediction and server agree. `to` (last leg of a click route) steers from the real
-// position and stops on the target.
+// One movement step for one tick of input (the browser moves its own avatar with it). `to` (last leg of a click route)
+// steers to the target and stops on it.
 export function stepInput(map, p, input) {
   if (input.to) {
     const ox = input.to.x - p.x, oy = input.to.y - p.y, left = Math.hypot(ox, oy);

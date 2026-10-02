@@ -30,7 +30,7 @@ try {
           inbound(() => { replay = true; this.dispatchEvent(new MessageEvent('message', { data: e.data })); replay = false; });
         });
         const send = this.send.bind(this);
-        this.send = data => outbound(() => { if (this.readyState === 1) send(data); });
+        this.send = data => { const copy = ArrayBuffer.isView(data) ? data.slice() : data; outbound(() => { if (this.readyState === 1) send(copy); }); }; // copy now: the SDK reuses its encode buffer, and a late send carried the bytes of a later message (the join confirmation was lost)
       }
     };
   }, Number(process.env.JITTER));

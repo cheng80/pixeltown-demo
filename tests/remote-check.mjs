@@ -11,7 +11,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import PocketBase from 'pocketbase';
-import { getMap, findPath, touchesStar, ITEMS } from '../shared/world.js';
+import { getMap, findPath, touchesStar, stepInput, ITEMS } from '../shared/world.js';
 
 const root = new URL('..', import.meta.url).pathname;
 const PB_URL = process.env.PIXELTOWN_REMOTE_PB || 'https://pixeltown-pb.fastmake.net';
@@ -49,17 +49,20 @@ async function join(pb, zone = 'lobby') {
   return s;
 }
 const me = (s, pb) => s.snapshot.players.find(p => p.id === pb.authStore.record.id);
+// Local-first movement like the game client: move my own position one step and report it; a server correction resets it.
+function step(s, pb, input) {
+  const p = me(s, pb);
+  if (!s.pos || p.fix !== s.fix) { s.pos = { x: p.x, y: p.y }; s.fix = p.fix; }
+  s.pos = stepInput(getMap(s.snapshot.zone), s.pos, input);
+  s.room.send('move', { ...s.pos, seq: (s.seq = (s.seq || 0) + 1), fix: s.fix });
+}
 async function walk(s, pb, target, timeout = 25000) {
   const map = getMap(s.snapshot.zone), start = me(s, pb), path = [...findPath(map, start, target), target], end = Date.now() + timeout;
   while (Date.now() < end) {
-    const p = me(s, pb);
-    while (path.length > 1 && Math.hypot(path[0].x - p.x, path[0].y - p.y) < 3) path.shift();
-    if (touchesStar(p, target)) return p; // the server picks the star up on its own tick
-    // Like the game client: at most 2 steps the server has not confirmed yet, so lag never piles up stale directions.
-    if ((s.seq || 0) - (p.ack ?? 0) <= 2) {
-      const dx = path[0].x - p.x, dy = path[0].y - p.y, l = Math.hypot(dx, dy) || 1;
-      s.room.send('input', { dx: dx / l, dy: dy / l, seq: (s.seq = (s.seq || 0) + 1) });
-    }
+    const p = me(s, pb), at = s.pos || p;
+    if (touchesStar(p, target)) return p; // the server picks the star up from its own (reported) position
+    while (path.length > 1 && Math.hypot(path[0].x - at.x, path[0].y - at.y) < 0.5) path.shift();
+    step(s, pb, { dx: 0, dy: 0, to: path[0] });
     await sleep(50);
   }
   const p = me(s, pb);
@@ -104,7 +107,7 @@ try {
     // Real visitors may share the room: check that the two testers see each other, not an exact head count.
     await until(() => a.snapshot.players.some(p => p.id === B) && b.snapshot.players.some(p => p.id === A), 'both visible');
     const before = me(a, pa), target = { x: before.x + 40, y: before.y };
-    for (let i = 0; i < 12; i++) { a.room.send('input', { dx: 1, dy: 0 }); await sleep(50); }
+    for (let i = 0; i < 12; i++) { step(a, pa, { dx: 1, dy: 0 }); await sleep(50); }
     const seen = await until(() => { const p = b.snapshot.players.find(q => q.id === A); return p.x > before.x + 10 && p; }, 'movement seen by other');
     const text = `remote-${Date.now()}`;
     a.room.send('chat', { text, id: B, name: 'SPOOF' });

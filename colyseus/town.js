@@ -2,7 +2,7 @@ import { Room, ServerError } from '@colyseus/core';
 import { randomUUID } from 'node:crypto';
 import { userClient, ZONES } from './config.js';
 import { outbox } from './outbox.js';
-import { getMap, blocked, stepInput, entryPoint, spreadSpot, touchesStar, MAX_QUEUED_INPUTS, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS, WORLD } from '../shared/world.js';
+import { getMap, blocked, entryPoint, spreadSpot, touchesStar, MAX_HOP, MOVE_SLACK, MOVE_BURST_MS, STEP_PER_TICK, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS, WORLD } from '../shared/world.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Outfit shown to everyone comes from the PocketBase profile (written only by the shop hook), never from the client.
 // Outfit and character look (FR-014 avatar indexes) both come from the profile; invalid values fall back to null.
@@ -12,7 +12,6 @@ export const lookOf=profile=>{const o=profile?.outfit||{},a=profile?.avatar||{},
 export const INITIAL_STARS=5;
 export const MAX_STARS=12;
 export const RECONNECT_SECONDS=clamp(Number(process.env.RECONNECT_SECONDS)||15,1,60);
-export { MAX_QUEUED_INPUTS };
 // Connection events of the last hour, for /health and the service log: many players dropping at once points at the
 // server or the tunnel, one player alone at that player's network.
 export const connectionEvents={drop:[],reconnect:[],lost:[]};
@@ -28,28 +27,16 @@ const settlePeriod=()=>clamp(Number(process.env.GAME_DURATION_MS)||180000,1000,3
 export class Town extends Room {
   onCreate(options) {
     if(!ZONES.includes(options.zone))throw new ServerError(400,'Invalid zone');
-    this.zone=options.zone;this.map=getMap(this.zone);this.maxClients=32;this.maxMessagesPerSecond=40;
-    this.players=new Map();this.moveInputs=new Map();this.cooldowns=new Map(); // `inputs` is reserved by Colyseus 0.18
+    this.zone=options.zone;this.map=getMap(this.zone);this.maxClients=32;
+    // Colyseus closes a client that sends more than this in one second. A connection that stalls delivers the step reports
+    // of the stall all at once (20 per second of stall, up to ~90 for the 4.5 s the speed allowance covers): 40 cut those players off.
+    this.maxMessagesPerSecond=120;
+    this.players=new Map();this.moves=new Map();this.cooldowns=new Map(); // per session: saved-up move distance
     this.held=new Map(); // dropped sessions waiting to reconnect
     this.dropped=new Set(); // ...and whether they came back (for connection stats)
     this.game={active:false,endsAt:0,stars:[],scores:{}};
     this.setMetadata({zone:this.zone});
-    this.onMessage('input',(client,data)=>{
-      if(!data || !Number.isFinite(data.dx) || !Number.isFinite(data.dy))return;
-      let dx=clamp(data.dx,-1,1),dy=clamp(data.dy,-1,1);const len=Math.hypot(dx,dy);
-      if(len>1){dx/=len;dy/=len;}
-      // Optional final target of a click route: the server steers to it from the real position and stops on it,
-      // so network lag cannot carry the avatar past the clicked spot. Speed and collision rules are unchanged.
-      const to=data.to&&Number.isFinite(data.to.x)&&Number.isFinite(data.to.y)?{x:clamp(data.to.x,0,WORLD.width),y:clamp(data.to.y,0,WORLD.height)}:null;
-      // Each input is one step, applied in order. `seq` comes back as the player's `ack` so the client can reconcile its
-      // prediction. Steps are paced by credit, so sending faster never moves faster. The queue holds up to 1 s of input:
-      // on an unstable connection inputs arrive in bursts, and dropping them made the server fall behind the client's
-      // prediction, which then snapped back (the screen shook).
-      const entry=this.moveInputs.get(client.sessionId)||{queue:[],credit:1};
-      entry.queue.push({dx,dy,to,seq:Number.isSafeInteger(data.seq)?data.seq:null});
-      if(entry.queue.length>MAX_QUEUED_INPUTS)entry.queue.shift();
-      this.moveInputs.set(client.sessionId,entry);
-    });
+    this.onMessage('move',(client,data)=>this.move(client,data));
     this.onMessage('chat',(client,data)=>{
       if(typeof data?.text!=='string' || !this.allow(client,'chat',700))return;
       const text=data.text.replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,240);
@@ -141,10 +128,26 @@ export class Town extends Room {
     // Arrivals step aside so avatars and name tags do not stack on the same doorway.
     const at=[[0,0],[16,0],[-16,0],[0,12],[16,12],[-16,12],[0,-12]].map(([dx,dy])=>({x:base.x+dx,y:base.y+dy}))
       .find(q=>!blocked(this.map,q.x,q.y)&&![...this.players.values()].some(o=>Math.hypot(o.x-q.x,o.y-q.y)<12))||base;
-    this.players.set(client.sessionId,{id:auth.id,name:auth.name,x:at.x,y:at.y,color:auth.color,look:auth.look});
+    this.players.set(client.sessionId,{id:auth.id,name:auth.name,x:at.x,y:at.y,color:auth.color,look:auth.look,fix:0});
     if(!this.game.active)this.startGame();
     else if(!(auth.id in this.game.scores) && Object.keys(this.game.scores).length<64)this.game.scores[auth.id]=0;
     this.snapshot();
+  }
+  // Local-first movement: the browser moves its own avatar and reports each step ({x,y,seq,fix}). The server accepts a
+  // step a walking player could make (a short hop to a free spot, within the speed allowance) and otherwise sends the
+  // avatar back: `fix` goes up, the client jumps to the server position, and reports sent before that are ignored.
+  // `seq` comes back as the player's `ack`. Stars are still picked up from the server's position.
+  // ponytail: a client idle for 3 s may spend the saved 270 dots at 4x speed (6-dot hops, 40 messages/s); lower MOVE_BURST_MS if abused.
+  move(client,data,now=Date.now()) {
+    const p=this.players.get(client.sessionId);
+    if(!p||!data||data.fix!==p.fix)return;
+    const m=this.moves.get(client.sessionId)||{budget:0,at:now-MOVE_BURST_MS},speed=STEP_PER_TICK*MOVE_SLACK/TICK_MS; // dots per ms
+    m.budget=Math.min(speed*MOVE_BURST_MS,m.budget+speed*(now-m.at));m.at=now;this.moves.set(client.sessionId,m);
+    const x=data.x,y=data.y,d=Math.hypot(x-p.x,y-p.y);
+    if(Number.isFinite(x)&&Number.isFinite(y)&&d<=MAX_HOP&&d<=m.budget&&!blocked(this.map,x,y)){
+      m.budget-=d;p.x=Math.round(x*100)/100;p.y=Math.round(y*100)/100;
+      if(Number.isSafeInteger(data.seq))p.ack=data.seq;
+    } else p.fix++;
   }
   allow(client,type,interval) {
     const key=client.sessionId+':'+type,now=Date.now();
@@ -152,22 +155,6 @@ export class Town extends Room {
     this.cooldowns.set(key,now);return true;
   }
   tick(now=Date.now()) {
-    for(const [session,p] of this.players) {
-      const entry=this.moveInputs.get(session);
-      if(!entry)continue;
-      // One step per 50 ms of real time, counted from the clock and not from ticks (a timer runs 51-52 ms late; a
-      // tick-counted credit fell behind a walking client by ~1 s a minute). Credit is kept for up to the queue size
-      // (3 s): on the internet inputs stall and then arrive in a burst, and a small credit could never catch up, so the
-      // backlog grew until the queue overflowed and the avatar snapped back. Over any longer stretch a client still
-      // gets at most one step per 50 ms, however fast it sends.
-      // ponytail: a client idle for 3 s may spend 60 steps at once (180 dots); lower the cap if that gets abused.
-      entry.credit=Math.min(MAX_QUEUED_INPUTS,entry.credit+(entry.at===undefined?1:(now-entry.at)/TICK_MS));entry.at=now;
-      while(entry.credit>=1&&entry.queue.length){
-        const input=entry.queue.shift();entry.credit--;
-        Object.assign(p,stepInput(this.map,p,input));
-        if(input.seq!==null)p.ack=input.seq;
-      }
-    }
     if(this.game.active && now>=this.game.endsAt)this.settle(now);
     else {this.pickUpStars(now);this.generateStars(now);}
     this.snapshot();
@@ -190,14 +177,13 @@ export class Town extends Room {
     this.game.active=false;this.game.stars=[];
     return true;
   }
-  // `t` (server clock) lets clients interpolate other players at an even pace whatever the network jitter.
-  snapshot() {this.broadcast('snapshot',{t:Date.now(),players:[...this.players.values()],zone:this.zone,game:this.game,persistence:outbox.status()});}
+  snapshot() {this.broadcast('snapshot',{players:[...this.players.values()],zone:this.zone,game:this.game,persistence:outbox.status()});}
   // A dropped socket keeps its avatar (standing still) for a short window; the SDK reconnects into the same session.
   // If it does not come back in time, onLeave removes the player as usual.
   // A join refused in onJoin (e.g. 409) also lands here: it was never joined, so there is nothing to keep, and a rejected
   // allowReconnection must never escape (an unhandled rejection stops the whole server).
   onDrop(client,code) {
-    this.moveInputs.delete(client.sessionId);
+    this.moves.delete(client.sessionId);
     if(!this.players.has(client.sessionId))return;
     // 1001 = the page went away (tab closed, reload): an ordinary exit, not a network drop, so it is not counted.
     if(code!==1001){noteConnection('drop',client,this,` code=${code}`);this.dropped.add(client.sessionId);}
@@ -209,7 +195,7 @@ export class Town extends Room {
   }
   onLeave(client) {
     if(this.dropped.delete(client.sessionId))noteConnection('lost',client,this);
-    this.players.delete(client.sessionId);this.moveInputs.delete(client.sessionId);
+    this.players.delete(client.sessionId);this.moves.delete(client.sessionId);
     for(const key of this.cooldowns.keys())if(key.startsWith(client.sessionId+':'))this.cooldowns.delete(key);
     if(!this.players.size && this.game.active)this.finish();
     this.snapshot();
