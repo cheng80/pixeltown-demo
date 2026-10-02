@@ -33,7 +33,7 @@ try {
   await a.screenshot({ path: root + 'docs/assets/remote-lobby-two-users.png' });
   out.pageErrors = [...a.errs, ...b.errs];
   out.hosts = [...out.hosts].filter(h => !h.startsWith('data:')).sort();
-  if (!out.hosts.includes('https://pixeltown.fastmake.net') || !out.hosts.includes('wss://pixeltown-rt.fastmake.net') || out.pageErrors.length) throw new Error(JSON.stringify(out));
+  if (!out.hosts.includes('https://pixeltown-pb.fastmake.net') || !out.hosts.includes('wss://pixeltown-rt.fastmake.net') || out.pageErrors.length) throw new Error(JSON.stringify(out));
   // A first-time visitor on the remote server: character screen → guest account → town; a reload comes back as the same character.
   const g = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage(); g.errs = []; g.on('pageerror', e => g.errs.push(e.message));
   await g.goto(BASE); await g.waitForSelector('[role=dialog][aria-label="캐릭터 만들기"]');

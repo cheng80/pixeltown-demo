@@ -14,7 +14,7 @@ import PocketBase from 'pocketbase';
 import { getMap, findPath, COLLECT_RADIUS, ITEMS } from '../shared/world.js';
 
 const root = new URL('..', import.meta.url).pathname;
-const PB_URL = process.env.PIXELTOWN_REMOTE_PB || 'https://pixeltown.fastmake.net';
+const PB_URL = process.env.PIXELTOWN_REMOTE_PB || 'https://pixeltown-pb.fastmake.net';
 const RT_URL = process.env.PIXELTOWN_REMOTE_RT || 'https://pixeltown-rt.fastmake.net';
 const WS_URL = RT_URL.replace(/^http/, 'ws');
 const { Client } = createRequire(root + 'colyseus/package.json')('@colyseus/sdk');

@@ -10,7 +10,8 @@
     "dev:all": "node scripts/dev.mjs",
     "setup": "npm install && npm --prefix colyseus install",
     "test:integration": "node tests/integration.mjs",
-    "dev:remote": "vite --host 127.0.0.1 --port 5173 --strictPort --mode remote"
+    "dev:remote": "vite --host 127.0.0.1 --port 5173 --strictPort --mode remote",
+    "build:remote": "vite build --mode remote"
   },
   "dependencies": {
     "@colyseus/sdk": "0.18.4",
