@@ -1,14 +1,14 @@
 {
- "startedAt": "2026-10-02T01:29:51.057Z",
- "url": "http://127.0.0.1:5273/",
+ "startedAt": "2026-10-02T01:58:52.147Z",
+ "url": "http://127.0.0.1:5173/",
  "checks": {
   "depth_and_collision_lobby": {
    "ok": true,
    "underCanopy": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 148.49,
-    "y": 171.33,
+    "x": 148.48,
+    "y": 171.32,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -17,10 +17,10 @@
     }
    },
    "inFront": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 148.35,
-    "y": 193.59,
+    "x": 146.38,
+    "y": 195.61,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -29,10 +29,10 @@
     }
    },
    "trunkStop": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 148.35,
-    "y": 186.09,
+    "x": 146.38,
+    "y": 186.61,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -41,10 +41,10 @@
     }
    },
    "behindHouse": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 121.16,
-    "y": 49.04,
+    "x": 122.87,
+    "y": 49.4,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -53,10 +53,10 @@
     }
    },
    "wallStop": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 120.96,
-    "y": 99.5,
+    "x": 122.48,
+    "y": 99.29,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -68,10 +68,10 @@
   "depth_and_collision_arcade_garden": {
    "ok": true,
    "behindCabinets": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 108.02,
-    "y": 190.96,
+    "x": 106.22,
+    "y": 191.03,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -80,10 +80,10 @@
     }
    },
    "frontCabinets": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 107.77,
-    "y": 222.91,
+    "x": 107.66,
+    "y": 222.9,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -92,9 +92,9 @@
     }
    },
    "behindPillar": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 200.3,
+    "x": 200.31,
     "y": 121.23,
     "color": "#ffb347",
     "look": {
@@ -104,9 +104,9 @@
     }
    },
    "behindCounter": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 539.75,
+    "x": 539.76,
     "y": 312.69,
     "color": "#ffb347",
     "look": {
@@ -116,10 +116,10 @@
     }
    },
    "wallStop": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
     "x": 322.23,
-    "y": 51.79,
+    "y": 51.8,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -128,7 +128,7 @@
     }
    },
    "underPergola": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
     "x": 98,
     "y": 217.02,
@@ -140,10 +140,10 @@
     }
    },
    "pondStop": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 273.97,
-    "y": 195.89,
+    "x": 273.96,
+    "y": 195.9,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -155,10 +155,10 @@
   "two_users_move_chat_portal": {
    "ok": true,
    "seenByOther": {
-    "id": "f0ti7oepxcftf2u",
+    "id": "f87ubkhwf2u1c4p",
     "name": "Demo 2",
-    "x": 379.17,
-    "y": 269.93,
+    "x": 376.55,
+    "y": 271.23,
     "color": "#89cff0",
     "look": {
      "hat": null,
@@ -176,7 +176,7 @@
    "opacityMax": "95",
    "opacityAfterReload": "75",
    "portalArrival": {
-    "id": "f0ti7oepxcftf2u",
+    "id": "f87ubkhwf2u1c4p",
     "name": "Demo 2",
     "x": 44,
     "y": 218,
@@ -189,7 +189,7 @@
    },
    "otherZoneHidden": true,
    "portalBack": {
-    "id": "f0ti7oepxcftf2u",
+    "id": "f87ubkhwf2u1c4p",
     "name": "Demo 2",
     "x": 596,
     "y": 226,
@@ -211,10 +211,10 @@
     "y": 100
    },
    "stoppedAt": {
-    "id": "vbo6b48h0d5qot1",
+    "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 123.95,
-    "y": 100.39,
+    "x": 123.97,
+    "y": 100.2,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -244,11 +244,11 @@
    "startButton": false,
    "activeOnJoin": true,
    "initial": 5,
-   "minimumSpacing": 195,
+   "minimumSpacing": 177,
    "secondsToNextSettlement": 167,
    "myScore": 3,
    "stillActiveAfterSettlement": true,
-   "notebook": "Demo 1demo1@pixeltown.local별 보상 63개★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×12★ 별 조각×10★ 별 조각×8★ 별 조각×4★ 별 조각×6★ 별 조각×6★ 별 조각×9산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오전 10:293점오락실26. 10. 2. 오전 10:251점오락"
+   "notebook": "Demo 1demo1@pixeltown.local별 보상 4개★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오전 11:033점광장26. 10. 2. 오전 4:440점광장26. 10. 2. 오전 4:411점광장26. 10. 2. 오전 4:200점"
   },
   "shop_dress_pet_and_miniroom": {
    "ok": true,
@@ -283,7 +283,7 @@
     }
    ],
    "besideBed": {
-    "id": "7bxtyovu0bx9slb",
+    "id": "qw8r7mqcrqd1eqe",
     "name": "쇼핑왕",
     "color": "#9fd0ff",
     "look": {
@@ -334,7 +334,7 @@
     "galmuri": true,
     "sendButtonVisible": true
    },
-   "landscapeDpadMoved": 36,
+   "landscapeDpadMoved": 33,
    "landscape": {
     "scroll": [
      844,
@@ -353,7 +353,7 @@
     "galmuri": true,
     "sendButtonVisible": true
    },
-   "shortDpadMoved": 33,
+   "shortDpadMoved": 36,
    "short": {
     "scroll": [
      390,
@@ -374,6 +374,6 @@
    }
   }
  },
- "finishedAt": "2026-10-02T01:30:04.645Z",
+ "finishedAt": "2026-10-02T02:03:34.212Z",
  "status": "passed"
 }

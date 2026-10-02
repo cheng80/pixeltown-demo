@@ -3,7 +3,7 @@
 - 상태: `DONE` — 구현·검증 완료(2026-10-02). 디자인 승인은 사용자 판단으로 PROJECT_STATUS에서 추적.
 - 날짜: 2026-10-02
 - 기준 커밋: `dc2e191` (사용자 거절판)
-- 브랜치: `cheng80/cyworld-remake` (별도 브랜치, main 직접 수정·강제 push 없음)
+- 브랜치: `cheng80/cyworld-remake` (별도 브랜치, main 직접 수정·강제 push 없음). main 병합 완료(`965d266`)
 - 관련 요구사항: FR-001–010, BR-001–013, AC-001–016
 - 관련 결정: [ADR-001](../decisions/ADR-001.md) 유지, [ADR-002](../decisions/ADR-002.md), [ADR-003](../decisions/ADR-003.md) 신규
 

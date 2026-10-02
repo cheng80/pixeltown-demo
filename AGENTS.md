@@ -9,3 +9,9 @@
 읽기 순서: `docs/03_PROJECT_STATUS.md` → `docs/plans/PLAN-001.md` → 관련 `docs/01_PRODUCT_SPEC.md` / `docs/02_TECH_SPEC.md` → 코드·테스트 → 필요 시 `docs/04_WORKFLOW.md`.
 
 정본: 제품은 PRODUCT_SPEC, 계약은 TECH_SPEC, 진행·검증·인계는 PROJECT_STATUS, 절차는 WORKFLOW, 결정 이유는 ADR. 충돌은 `DOC-CODE-MISMATCH` / `NEEDS-DECISION`으로 기록한다.
+
+## 개발 세션 보존 (2026-10-02 사용자 요청)
+
+- Claude는 개발·검증·진도 보고를 담당한다. 브랜치 정리와 세션 수명 관리는 메인 관리자가 담당한다.
+- Claude는 본인 또는 다른 개발자의 브랜치·worktree를 삭제하거나 archive하지 않고, 터미널·대화·에이전트 세션을 닫지 않는다. 완료 후 결과와 남은 작업을 보고하고 같은 세션에서 다음 요청을 기다린다.
+- merge·브랜치 삭제·worktree 제거·세션 종료는 메인 관리자가 별도 지시한 경우에만 수행한다. commit·push 완료를 정리 권한으로 해석하지 않는다.

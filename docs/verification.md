@@ -1,8 +1,8 @@
 # 검증 증거 (재제작판)
 
-검증일: 2026-10-02 (Asia/Seoul). 브랜치 `cheng80/cyworld-remake`. 1–4·6절은 PLAN-002 판(`12aefce`) 증거를 PLAN-003 코드로 다시 실행해 통과했다. 5·7·8절은 PLAN-003(상시 별 이벤트·별 상점·미니룸·클릭 이동) 증거다. 진행 상태 정본은 [PROJECT_STATUS](03_PROJECT_STATUS.md)다. 거절된 1차 판(`dc2e191`)의 화면 증거는 삭제했다.
+검증일: 2026-10-02 (Asia/Seoul). 최초 증거는 브랜치 `cheng80/cyworld-remake`(`a714104`)에서 만들었고, main 병합(`965d266`) 후 main 체크아웃에서 단위·통합·UI·build를 다시 실행해 모두 통과했다. 1절 수치·5절 별 간격과 `docs/assets/` 스크린샷은 재확인 실행 값이다. 2–8절의 상세 좌표·문장은 최초 실행 기록이며 재실행 원값은 `tests/ui-report.json`에 있다(차이는 1도트 안팎). 1–4·6절은 PLAN-002 판(`12aefce`) 증거를 PLAN-003 코드로 다시 실행해 통과했다. 5·7·8절은 PLAN-003(상시 별 이벤트·별 상점·미니룸·클릭 이동) 증거다. 진행 상태 정본은 [PROJECT_STATUS](03_PROJECT_STATUS.md)다. 거절된 1차 판(`dc2e191`)의 화면 증거는 삭제했다.
 
-실행 환경: 이 worktree 전용 개발 서버(Vite 5273, PB 18190, Colyseus 12667)와 통합 테스트 전용 서버(PB 18191, Colyseus 12668). 원래 체크아웃의 5173/18090/12567 프로세스와 데이터는 건드리지 않았다. 외부 접속은 PocketBase 공식 바이너리 다운로드(checksum 검증)와 원본 사이트 읽기 전용 관찰(MQTT 차단)뿐이다.
+실행 환경: 최초 검증은 재제작 worktree 전용 개발 서버(Vite 5273, PB 18190, Colyseus 12667), 병합 후 재확인은 main 체크아웃 기본 개발 서버(Vite 5173, PB 18090, Colyseus 12567). 통합 테스트는 두 경우 모두 전용 서버(PB 18191, Colyseus 12668)와 임시 DB를 쓴다. 외부 접속은 PocketBase 공식 바이너리 다운로드(checksum 검증)와 원본 사이트 읽기 전용 관찰(MQTT 차단)뿐이다.
 
 ## 1. 자동 테스트
 
@@ -10,12 +10,12 @@
 |---|---|---|
 | `npm --prefix colyseus test` | 18/18 | outbox·별 상한·정산·PB 훅 5개, 맵·깊이·충돌 9개, 상점 카탈로그·미니룸 규칙(화면·훅 대조)·미니룸 맵·look 4개 |
 | `PIXELTOWN_TEST_PB_PORT=18191 PIXELTOWN_TEST_GAME_PORT=12668 npm run test:integration` | 15/15 | [tests/report.json](../tests/report.json) — 상점 2개 추가 |
-| `CHROME_PATH=… PIXELTOWN_WEB_PORT=5273 PIXELTOWN_PB_PORT=18190 node tests/ui-check.mjs` | 7/7 | [tests/ui-report.json](../tests/ui-report.json), 스크린샷 `docs/assets/` |
-| `npm run build` | 통과 | JS 441KB(gzip 140KB), Galmuri11 woff2 2개 671KB |
+| `CHROME_PATH=… PIXELTOWN_WEB_PORT=5173 PIXELTOWN_PB_PORT=18090 node tests/ui-check.mjs` | 7/7 | [tests/ui-report.json](../tests/ui-report.json), 스크린샷 `docs/assets/` |
+| `npm run build` | 통과 | JS 459KB(gzip 146KB), Galmuri11 woff2 2개 671KB |
 
 신규 단위 테스트(`colyseus/test/world.test.js`): 세 장소 모두 입구가 비어 있음, 걷는 8도트 칸 전부가 시작점과 연결(고립 0), 출입구 도달 가능, 세 맵의 타일·소품 구성이 서로 다름, 모든 footprint가 그림 안·그림 넓이 60% 미만·발선에 붙음, 나무 수관 아래 통과·밑동 차단, 건물 벽 바닥 차단·지붕 뒤 잔디 도달, 물·오락실 벽 차단·다리 횡단, 밑동 모서리 비켜가기, 오락기 섬 뒤 통과, 서버 입구 이름 검증(`__proto__` 등 거부).
 
-통합 테스트 주요 수치(생성 1.5초·정산 30초로 단축): 별 5 → 생성 간격 1527–1534ms → 10.1초에 12개 → 3.1초간 12 유지 → 회수 후 326ms에 새 ID로 12 복귀, 12개일 때 별 사이 최소 거리 113도트, 정산 직후 같은 별로 다음 기간 계속. 점수 있는 사람만 결과 행(0점 행 0개). 20명 smoke: 입장 58ms, 입력 600개(클라이언트당 9.9Hz), snapshot 최소 59회, 채팅 p95 42ms. 단일 머신 짧은 기능 점검이며 수용량 측정이 아니다.
+통합 테스트 주요 수치(생성 1.5초·정산 30초로 단축): 별 5 → 생성 간격 1528–1539ms → 10.1초에 12개 → 3.1초간 12 유지 → 회수 후 329ms에 새 ID로 12 복귀, 12개일 때 별 사이 최소 거리 115도트, 정산 직후 같은 별로 다음 기간 계속. 점수 있는 사람만 결과 행(0점 행 0개). 20명 smoke: 입장 58ms, 입력 600개(클라이언트당 9.9Hz), snapshot 최소 59회, 채팅 p95 42ms. 단일 머신 짧은 기능 점검이며 수용량 측정이 아니다.
 
 ## 2. 깊이·충돌 (AC-014) — 실제 브라우저에서 클릭 이동과 방향키로 확인
 
@@ -67,7 +67,7 @@
 
 ## 5. 상시 별 이벤트 (AC-007/008/013) — 기본값(6초·3분), 단축 없음
 
-Demo 1이 오락실에 들어가자 시작 버튼 없이 바로 진행 중이었다. 별 5개, 서로 최소 195도트 떨어짐. 13초 관찰 동안 5→7(6초마다 1개). 클릭으로 별 3개를 모아 서버 점수 3. 첫 정산까지 167초를 기다리자 "기록과 별 보상이 저장되었어요" 안내가 뜨고 이벤트는 계속 진행 중이었다. 수첩에 오락실 3점 기록과 별 보상이 보였다.
+Demo 1이 오락실에 들어가자 시작 버튼 없이 바로 진행 중이었다. 별 5개, 서로 최소 177도트 떨어짐. 13초 관찰 동안 5→7(6초마다 1개). 클릭으로 별 3개를 모아 서버 점수 3. 첫 정산까지 167초를 기다리자 "기록과 별 보상이 저장되었어요" 안내가 뜨고 이벤트는 계속 진행 중이었다. 수첩에 오락실 3점 기록과 별 보상이 보였다.
 
 ![오락실 별 이벤트](assets/arcade-star-game.png)
 ![수첩 결과·보상](assets/result-notebook.png)

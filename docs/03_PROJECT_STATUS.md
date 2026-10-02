@@ -1,6 +1,6 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `dc2e191`(거절판). 재제작 브랜치 `cheng80/cyworld-remake`. 최신 작업 PLAN-003.
+갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `965d266`(main, 재제작·PLAN-003 병합 완료). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-003.
 
 ## 1. 로드맵
 
@@ -10,8 +10,8 @@
 | M2 | 1차 도트 게임·PocketBase/Colyseus 연동·3개 방 | 완료했으나 **사용자 거절** (`9bc3d66`) |
 | M3 | 1차 보안·복구·20명 로컬·모바일 검증 | 백엔드 증거만 유효. 화면 증거는 거절판 기준 |
 | M4 | 공개 GitHub 단계별 게시 | 완료 (`dc2e191`) |
-| M5 | 싸이월드 도트 감성 재제작 (PLAN-002) | 구현·검증 완료, **사용자 디자인 승인 대기** — 브랜치 `cheng80/cyworld-remake` |
-| M6 | 상시 별 이벤트·별 상점·옷장·펫·미니룸·클릭 이동·큰 채팅 (PLAN-003) | 구현·검증 완료, 사용자 확인 대기 |
+| M5 | 싸이월드 도트 감성 재제작 (PLAN-002) | 구현·검증 완료, main 병합(`965d266`). **사용자 디자인 승인 대기** |
+| M6 | 상시 별 이벤트·별 상점·옷장·펫·미니룸·클릭 이동·큰 채팅 (PLAN-003) | 구현·검증 완료, main 병합(`965d266`). 사용자 확인 대기 |
 
 ## 2. 계획
 
@@ -59,7 +59,7 @@
 
 ## 7. 인수인계
 
-변경하면 안 되는 경계: 운영 PocketBase·Oracle 작업·외부 브로커·클라우드 인증에는 접근하지 않는다. 개발 launcher는 기본 18090/12567/5173(환경변수로 변경 가능)을 loopback으로만 사용하고 포트 점유 시 시작을 거부한다. 이 worktree 검증은 5273/18190/12667, 통합은 18191/12668을 썼다. `.env.local`, `.local`, DB, 다운로드 바이너리와 node_modules를 공개 저장소에 넣지 않는다.
+변경하면 안 되는 경계: 운영 PocketBase·Oracle 작업·외부 브로커·클라우드 인증에는 접근하지 않는다. 개발 launcher는 기본 18090/12567/5173(환경변수로 변경 가능)을 loopback으로만 사용하고 포트 점유 시 시작을 거부한다. 재제작 브랜치 worktree 검증은 5273/18190/12667을 썼다. 병합 후 main 체크아웃은 기본 5173/18090/12567로 실행하고, 통합은 18191/12668을 쓴다. main을 fast-forward한 뒤에는 `npm install && npm --prefix colyseus install`(병합으로 `galmuri` 추가)을 하고 개발 서버를 재시작해야 한다. 구 실행이 남아 있으면 이전 코드를 서비스한다. `.env.local`, `.local`, DB, 다운로드 바이너리와 node_modules를 공개 저장소에 넣지 않는다.
 
 주요 파일은 `shared/world.js`(맵·충돌·미니룸 정본), `shared/catalog.json`(상점 정본), `pocketbase/pb_hooks/shop.pb.js`·`shop_lib.js`, `game/src/main.jsx`, `game/src/render.js`, `game/src/sprites.js`, `colyseus/town.js`, `colyseus/outbox.js`, `pocketbase/pb_hooks/matches.pb.js`, `scripts/init-pocketbase.mjs`, `tests/integration.mjs`, `tests/ui-check.mjs`다. 실제 명령은 루트 README에 있다. 맵을 고치면 `npm --prefix colyseus test`가 연결성·footprint 규칙을 자동 검사한다. Colyseus는 `shared/`를 import하므로 맵 수정 후 서버를 재시작해야 프런트와 판정이 일치한다.
 
@@ -71,7 +71,7 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 - 재제작(PLAN-002): 월드 960×640 단일 지형 → 장소별 640×416 타일맵. 수집 거리 32 → 16도트, 서버 틱 100 → 50ms, 이동 3도트/틱. `joinOrCreate` 옵션에 `entry` 추가(고정 입구 이름만 허용). 충돌 정본이 `colyseus/town.js`에서 `shared/world.js`로 이동.
 
 - 추가 요청에 따라 root/game, root/pocketbase, root/colyseus, root/docs 형제 구조로 재배치했다. 기존 개발 DB·바이너리·관리자 파일은 pocketbase로 보존했으며 outbox는 colyseus에 보존했다.
-- 별 생성은 초기5·1500ms마다1개·방별 미회수12개 상한, 회수 후 다음 주기 보충이다. 누적 burst와 별0개 즉시 종료를 하지 않는다. DB는 개인/전체 점수 합계64 상한으로 저장을 검증한다.
+- 별 생성은 초기5·6초(`STAR_SPAWN_INTERVAL_MS` 기본 6000)마다1개·방별 미회수12개 상한, 회수 후 다음 주기 보충이다. 3분(`GAME_DURATION_MS` 기본 180000)마다 정산하고 별은 유지한다. 누적 burst와 별0개 즉시 종료를 하지 않는다. DB는 개인/전체 점수 합계64 상한으로 저장을 검증한다. 통합 테스트만 1.5초·30초로 단축한다.
 
 
 - 최신 Colyseus 문서의 static JWT 훅을 기본 사용하지 않는다. 설치 0.16의 인스턴스 `onAuth(client, options)`에서 PocketBase 토큰을 검증한다.
@@ -83,29 +83,30 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 | 항목 | 결과 | 근거 | 날짜 | 리비전 | 유효성 | 출처 / 공백 |
 |---|---|---|---|---|---|---|
-| 단위 18개(맵·깊이·충돌 9, 상점·미니룸 4 포함) | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | `npm --prefix colyseus test` |
-| 통합 15개(별도 포트 18191/12668, 상점 2) | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | `tests/report.json` |
-| 브라우저 UI 7개 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
-| 깊이·충돌·맵 AC-014/015 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | 실제 클릭·방향키 이동 좌표와 앞/뒤 스크린샷 |
-| 도트 스케일·4 뷰포트 AC-011/016 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | scroll=viewport, 정수 배율 3/6, smoothing false |
-| 상시 별 이벤트·기본 3분 정산 AC-007/008/013 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | 브라우저 기본값, 통합 단축값 |
-| 상점·옷장·펫·미니룸 AC-017–019 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | 통합 위조·동시 구매, 브라우저 2유저 |
-| 클릭 이동·큰 채팅 AC-020 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | 채팅 위 클릭·키 취소·막힌 곳 |
-| 빌드 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | `npm run build` |
+| 단위 18개(맵·깊이·충돌 9, 상점·미니룸 4 포함) | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | `npm --prefix colyseus test` |
+| 통합 15개(별도 포트 18191/12668, 상점 2) | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | `tests/report.json` |
+| 브라우저 UI 7개 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
+| 깊이·충돌·맵 AC-014/015 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 실제 클릭·방향키 이동 좌표와 앞/뒤 스크린샷 |
+| 도트 스케일·4 뷰포트 AC-011/016 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | scroll=viewport, 정수 배율 3/6, smoothing false |
+| 상시 별 이벤트·기본 3분 정산 AC-007/008/013 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 브라우저 기본값, 통합 단축값 |
+| 상점·옷장·펫·미니룸 AC-017–019 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 통합 위조·동시 구매, 브라우저 2유저 |
+| 클릭 이동·큰 채팅 AC-020 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 채팅 위 클릭·키 취소·막힌 곳 |
+| 빌드 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | `npm run build` |
 | 디자인 승인 | PENDING | NONE | - | - | UNKNOWN | 사용자 판단 |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
 | 인터넷 성능·100명·운영 배포 | NOT_RUN | NONE | - | - | UNKNOWN | 범위 밖 |
 
 거절판(`9bc3d66`)의 화면 증거는 삭제했고 백엔드 검증은 위 재실행으로 대체했다.
 
+2026-10-02 재개 재확인: main `965d266` 체크아웃에서 단위18·통합15(18191/12668)·UI7(기본 포트 5173/18090/12567, 기본값 6초·3분)·build를 직접 다시 실행해 모두 통과했다. 이전 기록(`a714104`)을 옮겨 적은 것이 아니다. 재개 중 발견한 실행 장애: 04:40에 시작된 구 `dev:all`이 병합 전 코드로 기본 포트를 점유하고 있었고, fast-forward 뒤 `galmuri` 미설치로 `npm run build`가 실패했다. 이 체크아웃 소유 프로세스만 종료하고 `npm install` 후 재시작해 해결했다. 개발 DB는 재시작 전에 `pocketbase/.local/pb_data.backup-20261002-1100`으로 복사했고 seed는 기존 데이터를 지우지 않는다. UI 검증은 개발 DB에 일회용 `ui-*@pixeltown.local` 상점 계정을 만들고 demo1/demo2 기록을 추가한다.
+
 ## 10. 재개 명령
 
 ```sh
 npm install && npm --prefix colyseus install
-PIXELTOWN_PB_PORT=18190 npm --prefix colyseus run init   # 이 체크아웃 전용 PB·demo 계정
-PIXELTOWN_PB_PORT=18190 PIXELTOWN_GAME_PORT=12667 PIXELTOWN_WEB_PORT=5273 npm run dev:all
+npm run dev:all   # main 체크아웃: http://127.0.0.1:5173, PB 18090, Colyseus 12567 (첫 실행 시 PB·demo 계정 seed)
 npm --prefix colyseus test
 PIXELTOWN_TEST_PB_PORT=18191 PIXELTOWN_TEST_GAME_PORT=12668 npm run test:integration
-CHROME_PATH=/path/to/chromium PIXELTOWN_WEB_PORT=5273 PIXELTOWN_PB_PORT=18190 node tests/ui-check.mjs   # UI_ONLY=shop 처럼 일부만
+CHROME_PATH=/path/to/chromium PIXELTOWN_WEB_PORT=5173 PIXELTOWN_PB_PORT=18090 node tests/ui-check.mjs   # UI_ONLY=shop 처럼 일부만
 npm run build
 ```

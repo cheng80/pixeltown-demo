@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-02T01:23:36.064Z",
+  "startedAt": "2026-10-02T01:57:26.424Z",
   "targets": {
     "pocketbase": "http://127.0.0.1:18191",
     "colyseus": "ws://127.0.0.1:12668"
@@ -9,12 +9,12 @@
     {
       "name": "isolated_development_setup",
       "status": "passed",
-      "durationMs": 583
+      "durationMs": 587
     },
     {
       "name": "two_real_users_login",
       "status": "passed",
-      "durationMs": 146,
+      "durationMs": 142,
       "evidence": {
         "distinctAuthenticatedUsers": 2
       }
@@ -31,7 +31,7 @@
     {
       "name": "two_players_join_and_move_sync",
       "status": "passed",
-      "durationMs": 135,
+      "durationMs": 134,
       "evidence": {
         "sameRoom": true,
         "observedDisplacement": 3
@@ -40,7 +40,7 @@
     {
       "name": "chat_delivery_and_user_spoof_denied",
       "status": "passed",
-      "durationMs": 343,
+      "durationMs": 344,
       "evidence": {
         "senderAuthenticated": true,
         "anotherPlayerUnchanged": true
@@ -49,7 +49,7 @@
     {
       "name": "zone_switch_isolation",
       "status": "passed",
-      "durationMs": 462,
+      "durationMs": 476,
       "evidence": {
         "leftOldZone": true,
         "independentRooms": true,
@@ -59,23 +59,23 @@
     {
       "name": "star_generation_cap_and_collection_regeneration",
       "status": "passed",
-      "durationMs": 29593,
+      "durationMs": 29604,
       "evidence": {
         "cap": 12,
         "periodMs": 1500,
         "startCount": 5,
-        "timeToCapMs": 10119,
+        "timeToCapMs": 10115,
         "observedGenerationIntervalsMs": [
           1531,
+          1531,
           1529,
-          1529,
-          1529,
-          1534,
-          1527
+          1528,
+          1531,
+          1539
         ],
         "stableAtCapMs": 3100,
-        "minimumStarSpacing": 113,
-        "refillDelayMs": 326,
+        "minimumStarSpacing": 115,
+        "refillDelayMs": 329,
         "collectionFreedSlot": true,
         "regeneratedWithFreshId": true,
         "maximumObservedStars": 12,
@@ -86,9 +86,9 @@
     {
       "name": "game_finish_result_and_inventory_query",
       "status": "passed",
-      "durationMs": 89,
+      "durationMs": 93,
       "evidence": {
-        "matchId": "46e5a35c-4511-4447-9d2d-4b42cd2ef56d",
+        "matchId": "168e9c98-3e0d-4b19-ba65-0ca3ec92ccf5",
         "serverScore": 1,
         "resultsPerScoringUser": 1,
         "rewardPerScoringUser": 1,
@@ -98,7 +98,7 @@
     {
       "name": "result_tamper_and_cross_user_access_denied",
       "status": "passed",
-      "durationMs": 401,
+      "durationMs": 423,
       "evidence": {
         "attempts": [
           {
@@ -129,7 +129,7 @@
     {
       "name": "duplicate_delivery_idempotency",
       "status": "passed",
-      "durationMs": 2916,
+      "durationMs": 2882,
       "evidence": {
         "outboxReplayCount": 2,
         "adminApiReplayCount": 2,
@@ -140,7 +140,7 @@
     {
       "name": "conflicting_replay_denied_and_transaction_rollback",
       "status": "passed",
-      "durationMs": 5,
+      "durationMs": 6,
       "evidence": {
         "conflictingReplayStatus": 400,
         "invalidSecondParticipantStatus": 404,
@@ -151,9 +151,9 @@
     {
       "name": "storage_outage_durable_queue_restart_recovery",
       "status": "passed",
-      "durationMs": 28925,
+      "durationMs": 28935,
       "evidence": {
-        "persistedMatchId": "4bbcd8fc-a086-4700-bea3-b18d90e45bc6",
+        "persistedMatchId": "48a869fb-8c0a-4a05-87f3-891ceed8c86b",
         "queuedOnDisk": true,
         "survivedServerRestart": true,
         "resultsAndInventoryRecovered": true,
@@ -163,7 +163,7 @@
     {
       "name": "shop_purchase_wallet_and_forgery_denied",
       "status": "passed",
-      "durationMs": 151,
+      "durationMs": 149,
       "evidence": {
         "grantedStars": 40,
         "crownPrice": 30,
@@ -180,7 +180,7 @@
     {
       "name": "shop_equip_look_sync_and_room_rules",
       "status": "passed",
-      "durationMs": 144,
+      "durationMs": 145,
       "evidence": {
         "wrongSlotOrUnownedRejected": true,
         "directProfileWrite": 403,
@@ -198,14 +198,14 @@
     {
       "name": "twenty_client_local_load",
       "status": "passed",
-      "durationMs": 5847,
+      "durationMs": 5806,
       "evidence": {
         "clients": 20,
         "joinedMs": 58,
         "sentInputs": 600,
         "targetInputHzPerClient": 10,
-        "durationMs": 3021,
-        "effectiveInputHzPerClient": 9.93,
+        "durationMs": 3018,
+        "effectiveInputHzPerClient": 9.94,
         "minimumSnapshots": 59,
         "chatBroadcastP95Ms": 42,
         "scope": "single local machine; short functional load, not capacity benchmark"
@@ -217,8 +217,8 @@
     "joinedMs": 58,
     "sentInputs": 600,
     "targetInputHzPerClient": 10,
-    "durationMs": 3021,
-    "effectiveInputHzPerClient": 9.93,
+    "durationMs": 3018,
+    "effectiveInputHzPerClient": 9.94,
     "minimumSnapshots": 59,
     "chatBroadcastP95Ms": 42,
     "scope": "single local machine; short functional load, not capacity benchmark"
@@ -236,7 +236,7 @@
     "operatingInstancesTouched": false,
     "externalSiteAccess": false
   },
-  "finishedAt": "2026-10-02T01:24:45.912Z",
+  "finishedAt": "2026-10-02T01:58:36.284Z",
   "summary": {
     "passed": 15,
     "failed": 0
