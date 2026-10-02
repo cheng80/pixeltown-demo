@@ -13,6 +13,14 @@ export const INITIAL_STARS=5;
 export const MAX_STARS=12;
 export const RECONNECT_SECONDS=clamp(Number(process.env.RECONNECT_SECONDS)||15,1,60);
 export { MAX_QUEUED_INPUTS };
+// Connection events of the last hour, for /health and the service log: many players dropping at once points at the
+// server or the tunnel, one player alone at that player's network.
+export const connectionEvents={drop:[],reconnect:[],lost:[]};
+const noteConnection=(type,client,room,extra='')=>{
+  const now=Date.now(),list=connectionEvents[type];list.push(now);while(list.length&&list[0]<now-3600000)list.shift();
+  console.log(`${new Date(now).toISOString()} connection ${type} zone=${room.zone} user=${room.players.get(client.sessionId)?.id||'-'} players=${room.players.size}${extra}`);
+};
+export const connectionSummary=()=>{const since=Date.now()-3600000;return Object.fromEntries(Object.entries(connectionEvents).map(([k,v])=>[`${k}1h`,v.filter(t=>t>=since).length]));};
 export const MAX_MATCH_SCORE=64; // PocketBase hook limit per settlement
 export const STAR_SPAWN_INTERVAL_MS=clamp(Number(process.env.STAR_SPAWN_INTERVAL_MS)||STAR_SPAWN_MS,1000,60000);
 // The star event never stops; scores are settled (saved) every period and the next period starts right away.
@@ -23,6 +31,7 @@ export class Town extends Room {
     this.zone=options.zone;this.map=getMap(this.zone);this.maxClients=32;this.maxMessagesPerSecond=40;
     this.players=new Map();this.moveInputs=new Map();this.cooldowns=new Map(); // `inputs` is reserved by Colyseus 0.18
     this.held=new Map(); // dropped sessions waiting to reconnect
+    this.dropped=new Set(); // ...and whether they came back (for connection stats)
     this.game={active:false,endsAt:0,stars:[],scores:{}};
     this.setMetadata({zone:this.zone});
     this.onMessage('input',(client,data)=>{
@@ -186,13 +195,19 @@ export class Town extends Room {
   // If it does not come back in time, onLeave removes the player as usual.
   // A join refused in onJoin (e.g. 409) also lands here: it was never joined, so there is nothing to keep, and a rejected
   // allowReconnection must never escape (an unhandled rejection stops the whole server).
-  onDrop(client) {
+  onDrop(client,code) {
     this.moveInputs.delete(client.sessionId);
     if(!this.players.has(client.sessionId))return;
+    // 1001 = the page went away (tab closed, reload): an ordinary exit, not a network drop, so it is not counted.
+    if(code!==1001){noteConnection('drop',client,this,` code=${code}`);this.dropped.add(client.sessionId);}
     const wait=this.allowReconnection(client,RECONNECT_SECONDS);this.held.set(client.sessionId,wait);
     wait.then(()=>this.held.delete(client.sessionId),()=>this.held.delete(client.sessionId));
   }
+  onReconnect(client) {
+    if(this.dropped.delete(client.sessionId))noteConnection('reconnect',client,this);
+  }
   onLeave(client) {
+    if(this.dropped.delete(client.sessionId))noteConnection('lost',client,this);
     this.players.delete(client.sessionId);this.moveInputs.delete(client.sessionId);
     for(const key of this.cooldowns.keys())if(key.startsWith(client.sessionId+':'))this.cooldowns.delete(key);
     if(!this.players.size && this.game.active)this.finish();

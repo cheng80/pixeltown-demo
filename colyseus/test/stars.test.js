@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Town, INITIAL_STARS, MAX_STARS, STAR_SPAWN_INTERVAL_MS, RECONNECT_SECONDS, MAX_QUEUED_INPUTS } from '../town.js';
+import { Town, INITIAL_STARS, MAX_STARS, STAR_SPAWN_INTERVAL_MS, RECONNECT_SECONDS, MAX_QUEUED_INPUTS, connectionSummary } from '../town.js';
 const T=STAR_SPAWN_INTERVAL_MS;
 import { outbox } from '../outbox.js';
 // Never touch the real outbox directory from unit tests.
@@ -9,7 +9,7 @@ import { getMap, blocked, starSpots, touchesStar } from '../../shared/world.js';
 function room() {
   const r=Object.create(Town.prototype);r.map=getMap('lobby');
   r.players=new Map([['session',{id:'player',...r.map.spawn}]]);
-  r.moveInputs=new Map();r.held=new Map();r.snapshot=()=>{};
+  r.moveInputs=new Map();r.held=new Map();r.dropped=new Set();r.cooldowns=new Map();r.zone='lobby';r.snapshot=()=>{};
   r.broadcast=()=>{};
   r.startGame(1000);return r;
 }
@@ -150,5 +150,16 @@ test('steps follow real time, not tick count: late ticks (52 ms) never let a wal
   assert(e.queue.length<=2,`queued ${e.queue.length} steps behind`);
   assert(p.ack>=seq-2,'acknowledged up to the latest steps');
   assert(p.x-x0<=3*seq+0.01,'never more than one step per input');
+});
+
+test('connection stats: a drop that comes back counts as reconnect, one that does not as lost',()=>{
+  const r=room(),before=connectionSummary();r.allowReconnection=()=>{const d=new Promise(()=>{});d.reject=()=>{};return d;};
+  r.players.set('other',{id:'p2',x:0,y:0});
+  r.onDrop({sessionId:'session'},1006);r.onReconnect({sessionId:'session'});
+  r.onDrop({sessionId:'other'},1006);r.onLeave({sessionId:'other'});
+  r.onReconnect({sessionId:'never-dropped'});
+  r.players.set('closing',{id:'p3',x:0,y:0});r.onDrop({sessionId:'closing'},1001);r.onLeave({sessionId:'closing'}); // tab closed: not a drop
+  const after=connectionSummary();
+  assert.deepEqual([after.drop1h-before.drop1h,after.reconnect1h-before.reconnect1h,after.lost1h-before.lost1h],[2,1,1]);
 });
 

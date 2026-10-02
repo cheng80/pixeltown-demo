@@ -245,3 +245,9 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 - 별을 먹는 순간 노란 점 효과와 함께 "+1"이 0.8초 동안 떠오른다.
 - 측정: `tests/wallet-check.mjs`(짧은 `GAME_DURATION_MS` 서버 권장, 배포 주소는 `SETTLE_MS=200000`).
 
+## 핑·끊김 기록·외부 감시 (2026-10-02)
+
+- 화면: 방 제목줄 접속 인원 옆에 게임 서버 왕복 시간을 2초마다 표시한다(SDK `room.ping`, 150ms 미만 초록·400ms 미만 노랑·그 이상 빨강).
+- 서버: 끊김(`drop`)·같은 세션 복귀(`reconnect`)·복귀 실패(`lost`)를 서비스 로그(`server.out.log`)에 한 줄씩 남긴다(시각·장소·사용자 id·방 인원·종료 코드). 페이지를 떠난 종료(1001, 탭 닫기·새로고침)는 끊김으로 세지 않는다. `/health`의 `connections`에 최근 1시간 횟수(`drop1h`·`reconnect1h`·`lost1h`)를 둔다. 같은 시각 여러 사람이 끊기면 서버·터널, 한 사람만이면 그 사람의 네트워크다.
+- 외부 감시: `.github/workflows/health.yml`이 GitHub에서 10분마다 배포 주소·게임 서버 health·PocketBase health를 확인한다(3번 재시도). 실패하면 실행이 실패로 남고 GitHub가 저장소 소유자에게 메일을 보낸다. 실행 요약에 health 응답(끊김 집계 포함)이 남는다. GitHub 예약 실행은 몇 분 늦을 수 있고, 저장소에 60일 동안 활동이 없으면 멈춘다.
+

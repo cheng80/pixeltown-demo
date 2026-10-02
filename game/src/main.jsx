@@ -69,7 +69,7 @@ function App() {
   const pred = useRef(null), pending = useRef([]), seq = useRef(0), glide = useRef(null), serverClock = useRef({ samples: [], offset: 0 });
   const stall = useRef({ x: 0, y: 0, n: 0 }), route = useRef([]), marker = useRef(null), state = useRef({ players: [], game: {} }), bubbles = useRef({}), emotes = useRef({});
   const trails = useRef({}), selfId = useRef("me"), soloPos = useRef(null), entry = useRef("default"), portalArmed = useRef(false), chatVisible = useRef(chatOpen);
-  const [joinTry, setJoinTry] = useState(0), rejoining = useRef(false), lastAutoJoin = useRef(0);
+  const [joinTry, setJoinTry] = useState(0), rejoining = useRef(false), lastAutoJoin = useRef(0), [ping, setPing] = useState(null);
   // Stars I collected that are not in my inventory yet (settled every 3 minutes): period id -> my score in it.
   const ledger = useRef({});
   const picked = useRef({}), corrections = useRef([]), persistStatus = useRef(null), chatInput = useRef(null), lastSent = useRef("");
@@ -227,6 +227,14 @@ function App() {
       room.current?.leave(); room.current = null;
     };
   }, [entered, user, zone, joinTry]);
+
+  // Round trip to the game server every 2 s, shown next to the player count (green / yellow / red).
+  useEffect(() => {
+    if (status !== "online") { setPing(null); return; }
+    const measure = () => room.current?.ping(ms => setPing(Math.round(ms)));
+    measure(); const timer = setInterval(measure, 2000);
+    return () => clearInterval(timer);
+  }, [status, zone, joinTry]);
 
   // input: keyboard / d-pad / click route, sent to the server every tick
   useEffect(() => {
@@ -447,6 +455,7 @@ function App() {
           <header className="room-title">
             <b className="brand">픽셀타운</b><span className="zone-name">{zoneInfo[1]} {map.title}</span><small className="url">pixel.town/{map.slug}</small>
             <span className={`online ${status}`}>{status === "online" ? `${online}명 접속 중` : zone === "home" ? "나만의 방" : status === "connecting" ? "연결 중…" : "연결 끊김"}</span>
+            {ping !== null && <span className={`ping ${ping < 150 ? "good" : ping < 400 ? "slow" : "bad"}`} title="게임 서버까지 왕복 시간">핑 {ping}ms</span>}
           </header>
           <div className="stage" onPointerDown={onStagePointer}>
             <canvas ref={canvasRef} className="world" aria-label={`${map.title} 미니룸. 화면을 누르면 그곳으로 걸어가요.`} />

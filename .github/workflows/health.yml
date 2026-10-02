@@ -1,0 +1,35 @@
+# External health check: GitHub runs this outside the home network every 10 minutes. A failed run (GitHub e-mails the
+# repository owner) means the public site, game server or PocketBase was unreachable from the internet; the summary
+# also shows the game server's connection drops of the last hour (many at once = server/tunnel, few = players' networks).
+name: health
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check public endpoints
+        run: |
+          fail=0
+          echo "| endpoint | result | response |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          check() { # url, body to show (json) or not
+            for i in 1 2 3; do
+              if body=$(curl -fsS -m 10 -A pixeltown-health "$1"); then
+                [ "$2" = json ] && shown=$(printf '%s' "$body" | head -c 300) || shown="HTTP 200"
+                echo "ok   $1 $shown"; echo "| $1 | ok | \`$shown\` |" >> "$GITHUB_STEP_SUMMARY"; return 0
+              fi
+              sleep 10
+            done
+            echo "::error::$1 unreachable after 3 tries"; echo "| $1 | FAIL | |" >> "$GITHUB_STEP_SUMMARY"; fail=1
+          }
+          check https://pixeltown.fastmake.net/ page
+          check https://pixeltown-rt.fastmake.net/health json
+          check https://pixeltown-rt.fastmake.net/health/pocketbase json
+          check https://pixeltown-pb.fastmake.net/api/health json
+          exit $fail

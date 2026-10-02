@@ -4,7 +4,7 @@ import express from 'express';
 import { Server } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { monitor } from '@colyseus/monitor';
-import { Town } from './town.js';
+import { Town, connectionSummary } from './town.js';
 import { outbox } from './outbox.js';
 import { PB_URL, userClient } from './config.js';
 import { pocketbaseAdminGuard } from './monitor-auth.js';
@@ -30,7 +30,7 @@ app.use((req,res,next)=>{
 // The outbox superuser in .env is a service account: it saves results but may not open the monitor.
 const monitorDenied=new Set([process.env.PB_ADMIN_EMAIL].filter(Boolean).map(e=>e.toLowerCase()));
 app.use('/monitor',pocketbaseAdminGuard(PB_URL,monitorOrigins,monitorDenied),monitor({prefix:'/monitor'}));
-app.get('/health',(_req,res)=>res.json({ok:true,service:'pixeltown-colyseus',persistence:outbox.status()}));
+app.get('/health',(_req,res)=>res.json({ok:true,service:'pixeltown-colyseus',persistence:outbox.status(),connections:connectionSummary()}));
 app.get('/health/pocketbase',async(_req,res)=>{
   try {
     const r=await fetch(`${PB_URL}/api/health`,{signal:AbortSignal.timeout(5000)});
