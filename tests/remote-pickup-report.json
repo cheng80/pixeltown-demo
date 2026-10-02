@@ -1,49 +1,49 @@
 {
-  "at": "2026-10-02T07:46:49.276Z",
-  "url": "http://127.0.0.1:5173/",
+  "at": "2026-10-02T07:48:18.520Z",
+  "url": "https://pixeltown.fastmake.net/",
   "pickups": [
     {
-      "hideMs": 3678,
-      "serverLagMs": 229,
+      "hideMs": 4158,
+      "serverLagMs": 220,
       "touchAt": {
-        "dx": 12,
-        "dy": 18
+        "dx": -13,
+        "dy": -1
       },
       "reappeared": false
     },
     {
-      "hideMs": 4146,
-      "serverLagMs": 297,
-      "touchAt": {
-        "dx": -1,
-        "dy": 21
-      },
-      "reappeared": false
-    },
-    {
-      "hideMs": 4978,
-      "serverLagMs": 276,
-      "touchAt": {
-        "dx": -14,
-        "dy": 11
-      },
-      "reappeared": false
-    },
-    {
-      "hideMs": 3427,
-      "serverLagMs": 209,
-      "touchAt": {
-        "dx": 1,
-        "dy": -14
-      },
-      "reappeared": false
-    },
-    {
-      "hideMs": 2866,
-      "serverLagMs": 160,
+      "hideMs": 4765,
+      "serverLagMs": 292,
       "touchAt": {
         "dx": 0,
-        "dy": -16
+        "dy": 22
+      },
+      "reappeared": false
+    },
+    {
+      "hideMs": 4801,
+      "serverLagMs": 237,
+      "touchAt": {
+        "dx": 13,
+        "dy": 0
+      },
+      "reappeared": false
+    },
+    {
+      "hideMs": 4297,
+      "serverLagMs": 219,
+      "touchAt": {
+        "dx": -13,
+        "dy": -13
+      },
+      "reappeared": false
+    },
+    {
+      "hideMs": 4020,
+      "serverLagMs": 242,
+      "touchAt": {
+        "dx": 12,
+        "dy": -1
       },
       "reappeared": false
     }

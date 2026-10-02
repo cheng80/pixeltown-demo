@@ -263,3 +263,4 @@ Demo 1이 오락실에 들어가자 시작 버튼 없이 바로 진행 중이었
 - 수정: 몸 상자–별 그림 상자 겹침 판정, 서버 매 틱 자동 수집, 화면은 닿는 순간 숨김과 효과. TECH_SPEC 마지막 절.
 - 로컬: 단위 24/24(히트박스 경계·tick 자동 수집 추가), 통합 17/17(18191/12668), UI 8/8(5273), build 성공.
 - 원격(Mac mini 배포 후): `tests/remote-check.mjs` 8/8. `tests/remote-pickup.mjs`(dev:remote, 방향키로 별 5개): 모두 화면에서 닿는 순간 숨김, 서버 snapshot 확인까지 160–297ms, 다시 나타난 별 0개. 숨김 시점의 발밑–별 차이 (12,18)·(-1,21)·(-14,11)·(1,-14)·(0,-16)으로 몸 가장자리가 별 그림에 닿을 때 먹었다(소수 위치 반올림).
+- 배포 주소(`https://pixeltown.fastmake.net`, Pages 자동 빌드 반영 후): `BASE=https://pixeltown.fastmake.net/ node tests/remote-pickup.mjs` 5/5, 서버 확인 219–292ms, 다시 나타난 별 0개.

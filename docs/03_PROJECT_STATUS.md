@@ -156,7 +156,7 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 | 부드러운 이동(예측·보간·카메라 고정) | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | `tests/motion-check.mjs` 원격 화면 위치 5–6개 → 1개 |
 | 운영 정리(원격 백업 통합·불필요 파일·테스트 데이터, 로컬 정리, 검사 자동 정리) | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | SERVER_OPERATIONS 11절, 재배포 후 health·원격 UI·원격 검사 8/8 |
 | 검증용 관리자로 Monitor 관리자 로그인 | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | `tests/remote-check.mjs` monitor_admin_only |
-| 별 수집 히트박스·서버 자동 수집·화면 즉시 숨김 | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | verification 17절: 단위24·통합17·UI8·원격8/8·원격 수집 5/5(서버 확인 160–297ms) |
+| 별 수집 히트박스·서버 자동 수집·화면 즉시 숨김 | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | verification 17절: 단위24·통합17·UI8·원격8/8·원격 수집 5/5(서버 확인 160–297ms)·배포 주소 수집 5/5 |
 | 디자인 승인 | PASS | USER | 2026-10-02 | `b69fbcb` | CURRENT | 사용자 승인(배포 주소 화면 기준) |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
 | 공개 경로 부하·인터넷 지연·한 화면 100명·관리자 Monitor 로그인 | NOT_RUN | NONE | - | - | UNKNOWN | 정책상 금지 또는 관리자 암호 미사용 |
