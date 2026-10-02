@@ -203,6 +203,7 @@ ssh … 'cd /Users/cheng80/Servers/pixeltown-colyseus/app && ../runtime/bin/node
 | 상점 구매·중복·잔액 부족·장착·문 앞 배치 거부·미니룸 저장·재로그인 복원·상대 화면 반영 | 통과 | 같은 스크립트 |
 | `match_id` 멱등·충돌 거부·부분 실패 롤백 | 재전송 200(행 1개), 충돌 400, 롤백 404·0행 | Mac mini에서 `tests/remote-persistence.mjs` |
 | outbox 장애·재시작 복구 | PB 중단(공개 502) 중 정산 → 디스크 1건 → Colyseus 재시작 후 pending 1 → PB 복귀 후 저장 | `PIXELTOWN_REMOTE_OUTAGE=1`, 30초 단축은 끝에 제거 |
+| `scripts/deploy-macmini.sh` 실제 실행 | 원격 파일이 커밋 `c056e01`과 sha256 일치, 실행 후 health·`/health/pocketbase` 정상, `realtime.pb.js` 보존, 브라우저 2유저 재통과 | 배포 스크립트 |
 | 로컬 프런트(5173) 원격 모드 2유저 | 통과, 요청 대상 `https://pixeltown.fastmake.net`·`wss://pixeltown-rt.fastmake.net`, 페이지 오류 0 | `tests/remote-ui.mjs`, `docs/assets/remote-lobby-two-users.png` |
 
 미검증·제약: 공개 경로 부하(정책상 하지 않음), 실제 모바일 기기, 관리자 계정으로의 Monitor 화면 로그인(관리자 암호를 다루지 않음), 진행 중 경기의 프로세스 강제 종료 복원(설계상 미지원). outbox 복구 시험은 세 번 실행했다. 1회차는 스크립트 오류로 원격 변경 없이 중단했다. 2회차는 PB 중단·재기동과 저장까지 끝났으나 끊긴 방의 `leave()`가 멈춰 보고서를 쓰지 못했다. 3회차는 통과했다. 그래서 Tester 1에게 1점 기록이 하나 더 있다. 매 회차 끝에 30초 단축값 제거와 PB 기동 상태를 확인했다.
