@@ -145,6 +145,40 @@ const PAINT = {
     star(c, 12, 15, '#ffd23f'); star(c, 124, 15, '#ffd23f');
   },
   window: c => { R(c, 0, 0, 40, 26, '#fffafc'); R(c, 2, 2, 36, 20, '#bfe6ff'); R(c, 19, 2, 2, 20, '#fffafc'); R(c, 2, 11, 36, 2, '#fffafc'); R(c, 5, 5, 8, 2, '#ffffff'); R(c, 0, 22, 40, 4, '#d6cec2'); },
+  // ---- mini-room furniture (shop) ----
+  f_chair: c => { R(c, 2, 0, 10, 9, '#c68642'); R(c, 3, 1, 8, 2, '#e0a868'); R(c, 1, 9, 12, 4, '#e0a868'); R(c, 1, 12, 12, 1, '#a86a35'); R(c, 2, 13, 2, 7, '#8a5a36'); R(c, 10, 13, 2, 7, '#8a5a36'); R(c, 5, 4, 4, 2, '#ff9ec4'); },
+  f_plant: c => PAINT.plant(c),
+  f_teddy: c => {
+    disc(c, 7, 9, 5, 4, '#c68642'); disc(c, 7, 4, 4, 4, '#c68642'); R(c, 2, 0, 3, 3, '#c68642'); R(c, 9, 0, 3, 3, '#c68642'); R(c, 3, 1, 1, 1, '#ffc2dc'); R(c, 10, 1, 1, 1, '#ffc2dc');
+    R(c, 5, 4, 1, 1, LINE); R(c, 8, 4, 1, 1, LINE); R(c, 6, 5, 2, 2, '#f7e6bd'); R(c, 6, 5, 2, 1, LINE); R(c, 4, 8, 6, 1, '#ff5c93'); R(c, 6, 9, 2, 1, '#ff5c93');
+  },
+  f_lamp: c => { R(c, 0, 0, 10, 8, '#fff3a3'); R(c, 1, 1, 3, 3, '#ffffff'); R(c, 0, 7, 10, 1, '#ffb020'); R(c, 4, 8, 2, 16, '#8a5a36'); R(c, 1, 24, 8, 3, '#a86a35'); },
+  f_rug: c => {
+    disc(c, 23, 14, 22, 13, '#ff8fbf'); disc(c, 23, 14, 19, 10, '#ffc2dc');
+    const h = (x, y) => { R(c, x - 3, y - 2, 3, 2, '#ff5c93'); R(c, x + 1, y - 2, 3, 2, '#ff5c93'); R(c, x - 4, y - 1, 9, 2, '#ff5c93'); R(c, x - 3, y + 1, 7, 1, '#ff5c93'); R(c, x - 1, y + 2, 3, 1, '#ff5c93'); };
+    h(23, 13); h(11, 15); h(35, 15);
+  },
+  f_desk: c => { R(c, 0, 4, 30, 5, '#c68642'); R(c, 0, 4, 30, 1, '#e0a868'); R(c, 1, 9, 12, 13, '#a86a35'); R(c, 2, 11, 10, 4, '#c68642'); R(c, 6, 12, 2, 1, '#ffd23f'); R(c, 26, 9, 3, 13, '#8a5a36'); R(c, 18, 0, 8, 4, '#bfe6ff'); R(c, 19, 1, 6, 2, '#ffffff'); R(c, 4, 1, 6, 3, '#ff9ec4'); },
+  f_fishbowl: c => { R(c, 2, 13, 10, 7, '#a86a35'); R(c, 1, 12, 12, 2, '#c68642'); disc(c, 7, 7, 6, 5, '#9fd8ff'); R(c, 2, 4, 10, 1, '#d4f1ff'); R(c, 5, 7, 3, 2, '#ff9f43'); R(c, 8, 7, 1, 2, '#ff9f43'); R(c, 3, 5, 1, 2, '#ffffff'); R(c, 9, 10, 2, 1, '#4cd07d'); },
+  f_sofa: c => { R(c, 0, 4, 46, 16, '#9b6bff'); R(c, 4, 0, 38, 10, '#b794ff'); R(c, 5, 1, 36, 2, '#d9c8ff'); R(c, 0, 8, 6, 12, '#6c45c9'); R(c, 40, 8, 6, 12, '#6c45c9'); R(c, 6, 12, 34, 2, '#d9c8ff'); R(c, 12, 4, 8, 6, '#ffd23f'); R(c, 26, 4, 8, 6, '#ff9ec4'); R(c, 3, 20, 3, 4, '#5a3a22'); R(c, 40, 20, 3, 4, '#5a3a22'); },
+  f_bookcase: c => {
+    R(c, 0, 0, 30, 40, '#a86a35'); R(c, 2, 2, 26, 36, '#7a4b2a');
+    for (const y of [12, 25]) R(c, 2, y, 26, 2, '#c68642');
+    const cols = ['#ff5c93', '#4aa8ff', '#ffd23f', '#4cd07d', '#9b6bff', '#ff9f43'];
+    for (let i = 0; i < 12; i++) { const x = 3 + (i % 6) * 4, y = i < 6 ? 3 : 15; R(c, x, y + (i % 3 === 0 ? 1 : 0), 3, 9 - (i % 3 === 0 ? 1 : 0), cols[(i * 5) % 6]); }
+    R(c, 4, 28, 8, 8, '#fffafc'); R(c, 6, 30, 4, 4, '#ff9ec4'); R(c, 18, 30, 8, 6, '#c8f2b0');
+  },
+  f_bed: c => {
+    R(c, 0, 0, 30, 10, '#a86a35'); R(c, 1, 1, 28, 2, '#c68642'); R(c, 1, 10, 28, 34, '#fffafc'); R(c, 3, 11, 24, 7, '#ffffff'); R(c, 4, 12, 22, 5, '#e3d4ff');
+    R(c, 1, 19, 28, 25, '#ff9ec4'); R(c, 1, 19, 28, 2, '#ffc2dc'); for (let y = 24; y < 44; y += 6) for (let x = 4; x < 28; x += 8) R(c, x + (y % 12 ? 4 : 0), y, 2, 2, '#fffafc');
+    R(c, 0, 42, 30, 4, '#8a5a36');
+  },
+  f_tv: c => { R(c, 0, 0, 28, 18, '#4a4a66'); R(c, 2, 2, 24, 13, '#7cc4ec'); R(c, 4, 4, 6, 2, '#d4f1ff'); star(c, 18, 9, '#ffd23f'); R(c, 12, 18, 4, 2, '#4a4a66'); R(c, 2, 20, 24, 6, '#c68642'); R(c, 2, 20, 24, 1, '#e0a868'); R(c, 5, 22, 6, 2, '#a86a35'); R(c, 17, 22, 6, 2, '#a86a35'); },
+  f_piano: c => {
+    R(c, 0, 0, 44, 22, '#2a2238'); R(c, 1, 1, 42, 3, '#4a4a66'); R(c, 4, 4, 10, 6, '#fffafc'); R(c, 5, 5, 8, 1, '#c8c0d8');
+    R(c, 0, 14, 44, 7, '#fffafc'); for (let x = 3; x < 42; x += 4) R(c, x, 14, 2, 4, '#2a2238'); R(c, 0, 21, 44, 2, '#2a2238');
+    R(c, 2, 23, 3, 11, '#2a2238'); R(c, 39, 23, 3, 11, '#2a2238'); R(c, 18, 26, 8, 3, '#a86a35');
+  },
   poster: c => { R(c, 0, 0, 20, 26, '#ffd23f'); R(c, 2, 2, 16, 22, '#ff5c93'); star(c, 10, 10, '#fff3a3'); R(c, 4, 18, 12, 2, '#fffafc'); R(c, 6, 21, 8, 1, '#fffafc'); },
 };
 function star(c, cx, cy, col) { R(c, cx - 1, cy - 4, 2, 9, col); R(c, cx - 4, cy - 1, 9, 2, col); R(c, cx - 2, cy - 2, 5, 5, col); R(c, cx - 3, cy + 2, 2, 2, col); R(c, cx + 2, cy + 2, 2, 2, col); }
@@ -184,13 +218,30 @@ export function propSprite(p) {
 const SKINS = ['#ffe0c2', '#f6c9a0', '#d9a066', '#a86a3c'];
 const HAIRS = ['#3a2440', '#6b3e26', '#c8643b', '#ffd23f', '#ff6fa8', '#4aa8ff', '#9b6bff', '#f4f1ea'];
 export function lookFor(player) {
-  const h = hash(player.id || player.name || 'guest');
-  return { skin: SKINS[h % 3], hair: HAIRS[(h >>> 3) % HAIRS.length], style: (h >>> 7) % 4, shirt: /^#[0-9a-f]{6}$/i.test(player.color || '') ? player.color : '#ff9ec4', key: `${h % 3}|${(h >>> 3) % HAIRS.length}|${(h >>> 7) % 4}|${player.color}` };
+  const h = hash(player.id || player.name || 'guest'), o = player.look || {};
+  const hat = o.hat || null, top = o.top || null, pet = o.pet || null;
+  return { skin: SKINS[h % 3], hair: HAIRS[(h >>> 3) % HAIRS.length], style: (h >>> 7) % 4, shirt: /^#[0-9a-f]{6}$/i.test(player.color || '') ? player.color : '#ff9ec4', hat, top, pet,
+    key: `${h % 3}|${(h >>> 3) % HAIRS.length}|${(h >>> 7) % 4}|${player.color}|${hat}|${top}` };
+}
+// Shop tops recolour the shirt (and pants for the overall) and add a pattern on the chest.
+const TOPS = { top_heart: { shirt: '#fffafc' }, top_stripe: { shirt: '#4aa8ff' }, top_overall: { shirt: '#fff3a3', pants: '#4f7fd1' }, top_sailor: { shirt: '#fffafc' } };
+function paintTop(c, L, dir, y0) {
+  if (L.top === 'top_heart' && dir !== 1) { const x = dir === 2 ? 8 : 6; R(c, x, 14 + y0, 1, 1, '#ff5c93'); R(c, x + 2, 14 + y0, 1, 1, '#ff5c93'); R(c, x, 15 + y0, 3, 1, '#ff5c93'); R(c, x + 1, 16 + y0, 1, 1, '#ff5c93'); }
+  if (L.top === 'top_stripe') for (const y of [14, 16]) R(c, 4, y + y0, 8, 1, '#fffafc');
+  if (L.top === 'top_overall') { R(c, 4, 15 + y0, 8, 4, '#4f7fd1'); if (dir !== 2) { R(c, 5, 13 + y0, 1, 2, '#4f7fd1'); R(c, 10, 13 + y0, 1, 2, '#4f7fd1'); } R(c, 7, 16 + y0, 2, 1, '#ffd23f'); }
+  if (L.top === 'top_sailor') { R(c, 4, 13 + y0, 8, 1, '#3b4a7a'); if (dir === 0) { R(c, 6, 14 + y0, 4, 1, '#3b4a7a'); R(c, 7, 15 + y0, 2, 2, '#e0344f'); } if (dir === 1) R(c, 4, 14 + y0, 8, 2, '#3b4a7a'); }
+}
+function paintHat(c, L, dir, y0) {
+  const side = dir === 2;
+  if (L.hat === 'hat_ribbon') { const x = side ? 3 : 2; R(c, x, -1 + y0, 3, 3, '#ff5c93'); R(c, x + 3, 0 + y0, 2, 1, '#d93a73'); R(c, x + 5, -1 + y0, 3, 3, '#ff5c93'); R(c, 1, 2 + y0, 14, 1, '#ff5c93'); }
+  if (L.hat === 'hat_beanie') { R(c, 2, -2 + y0, 12, 4, '#ff7eb6'); R(c, 1, 1 + y0, 14, 2, '#fffafc'); for (let x = 3; x < 13; x += 3) R(c, x, -1 + y0, 1, 2, '#ffc2dc'); R(c, 7, -4 + y0, 2, 2, '#fffafc'); }
+  if (L.hat === 'hat_straw') { R(c, 3, -3 + y0, 10, 5, '#f2c46b'); R(c, 4, -3 + y0, 8, 1, '#ffe2a0'); R(c, 3, 0 + y0, 10, 1, '#ff5c93'); R(c, 0, 2 + y0, 16, 2, '#e0a84e'); R(c, 1, 2 + y0, 14, 1, '#f2c46b'); }
+  if (L.hat === 'hat_crown') { R(c, 3, -1 + y0, 10, 3, '#ffd23f'); for (const x of [3, 7, 11]) R(c, x, -4 + y0, 2, 3, '#ffd23f'); R(c, 7, 0 + y0, 2, 1, '#e0344f'); R(c, 4, -1 + y0, 8, 1, '#fff3a3'); }
 }
 const shade = (col, f) => '#' + hex(col).map(v => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, '0')).join('');
 function paintAvatar(c, L, dir, frame) {
   const y0 = frame ? 0 : 1; // walking frames lift the body by 1px. dir: 0 down, 1 up, 2 side(right)
-  const shirt = L.shirt, shirtD = shade(shirt, 0.78), pants = '#3b4a7a', shoe = '#2a2238';
+  const shirt = TOPS[L.top]?.shirt || L.shirt, shirtD = shade(shirt, 0.78), pants = TOPS[L.top]?.pants || '#3b4a7a', shoe = '#2a2238';
   // legs
   const lA = frame === 1 ? 2 : 3, lB = frame === 2 ? 2 : 3;
   if (dir === 2) {
@@ -226,13 +277,30 @@ function paintAvatar(c, L, dir, frame) {
   if (L.style === 1 && dir !== 1) { R(c, 0, 4 + hy, 2, 10, hair); if (dir === 0) R(c, 14, 4 + hy, 2, 10, hair); }
   if (L.style === 1 && dir === 1) R(c, 1, 11 + hy, 14, 4, hair);
   if (L.style === 2) { R(c, -1 + 1, 1 + hy, 3, 3, hairD); if (dir !== 2) R(c, 13, 1 + hy, 3, 3, hairD); R(c, 0, 4 + hy, 2, 2, '#ff5c93'); }
-  if (L.style === 3) { R(c, 1, -1 + hy + 1, 14, 3, shirtD); R(c, dir === 2 ? 12 : 3, 3 + hy, dir === 2 ? 4 : 10, 1, shirtD); }
+  if (L.style === 3 && !L.hat) { R(c, 1, -1 + hy + 1, 14, 3, shirtD); R(c, dir === 2 ? 12 : 3, 3 + hy, dir === 2 ? 4 : 10, 1, shirtD); }
+  paintTop(c, L, dir, y0);
+  paintHat(c, L, dir, hy);
 }
 const avatarCache = new Map();
 export function avatarSprite(look, dir, frame) {
   const key = `${look.key}|${dir}|${frame}`;
-  if (!avatarCache.has(key)) avatarCache.set(key, sprite(16, 25, c => paintAvatar(c, look, dir, frame)));
+  // 4 extra rows on top leave room for hats; the foot point stays at the sprite bottom.
+  if (!avatarCache.has(key)) avatarCache.set(key, sprite(16, 29, c => { c.translate(0, 4); paintAvatar(c, look, dir, frame); }));
   return avatarCache.get(key);
+}
+
+// ---------- pets (12x10, facing right, frame 1 = hop) ----------
+const PETS = {
+  pet_chick: (c, f) => { disc(c, 6, 5 - f, 5, 4, '#ffd23f'); R(c, 2, 2 - f, 3, 2, '#fff3a3'); R(c, 8, 3 - f, 1, 1, LINE); R(c, 10, 4 - f, 2, 1, '#ff9f43'); R(c, 4, 6 - f, 3, 1, '#ffb020'); R(c, 4, 9, 1, 1, '#ff9f43'); R(c, 7, 9, 1, 1, '#ff9f43'); },
+  pet_puppy: (c, f) => { R(c, 1, 4 - f, 8, 4, '#c68642'); R(c, 7, 1 - f, 5, 5, '#c68642'); R(c, 6, 1 - f, 2, 4, '#7a4b2a'); R(c, 10, 4 - f, 2, 2, '#fff3e0'); R(c, 11, 4 - f, 1, 1, LINE); R(c, 9, 2 - f, 1, 1, LINE); R(c, 0, 2 - f, 1, 3, '#c68642'); R(c, 2, 8 - f, 2, 2, '#a86a35'); R(c, 6, 8 - f, 2, 2, '#a86a35'); R(c, 7, 6 - f, 3, 1, '#ff5c93'); },
+  pet_kitty: (c, f) => { R(c, 1, 4 - f, 8, 4, '#a9a3b8'); R(c, 7, 1 - f, 5, 5, '#a9a3b8'); R(c, 7, 0 - f, 1, 1, '#a9a3b8'); R(c, 11, 0 - f, 1, 1, '#a9a3b8'); R(c, 9, 2 - f, 1, 1, LINE); R(c, 11, 2 - f, 1, 1, LINE); R(c, 10, 4 - f, 1, 1, '#ff9ec4'); R(c, 0, 0 - f, 1, 5, '#8a849a'); R(c, 2, 8 - f, 2, 2, '#8a849a'); R(c, 6, 8 - f, 2, 2, '#8a849a'); R(c, 3, 5 - f, 4, 1, '#c8c0d8'); },
+  pet_bunny: (c, f) => { disc(c, 5, 6 - f, 4, 3, '#fffafc'); R(c, 7, 3 - f, 4, 4, '#fffafc'); R(c, 7, -1 - f, 2, 4, '#fffafc'); R(c, 9, -1 - f, 2, 4, '#fffafc'); R(c, 8, 0 - f, 1, 2, '#ffc2dc'); R(c, 10, 0 - f, 1, 2, '#ffc2dc'); R(c, 9, 4 - f, 1, 1, LINE); R(c, 11, 5 - f, 1, 1, '#ff9ec4'); R(c, 0, 5 - f, 2, 2, '#fffafc'); R(c, 3, 9, 2, 1, '#e3d4ff'); R(c, 7, 9, 2, 1, '#e3d4ff'); },
+};
+const petCache = new Map();
+export function petSprite(id, frame) {
+  const key = `${id}|${frame}`;
+  if (!petCache.has(key) && PETS[id]) petCache.set(key, sprite(12, 12, c => { c.translate(0, 2); PETS[id](c, frame); }));
+  return petCache.get(key);
 }
 
 // ---------- star collectible ----------
@@ -251,6 +319,7 @@ const GROUND = {
   lobby: { grass: ['#9fdc7c', '#95d572'], blade: '#7cc05c', flowers: ['#ffffff', '#ff9ec4', '#ffd23f', '#c9b6ff'] },
   garden: { grass: ['#84cc6c', '#7bc464'], blade: '#5ea84f', flowers: ['#ffffff', '#ff8fbf', '#fff3a3', '#9fd0ff', '#ff6fa8'] },
   arcade: { grass: ['#9fdc7c', '#95d572'], blade: '#7cc05c', flowers: [] },
+  home: { grass: ['#9fdc7c', '#95d572'], blade: '#7cc05c', flowers: [] },
 };
 export function paintGround(map) {
   const cv = canvas(COLS * TILE, ROWS * TILE), c = cv.getContext('2d'), pal = GROUND[map.id], rnd = seeded(hash(map.id));
@@ -295,6 +364,14 @@ export function paintGround(map) {
         if (r === 0) R(c, x, y, TILE, 3, '#3a2440');
       } else { R(c, x, y, TILE, TILE, '#3a2440'); R(c, x + (cc === 0 ? TILE - 3 : 0), y, cc === 0 || cc === COLS - 1 ? 3 : TILE, r === ROWS - 1 ? 3 : TILE, '#5a3f86'); }
     }
+    if (ch === 'f') { R(c, x, y, TILE, TILE, '#e8b878'); R(c, x, y + (cc % 2 ? 0 : 8), TILE, 1, '#c98f52'); R(c, x + (r % 2 ? 0 : 8), y, 1, TILE, '#d7a265'); R(c, x + 2, y + 2, 4, 1, '#f6d3a0'); }
+    if (ch === 'V') { // mini-room wallpaper with a wainscot on the row above the floor
+      R(c, x, y, TILE, TILE, '#ffd6e7'); if ((cc + r) % 2) R(c, x + 6, y + 6, 4, 4, '#ffffff'); else R(c, x + 7, y + 7, 2, 2, '#ff9ec4');
+      if (T(cc, r + 1) === 'f') { R(c, x, y + 8, TILE, 8, '#c98f52'); R(c, x, y + 8, TILE, 2, '#e8b878'); R(c, x, y + 14, TILE, 2, '#8a5a36'); }
+      if (T(cc, r - 1) !== 'V') R(c, x, y, TILE, 2, '#ff9ec4');
+    }
+    if (ch === 'x') R(c, x, y, TILE, TILE, (cc + r) % 2 ? '#c9e8f7' : '#bfe3f5');
+    if (ch === 'P' && map.id === 'home') { R(c, x, y, TILE, TILE, '#c98f52'); R(c, x + 1, y + 2, TILE - 2, TILE - 3, '#ff5c93'); R(c, x + 4, y + 6, 8, 2, '#fff3a3'); }
     if (ch === 'P' && map.id === 'arcade') { R(c, x, y, TILE, TILE, '#3a2440'); R(c, x + 1, y + 2, TILE - 2, TILE - 2, '#ff5c93'); R(c, x + 6, y + 6, 4, 4, '#fff3a3'); }
     // path edge shading where sand meets grass
     if (isPath(ch)) {

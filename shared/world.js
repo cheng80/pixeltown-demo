@@ -1,4 +1,5 @@
 // Shared map, collision and pathing definitions. Imported by game/, colyseus/ and tests.
+import CATALOG from './catalog.json' with { type: 'json' };
 // World unit = 1 art pixel. Every actor/prop position is its foot (ground contact) point.
 export const TILE = 16;
 export const COLS = 40;
@@ -12,7 +13,11 @@ export const COLLECT_RADIUS = 16;
 export const STAR_SPAWN_MS = 6000; // one new star per period, until the zone holds 12
 
 // Tiles that block movement. Everything else (grass, path, plaza, bridge, floor, rug, portal) is walkable.
-export const SOLID_TILES = new Set(['#', '~', 'F', 'W', 'x']);
+export const SOLID_TILES = new Set(['#', '~', 'F', 'W', 'x', 'V']);
+
+// Star shop catalogue (also read by the PocketBase hook): hats, tops, pets and mini-room furniture.
+export { CATALOG };
+export const ITEMS = Object.fromEntries(CATALOG.items.map(i => [i.id, i]));
 
 // Prop catalogue: w,h sprite size; ax,ay foot anchor inside the sprite; foot = ground collision box
 // relative to the anchor (null = no collision); layer 'sort' = y-sorted with avatars, 'fg' = always above.
@@ -44,6 +49,19 @@ export const PROPS = {
   sofa: { w: 50, h: 26, ax: 25, ay: 24, foot: [-25, -10, 50, 10] },
   vending: { w: 26, h: 46, ax: 13, ay: 44, foot: [-13, -10, 26, 10] },
   plant: { w: 16, h: 30, ax: 8, ay: 28, foot: [-5, -4, 10, 5] },
+  // Mini-room furniture (anchor = bottom centre of its cells, footprint stays inside the cells).
+  f_chair: { w: 14, h: 20, ax: 7, ay: 18, foot: [-5, -4, 10, 5] },
+  f_plant: { w: 16, h: 30, ax: 8, ay: 28, foot: [-5, -4, 10, 5] },
+  f_teddy: { w: 14, h: 14, ax: 7, ay: 13, foot: [-5, -3, 10, 4] },
+  f_lamp: { w: 10, h: 28, ax: 5, ay: 27, foot: [-3, -3, 6, 4] },
+  f_rug: { w: 46, h: 28, ax: 23, ay: 29, foot: null, layer: 'ground' },
+  f_desk: { w: 30, h: 24, ax: 15, ay: 22, foot: [-14, -8, 28, 9] },
+  f_fishbowl: { w: 14, h: 20, ax: 7, ay: 18, foot: [-5, -4, 10, 5] },
+  f_sofa: { w: 46, h: 24, ax: 23, ay: 22, foot: [-22, -9, 44, 10] },
+  f_bookcase: { w: 30, h: 40, ax: 15, ay: 38, foot: [-14, -7, 28, 8] },
+  f_bed: { w: 30, h: 46, ax: 15, ay: 44, foot: [-14, -38, 28, 39] },
+  f_tv: { w: 28, h: 28, ax: 14, ay: 26, foot: [-13, -7, 26, 8] },
+  f_piano: { w: 44, h: 34, ax: 22, ay: 32, foot: [-21, -10, 42, 11] },
   // Flat wall decorations baked into the ground layer (walls are already solid tiles).
   neon: { w: 136, h: 30, ax: 68, ay: 30, foot: null, layer: 'ground' },
   window: { w: 40, h: 26, ax: 20, ay: 26, foot: null, layer: 'ground' },
@@ -164,6 +182,49 @@ function prepare(map) {
   return map;
 }
 export const MAPS = Object.fromEntries([lobby(), garden(), arcade()].map(m => [m.id, prepare(m)]));
+
+// ---------- personal mini-room ----------
+export const HOME = CATALOG.home;
+export const furnitureAt = (item, c, r) => {
+  const [w, h] = ITEMS[item].cells;
+  return P(item, (c + w / 2) * TILE, (r + h) * TILE - 2, { item, c, r });
+};
+// placements: [{ item, c, r }] with (c,r) = top-left floor cell. Validated by roomProblem() and the PB hook.
+export function homeMap(placements = []) {
+  const g = grid('x'), [c0, r0, c1, r1] = HOME.floor;
+  rect(g, 'W', c0 - 1, r0 - 4, c1 + 1, r1 + 1);
+  rect(g, 'V', c0, r0 - 3, c1, r0 - 1);
+  rect(g, 'f', c0, r0, c1, r1);
+  rect(g, 'P', 19, r1 + 1, 20, r1 + 1);
+  const props = [P('window', 216, r0 * TILE - 6), P('window', 424, r0 * TILE - 6), P('poster', 320, r0 * TILE - 8),
+    ...placements.filter(p => ITEMS[p.item]?.slot === 'furniture').map(p => furnitureAt(p.item, p.c, p.r))];
+  return prepare({
+    id: 'home', title: '내 미니룸', slug: 'myroom', tiles: g, props,
+    frame: { x: (c0 - 1) * TILE, y: (r0 - 4) * TILE, w: (c1 - c0 + 3) * TILE, h: (r1 - r0 + 6) * TILE }, // whole room on screen
+    entries: { default: { x: 320, y: 296 } },
+    portals: [{ x: 304, y: (r1 + 1) * TILE, w: 32, h: TILE, to: 'lobby', entry: 'default' }],
+  });
+}
+const overlaps = (a, b) => a.c < b.c + b.w && b.c < a.c + a.w && a.r < b.r + b.h && b.r < a.r + a.h;
+// Same rules as pocketbase/pb_hooks/shop_lib.js validateRoom. Returns an error message or null.
+export function roomProblem(placements, owned) {
+  if (!Array.isArray(placements) || placements.length > HOME.maxPlacements) return '가구가 너무 많아요.';
+  const [c0, r0, c1, r1] = HOME.floor, [dc0, dr0, dc1, dr1] = HOME.door, door = { c: dc0, r: dr0, w: dc1 - dc0 + 1, h: dr1 - dr0 + 1 };
+  const boxes = [], seen = new Set();
+  for (const p of placements) {
+    const it = ITEMS[p?.item];
+    if (!it || it.slot !== 'furniture' || !Number.isInteger(p.c) || !Number.isInteger(p.r)) return '알 수 없는 가구예요.';
+    if (!owned.has(p.item)) return `${it.name}은(는) 아직 없어요.`;
+    if (seen.has(p.item)) return `${it.name}은(는) 하나만 놓을 수 있어요.`;
+    seen.add(p.item);
+    const b = { c: p.c, r: p.r, w: it.cells[0], h: it.cells[1], flat: Boolean(it.flat) };
+    if (b.c < c0 || b.r < r0 || b.c + b.w - 1 > c1 || b.r + b.h - 1 > r1) return '바닥 밖에는 놓을 수 없어요.';
+    if (overlaps(b, door)) return '문 앞은 비워 두어야 해요.';
+    if (!b.flat && boxes.some(o => overlaps(o, b))) return '다른 가구와 겹쳐요.';
+    if (!b.flat) boxes.push(b);
+  }
+  return null;
+}
 export const getMap = zone => MAPS[zone] || MAPS.lobby;
 
 export const tileAt = (map, x, y) => map.tiles[Math.floor(y / TILE)]?.[Math.floor(x / TILE)];

@@ -2,8 +2,10 @@ import { Room, ServerError } from '@colyseus/core';
 import { randomUUID } from 'node:crypto';
 import { userClient, ZONES } from './config.js';
 import { outbox } from './outbox.js';
-import { getMap, blocked, moveActor, entryPoint, spreadSpot, COLLECT_RADIUS, STAR_SPAWN_MS, STEP_PER_TICK, TICK_MS } from '../shared/world.js';
+import { getMap, blocked, moveActor, entryPoint, spreadSpot, COLLECT_RADIUS, STAR_SPAWN_MS, ITEMS, STEP_PER_TICK, TICK_MS } from '../shared/world.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+// Outfit shown to everyone comes from the PocketBase profile (written only by the shop hook), never from the client.
+export const lookOf=profile=>{const o=profile?.outfit||{};return Object.fromEntries(['hat','top','pet'].map(s=>[s,ITEMS[o[s]]?.slot===s?o[s]:null]));};
 export const INITIAL_STARS=5;
 export const MAX_STARS=12;
 export const MAX_MATCH_SCORE=64; // PocketBase hook limit per settlement
@@ -33,11 +35,28 @@ export class Town extends Room {
       const p=this.players.get(client.sessionId);
       if(p && this.allow(client,'emote',1000))this.broadcast('emote',{id:p.id,emote:'wave',at:Date.now()});
     });
+    this.lookJobs=new Map();
+    this.onMessage('look',client=>this.refreshLook(client));
     this.onMessage('collect',(client,data)=>{
       this.collectStar(client,data);
     });
     this.setSimulationInterval(()=>this.tick(),TICK_MS);
     this.onPersistence=()=>this.snapshot();outbox.on('change',this.onPersistence);
+  }
+  // Re-read the outfit from PocketBase. Requests while one is in flight coalesce into one more read.
+  async refreshLook(client) {
+    if(!this.players.has(client.sessionId))return;
+    if(this.lookJobs.has(client.sessionId)){this.lookJobs.set(client.sessionId,true);return;}
+    this.lookJobs.set(client.sessionId,false);
+    try {
+      do {
+        this.lookJobs.set(client.sessionId,false);
+        const p=this.players.get(client.sessionId),pb=client.auth.pb;
+        if(!p)break;
+        p.look=lookOf(await pb.collection('profiles').getFirstListItem(pb.filter('user={:id}',{id:p.id})));
+      } while(this.lookJobs.get(client.sessionId));
+      this.snapshot();
+    } catch {} finally {this.lookJobs.delete(client.sessionId);}
   }
   startGame(now=Date.now(),carry=[]) {
     this.matchId=randomUUID();this.starCounter=0;
@@ -76,7 +95,7 @@ export class Town extends Room {
       const metadata=await pb.collection('rooms').getFirstListItem(pb.filter('zone={:zone}',{zone:options.zone}));
       if(metadata.zone!==this.zone || metadata.max_players!==32)throw new Error('Invalid room metadata');
       const profile=await pb.collection('profiles').getFirstListItem(pb.filter('user={:id}',{id:record.id}));
-      return {pb,id:record.id,name:profile.name||record.name||'Player',color:profile.color,title:metadata.title};
+      return {pb,id:record.id,name:profile.name||record.name||'Player',color:profile.color,look:lookOf(profile),title:metadata.title};
     } catch {throw new ServerError(401,'Invalid PocketBase token or profile');}
   }
   onJoin(client,options,auth) {
@@ -85,7 +104,7 @@ export class Town extends Room {
     // Arrivals step aside so avatars and name tags do not stack on the same doorway.
     const at=[[0,0],[16,0],[-16,0],[0,12],[16,12],[-16,12],[0,-12]].map(([dx,dy])=>({x:base.x+dx,y:base.y+dy}))
       .find(q=>!blocked(this.map,q.x,q.y)&&![...this.players.values()].some(o=>Math.hypot(o.x-q.x,o.y-q.y)<12))||base;
-    this.players.set(client.sessionId,{id:auth.id,name:auth.name,x:at.x,y:at.y,color:auth.color});
+    this.players.set(client.sessionId,{id:auth.id,name:auth.name,x:at.x,y:at.y,color:auth.color,look:auth.look});
     if(!this.game.active)this.startGame();
     else if(!(auth.id in this.game.scores) && Object.keys(this.game.scores).length<64)this.game.scores[auth.id]=0;
     this.snapshot();

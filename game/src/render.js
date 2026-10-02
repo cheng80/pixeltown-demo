@@ -1,14 +1,13 @@
 // Layered pixel renderer: ground (baked) -> y-sorted props/stars/avatars -> foreground -> screen-res labels.
 import { getMap, WORLD } from '../../shared/world.js';
-import { paintGround, propSprite, avatarSprite, starSprite, LINE } from './sprites.js';
+import { paintGround, propSprite, avatarSprite, starSprite, petSprite, LINE } from './sprites.js';
 
-const sceneCache = new Map();
-export function scene(zone) {
-  if (!sceneCache.has(zone)) {
-    const map = getMap(zone);
-    sceneCache.set(zone, { map, ground: paintGround(map), sorted: map.props.filter(p => p.layer === 'sort'), fg: map.props.filter(p => p.layer === 'fg') });
-  }
-  return sceneCache.get(zone);
+// Keyed by map object: zone maps are singletons, a rebuilt mini-room map gets a fresh scene.
+const sceneCache = new WeakMap();
+export function scene(zoneOrMap) {
+  const map = typeof zoneOrMap === 'string' ? getMap(zoneOrMap) : zoneOrMap;
+  if (!sceneCache.has(map)) sceneCache.set(map, { map, ground: paintGround(map), sorted: map.props.filter(p => p.layer === 'sort'), fg: map.props.filter(p => p.layer === 'fg') });
+  return sceneCache.get(map);
 }
 
 // Integer zoom in CSS px per art px, chosen from the mini-room size (ADR-003).
@@ -28,7 +27,8 @@ export function createView(display) {
 function draw(view, sc, f, lc, dc, display) {
   const dpr = Math.min(window.devicePixelRatio || 1, 3), cw = display.clientWidth, ch = display.clientHeight;
   if (!cw || !ch) return;
-  const zCss = pickZoom(cw, ch), z = Math.max(1, Math.round(zCss * dpr));
+  // A map with a `frame` (the mini-room) is shown whole: largest integer zoom that fits it.
+  const fr = sc.map.frame, zCss = fr ? Math.max(1, Math.min(4, Math.floor(Math.min(cw / fr.w, ch / fr.h)))) : pickZoom(cw, ch), z = Math.max(1, Math.round(zCss * dpr));
   const devW = Math.round(cw * dpr), devH = Math.round(ch * dpr);
   if (display.width !== devW || display.height !== devH) { display.width = devW; display.height = devH; }
   const lw = Math.ceil(devW / z), lh = Math.ceil(devH / z);
@@ -36,7 +36,7 @@ function draw(view, sc, f, lc, dc, display) {
   Object.assign(view, { z, dpr, zCss });
 
   // camera: follow the local avatar, clamp to the map, centre small maps
-  const focus = f.focus || sc.map.spawn;
+  const focus = fr ? { x: fr.x + fr.w / 2, y: fr.y + fr.h / 2 + 12 } : f.focus || sc.map.spawn;
   const tx = WORLD.width <= lw ? (WORLD.width - lw) / 2 : Math.max(0, Math.min(WORLD.width - lw, focus.x - lw / 2));
   const ty = WORLD.height <= lh ? (WORLD.height - lh) / 2 : Math.max(0, Math.min(WORLD.height - lh, focus.y - 12 - lh / 2));
   if (!view.camF || f.snap) view.camF = { x: tx, y: ty };
@@ -65,10 +65,17 @@ function draw(view, sc, f, lc, dc, display) {
   const items = [];
   for (const p of sc.sorted) items.push({ y: p.y, o: 0, p });
   for (const s of f.stars || []) items.push({ y: s.y, o: 1, s });
-  for (const a of f.avatars) items.push({ y: a.y, o: 2, a });
+  for (const a of f.avatars) { items.push({ y: a.y, o: 2, a }); if (a.pet) items.push({ y: a.pet.y, o: 2, pet: a.pet }); }
   items.sort((a, b) => a.y - b.y || a.o - b.o);
   for (const it of items) {
-    if (it.p) {
+    if (it.pet) {
+      const q = it.pet, spr = petSprite(q.id, q.frame);
+      if (!spr) continue;
+      lc.globalAlpha = 0.25; lc.fillStyle = '#2a2238'; lc.fillRect(Math.round(q.x) - 4 - cx, Math.round(q.y) - 1 - cy, 8, 2); lc.globalAlpha = 1;
+      const dx = Math.round(q.x) - 7 - cx, dy = Math.round(q.y) - 13 - cy;
+      if (q.flip) { lc.save(); lc.translate(dx + spr.width, dy); lc.scale(-1, 1); lc.drawImage(spr, 0, 0); lc.restore(); }
+      else lc.drawImage(spr, dx, dy);
+    } else if (it.p) {
       const p = it.p;
       lc.drawImage(propSprite(p), p.visual.x - 1 - cx, p.visual.y - 1 - cy);
       if (p.type === 'fountain') for (let i = 0; i < 6; i++) {
@@ -83,7 +90,7 @@ function draw(view, sc, f, lc, dc, display) {
       const a = it.a;
       lc.globalAlpha = 0.25; lc.fillStyle = '#2a2238'; lc.fillRect(Math.round(a.x) - 5 - cx, Math.round(a.y) - 2 - cy, 10, 3); lc.fillRect(Math.round(a.x) - 6 - cx, Math.round(a.y) - 1 - cy, 12, 1); lc.globalAlpha = 1;
       const spr = avatarSprite(a.look, a.dir === 3 ? 2 : a.dir, a.frame);
-      const dx = Math.round(a.x) - 9 - cx, dy = Math.round(a.y) - 26 - cy;
+      const dx = Math.round(a.x) - 9 - cx, dy = Math.round(a.y) - 30 - cy;
       if (a.dir === 3) { lc.save(); lc.translate(dx + spr.width, dy); lc.scale(-1, 1); lc.drawImage(spr, 0, 0); lc.restore(); }
       else lc.drawImage(spr, dx, dy);
     }
@@ -124,7 +131,7 @@ function draw(view, sc, f, lc, dc, display) {
     dc.fillStyle = a.self ? '#ff5c93' : 'rgba(58,36,64,.82)';
     dc.fillRect(sx - Math.round(w / 2), sy + 2 * u, w, h);
     dc.fillStyle = '#ffffff'; dc.fillText(a.name, sx, sy + 2 * u + h / 2 + u / 2);
-    const top = sy - 28 * z;
+    const top = sy - (a.look?.hat ? 32 : 28) * z;
     if (a.bubble) bubble(dc, sx, top, a.bubble, fs, pad, u);
     else if (a.emote) { dc.font = `${Math.round(18 * dpr)}px Galmuri11, sans-serif`; dc.fillStyle = '#ff5c93'; dc.fillText('♥', sx, top - 4 * u); dc.font = `${fs}px Galmuri11, monospace`; }
   }

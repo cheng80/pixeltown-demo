@@ -62,14 +62,17 @@ export async function seed(client) {
   ];
   const schemas = [
     {name:'rooms',listRule:"@request.auth.id != ''",viewRule:"@request.auth.id != ''",fields:[...timestamps,{name:'zone',type:'text',required:true},{name:'title',type:'text',required:true,max:80},{name:'max_players',type:'number',required:true,min:1,max:32}],indexes:['CREATE UNIQUE INDEX idx_rooms_zone ON rooms (zone)']},
-    {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)']},
+    {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true},{name:'outfit',type:'json',maxSize:2000},{name:'room',type:'json',maxSize:8000}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)']},
     {name:'results',fields:[...timestamps,relation,{name:'match_id',type:'text',required:true},{name:'zone',type:'text',required:true},{name:'score',type:'number',min:0},{name:'ended_at',type:'date',required:true}],indexes:['CREATE UNIQUE INDEX idx_results_match_user ON results (match_id, user)']},
+    // Star shop ledger (ADR-004): written only by the shop hook, one row per owned item.
+    {name:'purchases',fields:[...timestamps,relation,{name:'item',type:'text',required:true,max:40},{name:'price',type:'number',required:true,min:0}],indexes:['CREATE UNIQUE INDEX idx_purchases_user_item ON purchases (user, item)']},
     {name:'inventory',fields:[...timestamps,relation,{name:'match_id',type:'text',required:true},{name:'item',type:'text',required:true},{name:'quantity',type:'number',min:0}],indexes:['CREATE UNIQUE INDEX idx_inventory_match_user ON inventory (match_id, user)']}
   ];
   for(const schema of schemas) {
     try {
       const existing = await pb.collections.getOne(schema.name);
-      const missing = timestamps.filter(field=>!existing.fields.some(current=>current.name===field.name));
+      // Older databases: add fields introduced later (timestamps, profile outfit/room) without touching existing data.
+      const missing = schema.fields.filter(field=>!existing.fields.some(current=>current.name===field.name));
       if(missing.length) await pb.collections.update(existing.id,{fields:[...existing.fields,...missing]});
     }
     catch(e) { if(e.status!==404)throw e; await pb.collections.create({...schema,type:'base',listRule:schema.listRule??ownerRule,viewRule:schema.viewRule??ownerRule,createRule:null,updateRule:null,deleteRule:null}); }

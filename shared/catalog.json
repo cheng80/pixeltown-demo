@@ -1,0 +1,33 @@
+{
+  "home": {
+    "floor": [10, 9, 29, 19],
+    "door": [18, 17, 21, 19],
+    "maxPlacements": 24
+  },
+  "items": [
+    { "id": "hat_ribbon", "slot": "hat", "name": "리본 머리띠", "price": 5 },
+    { "id": "hat_beanie", "slot": "hat", "name": "털모자", "price": 8 },
+    { "id": "hat_straw", "slot": "hat", "name": "밀짚모자", "price": 10 },
+    { "id": "hat_crown", "slot": "hat", "name": "왕관", "price": 30 },
+    { "id": "top_heart", "slot": "top", "name": "하트 티셔츠", "price": 6 },
+    { "id": "top_stripe", "slot": "top", "name": "줄무늬 티", "price": 8 },
+    { "id": "top_overall", "slot": "top", "name": "멜빵바지", "price": 12 },
+    { "id": "top_sailor", "slot": "top", "name": "세일러복", "price": 15 },
+    { "id": "pet_chick", "slot": "pet", "name": "병아리", "price": 12 },
+    { "id": "pet_puppy", "slot": "pet", "name": "강아지", "price": 20 },
+    { "id": "pet_kitty", "slot": "pet", "name": "고양이", "price": 20 },
+    { "id": "pet_bunny", "slot": "pet", "name": "토끼", "price": 25 },
+    { "id": "f_chair", "slot": "furniture", "name": "나무 의자", "price": 4, "cells": [ 1, 1 ] },
+    { "id": "f_plant", "slot": "furniture", "name": "화분", "price": 4, "cells": [ 1, 1 ] },
+    { "id": "f_teddy", "slot": "furniture", "name": "곰인형", "price": 6, "cells": [ 1, 1 ] },
+    { "id": "f_lamp", "slot": "furniture", "name": "스탠드", "price": 6, "cells": [ 1, 1 ] },
+    { "id": "f_rug", "slot": "furniture", "name": "하트 러그", "price": 8, "cells": [ 3, 2 ], "flat": true },
+    { "id": "f_desk", "slot": "furniture", "name": "책상", "price": 10, "cells": [ 2, 1 ] },
+    { "id": "f_fishbowl", "slot": "furniture", "name": "어항", "price": 10, "cells": [ 1, 1 ] },
+    { "id": "f_sofa", "slot": "furniture", "name": "소파", "price": 12, "cells": [ 3, 1 ] },
+    { "id": "f_bookcase", "slot": "furniture", "name": "책장", "price": 12, "cells": [ 2, 1 ] },
+    { "id": "f_bed", "slot": "furniture", "name": "침대", "price": 15, "cells": [ 2, 3 ] },
+    { "id": "f_tv", "slot": "furniture", "name": "TV", "price": 15, "cells": [ 2, 1 ] },
+    { "id": "f_piano", "slot": "furniture", "name": "피아노", "price": 25, "cells": [ 3, 1 ] }
+  ]
+}

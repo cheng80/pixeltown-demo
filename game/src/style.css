@@ -141,6 +141,29 @@ kbd { display: inline-block; padding: 0 4px; border: 2px solid var(--line); back
 .toast { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 16px); padding: 6px 12px; background: var(--line); color: #fff; border: 3px solid #fff; font-size: 12px; text-align: center; }
 .notice { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: #fff; border: 3px solid #e0344f; white-space: nowrap; cursor: auto; }
 
+/* ---------- star shop / closet ---------- */
+.shop { width: min(560px, 100%); }
+.shop .notebook-head .stars-badge { margin-left: auto; font-size: 12px; }
+.shop-tabs { display: flex; gap: 4px; padding: 8px 12px 0; }
+.shop-tabs button { flex: 1; padding: 6px 0; border: 3px solid var(--line); border-bottom: 0; background: #d4f1ff; color: var(--line); font-weight: 700; cursor: pointer; }
+.shop-tabs button[aria-selected="true"] { background: #fff; color: var(--pink-d); }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; align-content: start; border-top: 3px solid var(--line); }
+.shop-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 3px solid var(--line); background: #fff; text-align: center; font-size: 12px; }
+.shop-item.worn { background: var(--pink-l); }
+.shop-item .muted { font-size: 11px; }
+.item-icon { width: 64px; height: 64px; image-rendering: pixelated; background: #fffafc; border: 2px dashed var(--dash); }
+.notebook-foot.muted { font-size: 11px; justify-content: center; }
+.owned-list { margin: 4px 0; font-size: 12px; line-height: 1.6; }
+/* mini-room furniture editing bar */
+.edit-bar { position: absolute; left: 8px; right: 8px; top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 6px 8px; background: rgba(255, 250, 252, .94); border: 3px solid var(--line); cursor: auto; }
+.edit-bar p { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--pink-d); font-weight: 700; }
+.edit-items { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.edit-item { display: flex; align-items: center; gap: 4px; flex: none; padding: 2px 6px 2px 2px; border: 2px solid var(--line); background: #fff; font-size: 11px; cursor: pointer; }
+.edit-item .item-icon { width: 28px; height: 28px; }
+.edit-item.placed { background: #e3f6d8; }
+.edit-item.on { background: var(--pink-l); outline: 3px solid var(--pink); }
+.edit-bar .row { display: flex; gap: 6px; }
+
 /* ---------- notebook sheet ---------- */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(58, 36, 64, .35); }
 .notebook { width: min(400px, 100%); max-height: 100%; display: flex; flex-direction: column; box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 5px var(--dash), 0 8px 0 var(--line); }
