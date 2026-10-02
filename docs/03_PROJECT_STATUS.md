@@ -100,7 +100,7 @@
 - 진행 중 작업 없음. 다음 작업은 6절. 디자인은 2026-10-02 사용자 승인으로 대기 항목에서 빠졌다.
 - 로컬 개발 서버는 세션과 무관하게 계속 돈다: `npm run dev:remote`(5173, Mac mini 연결), `npm run dev:all`(5273/18190/12667, 독립 로컬). 멈추려면 해당 npm 프로세스를 종료한다.
 - 자격증명은 git 밖 0600 파일에만 있다: `pocketbase/.local/remote-accounts.json`(Tester 1·2), `pocketbase/.local/remote-admin.env`(검증용 관리자). 출력·커밋 금지. 원격 SSH 키는 ssh 실행에만 쓰고 내용을 읽지 않는다.
-- 금지 경계: `cheng80@gmail.com` 관리자 비밀번호 재설정, stonematch(8090)·Oracle A1 예약·다른 터널, 원격 DB를 로컬 `pb_data`로 덮어쓰기, 공개 터널 부하 테스트. 원격 DB 변경 전에는 SQLite `.backup`으로 백업한다. 실제 방문자가 찍힌 스크린샷은 커밋하지 않는다. `tests/README.md`(추적 안 함)는 커밋하지 않는다.
+- 금지 경계: `cheng80@gmail.com` 관리자 비밀번호 재설정, stonematch(8090)·Oracle A1 예약·다른 터널, 원격 DB를 로컬 `pb_data`로 덮어쓰기, 공개 터널 부하 테스트. 원격 DB 변경 전에는 SQLite `.backup`으로 백업한다. 실제 방문자가 찍힌 스크린샷은 커밋하지 않는다.
 
 변경하면 안 되는 경계: 운영 PocketBase·Oracle 작업·외부 브로커·클라우드 인증에는 접근하지 않는다. 개발 launcher는 기본 18090/12567/5173(환경변수로 변경 가능)을 loopback으로만 사용하고 포트 점유 시 시작을 거부한다. 재제작 브랜치 worktree 검증은 5273/18190/12667을 썼다. 병합 후 main 체크아웃은 기본 5173/18090/12567로 실행하고, 통합은 18191/12668을 쓴다. main을 fast-forward한 뒤에는 `npm install && npm --prefix colyseus install`(병합으로 `galmuri` 추가)을 하고 개발 서버를 재시작해야 한다. 구 실행이 남아 있으면 이전 코드를 서비스한다. `.env.local`, `.local`, DB, 다운로드 바이너리와 node_modules를 공개 저장소에 넣지 않는다.
 
