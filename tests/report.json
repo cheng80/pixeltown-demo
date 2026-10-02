@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-02T02:12:33.027Z",
+  "startedAt": "2026-10-02T02:40:07.994Z",
   "targets": {
     "pocketbase": "http://127.0.0.1:18191",
     "colyseus": "ws://127.0.0.1:12668"
@@ -9,12 +9,12 @@
     {
       "name": "isolated_development_setup",
       "status": "passed",
-      "durationMs": 541
+      "durationMs": 641
     },
     {
       "name": "two_real_users_login",
       "status": "passed",
-      "durationMs": 139,
+      "durationMs": 140,
       "evidence": {
         "distinctAuthenticatedUsers": 2
       }
@@ -31,7 +31,7 @@
     {
       "name": "two_players_join_and_move_sync",
       "status": "passed",
-      "durationMs": 137,
+      "durationMs": 135,
       "evidence": {
         "sameRoom": true,
         "observedDisplacement": 3
@@ -40,7 +40,7 @@
     {
       "name": "chat_delivery_and_user_spoof_denied",
       "status": "passed",
-      "durationMs": 344,
+      "durationMs": 342,
       "evidence": {
         "senderAuthenticated": true,
         "anotherPlayerUnchanged": true
@@ -49,7 +49,7 @@
     {
       "name": "zone_switch_isolation",
       "status": "passed",
-      "durationMs": 473,
+      "durationMs": 462,
       "evidence": {
         "leftOldZone": true,
         "independentRooms": true,
@@ -59,36 +59,36 @@
     {
       "name": "star_generation_cap_and_collection_regeneration",
       "status": "passed",
-      "durationMs": 29612,
+      "durationMs": 29629,
       "evidence": {
         "cap": 12,
         "periodMs": 1500,
         "startCount": 5,
-        "timeToCapMs": 10086,
+        "timeToCapMs": 10114,
         "observedGenerationIntervalsMs": [
-          1546,
-          1545,
-          1550,
-          1506,
-          1503,
-          1500
+          1529,
+          1529,
+          1531,
+          1532,
+          1531,
+          1526
         ],
         "stableAtCapMs": 3100,
-        "minimumStarSpacing": 102,
-        "refillDelayMs": 1037,
+        "minimumStarSpacing": 101,
+        "refillDelayMs": 572,
         "collectionFreedSlot": true,
         "regeneratedWithFreshId": true,
         "maximumObservedStars": 12,
-        "observedSnapshots": 575,
+        "observedSnapshots": 583,
         "continuedAfterSettlement": true
       }
     },
     {
       "name": "game_finish_result_and_inventory_query",
       "status": "passed",
-      "durationMs": 45,
+      "durationMs": 89,
       "evidence": {
-        "matchId": "a24f4b72-026a-4f02-b0da-f47118a16014",
+        "matchId": "9f7f33ae-6165-4933-b1d7-96f1bd09be29",
         "serverScore": 1,
         "resultsPerScoringUser": 1,
         "rewardPerScoringUser": 1,
@@ -129,7 +129,7 @@
     {
       "name": "duplicate_delivery_idempotency",
       "status": "passed",
-      "durationMs": 3335,
+      "durationMs": 3243,
       "evidence": {
         "outboxReplayCount": 2,
         "adminApiReplayCount": 2,
@@ -151,9 +151,9 @@
     {
       "name": "storage_outage_durable_queue_restart_recovery",
       "status": "passed",
-      "durationMs": 28992,
+      "durationMs": 29038,
       "evidence": {
-        "persistedMatchId": "ce7cbf31-5401-4f5b-bbbc-0f33a1de84cc",
+        "persistedMatchId": "5c4870b2-1263-405e-b687-bba3581a9022",
         "queuedOnDisk": true,
         "survivedServerRestart": true,
         "resultsAndInventoryRecovered": true,
@@ -163,7 +163,7 @@
     {
       "name": "shop_purchase_wallet_and_forgery_denied",
       "status": "passed",
-      "durationMs": 147,
+      "durationMs": 151,
       "evidence": {
         "grantedStars": 40,
         "crownPrice": 30,
@@ -180,7 +180,7 @@
     {
       "name": "shop_equip_look_sync_and_room_rules",
       "status": "passed",
-      "durationMs": 145,
+      "durationMs": 144,
       "evidence": {
         "wrongSlotOrUnownedRejected": true,
         "directProfileWrite": 403,
@@ -198,15 +198,15 @@
     {
       "name": "twenty_client_local_load",
       "status": "passed",
-      "durationMs": 5836,
+      "durationMs": 5797,
       "evidence": {
         "clients": 20,
-        "joinedMs": 58,
+        "joinedMs": 61,
         "sentInputs": 600,
         "targetInputHzPerClient": 10,
-        "durationMs": 3036,
-        "effectiveInputHzPerClient": 9.88,
-        "minimumSnapshots": 58,
+        "durationMs": 3009,
+        "effectiveInputHzPerClient": 9.97,
+        "minimumSnapshots": 59,
         "chatBroadcastP95Ms": 43,
         "scope": "single local machine; short functional load, not capacity benchmark"
       }
@@ -214,7 +214,7 @@
     {
       "name": "hundred_client_local_room_split",
       "status": "passed",
-      "durationMs": 5553,
+      "durationMs": 5386,
       "evidence": {
         "clients": 100,
         "rooms": 4,
@@ -224,24 +224,24 @@
           32,
           4
         ],
-        "joinedMs": 285,
+        "joinedMs": 292,
         "sentInputs": 3000,
-        "durationMs": 3046,
-        "effectiveInputHzPerClient": 9.85,
+        "durationMs": 3005,
+        "effectiveInputHzPerClient": 9.98,
         "minimumSnapshots": 59,
-        "chatBroadcastP95Ms": 45,
+        "chatBroadcastP95Ms": 42,
         "scope": "single local machine; players in different channel rooms do not see each other; not an internet or capacity benchmark"
       }
     }
   ],
   "load": {
     "clients": 20,
-    "joinedMs": 58,
+    "joinedMs": 61,
     "sentInputs": 600,
     "targetInputHzPerClient": 10,
-    "durationMs": 3036,
-    "effectiveInputHzPerClient": 9.88,
-    "minimumSnapshots": 58,
+    "durationMs": 3009,
+    "effectiveInputHzPerClient": 9.97,
+    "minimumSnapshots": 59,
     "chatBroadcastP95Ms": 43,
     "scope": "single local machine; short functional load, not capacity benchmark"
   },
@@ -267,15 +267,15 @@
       32,
       4
     ],
-    "joinedMs": 285,
+    "joinedMs": 292,
     "sentInputs": 3000,
-    "durationMs": 3046,
-    "effectiveInputHzPerClient": 9.85,
+    "durationMs": 3005,
+    "effectiveInputHzPerClient": 9.98,
     "minimumSnapshots": 59,
-    "chatBroadcastP95Ms": 45,
+    "chatBroadcastP95Ms": 42,
     "scope": "single local machine; players in different channel rooms do not see each other; not an internet or capacity benchmark"
   },
-  "finishedAt": "2026-10-02T02:13:49.033Z",
+  "finishedAt": "2026-10-02T02:41:23.884Z",
   "summary": {
     "passed": 16,
     "failed": 0

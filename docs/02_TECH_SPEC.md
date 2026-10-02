@@ -9,13 +9,13 @@
 | 화면 | React 19, Vite 6, Canvas 2D; game/src/main.jsx(UI·입력), render.js(3계층 렌더러), sprites.js(도트 스프라이트), style.css; Galmuri11(OFL, npm `galmuri`) | 미니홈피 프레임, 정수배 도트 렌더링 (ADR-003) |
 | 공용 맵·충돌 | shared/world.js (의존성 없음) | 게임·서버·테스트가 같은 파일 import (ADR-002) |
 | PB 브라우저 | pocketbase SDK; root package.json/package-lock.json | 로그인 authStore와 사용자별 조회 |
-| 실시간 | colyseus.js 0.16 계열, @colyseus/core 0.16.26, @colyseus/ws-transport 0.16.5 | 설치 잠금파일 기준의 0.16 프로토콜 호환 |
+| 실시간 | @colyseus/sdk 0.18.4, @colyseus/core 0.18.18, ws-transport 0.18.4, schema 5.0.35, monitor 0.18.6, express 5.2.1 | Mac mini 설치와 같은 버전(PLAN-004) |
 | 서버 PB SDK | pocketbase 0.28.1; colyseus/config.js | 사용자별 클라이언트와 관리자 저장 클라이언트 분리 |
 | DB·훅 | PocketBase 실행기 고정 0.40.4, pocketbase/pb_hooks/matches.pb.js | 결과·보상 트랜잭션과 superuser 전용 커밋 |
 | 실행·seed | scripts/dev.mjs, dev-backend.mjs, init-pocketbase.mjs | macOS/Linux, curl/unzip, 바이너리 SHA-256 확인, localhost 제한 |
 | 검증 | tests/integration.mjs, tests/report.json | 별도 PB 데이터·outbox, 자기 프로세스만 관리 |
 
-라이브러리의 최신 버전 안내가 아니라 이 저장소의 설치·구현 계약이다. Colyseus 0.16의 `nanoid 2.x` 취약 의존성은 `colyseus/vendor/nanoid` 로컬 대체 모듈로 override했다(colyseus/README.md). 2026-10-02 기준 루트·colyseus `npm audit` 0건이며, 공개 배포 판단 전에는 audit을 다시 실행한다.
+라이브러리의 최신 버전 안내가 아니라 이 저장소의 설치·구현 계약이다. Colyseus 0.18은 패치된 `nanoid 3.3.19`를 쓴다. 2026-10-02 기준 루트·colyseus `npm audit` 0건이며, 배포 전에는 audit을 다시 실행한다. PocketBase는 로컬 0.40.4, Mac mini 0.39.7이며 같은 훅으로 두 버전 모두 통합 15개를 통과했다.
 
 ## 2. 아키텍처
 
@@ -25,7 +25,7 @@
 ```text
 React / Canvas
   ├─ PB 로그인·자기 프로필/결과/인벤토리 읽기 → PocketBase
-  └─ joinOrCreate('town', {token, zone}) → Colyseus Town
+  └─ client.auth.token=PB 토큰, joinOrCreate('town', {zone}) → Colyseus Town
        ├─ per-user PB authRefresh + 자기 프로필 읽기
        ├─ 입력 → 서버 이동·충돌 / 채팅·presence / 게임·점수
        └─ 라운드 종료 → 디스크 outbox
@@ -42,7 +42,7 @@ React / Canvas
 
 관련: FR-001/006, BR-001/007.
 
-브라우저는 `users.authWithPassword(email,password)`로 PB 로그인하고 토큰을 방 입장에 전달한다. 서버는 입장마다 새 PB 인스턴스를 생성해 `authStore.save(token)` 후 `users.authRefresh()`를 호출한다. 사용자 ID는 응답 record.id, 이름·색은 자기 profiles 조회에서 확정한다. 인증 저장소를 여러 사용자 간 공유하지 않는다. PB 요청은 5초 타임아웃이다.
+브라우저는 `users.authWithPassword(email,password)`로 PB 로그인하고 토큰을 `client.auth.token`으로 방 입장에 전달한다(서버 `onAuth`의 `context.token`). 서버는 입장마다 새 PB 인스턴스를 생성해 `authStore.save(token)` 후 `users.authRefresh()`를 호출한다. 사용자 ID는 응답 record.id, 이름·색은 자기 profiles 조회에서 확정한다. 인증 저장소를 여러 사용자 간 공유하지 않는다. PB 요청은 5초 타임아웃이다.
 
 토큰·프로필 검증 실패는 401, 허용하지 않은 장소는 400, 같은 사용자의 같은 방 중복 입장은 409다. 전체 장소에 걸친 하나의 세션 제한이나 서버 자동 재접속을 보장하지 않는다. 클라이언트는 연결 끊김 UI에서 명시적 재연결을 제공한다.
 
@@ -78,7 +78,7 @@ DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체
 
 ### API-002 방 입장
 
-`joinOrCreate('town', {token,zone,entry?})`, zone은 lobby/garden/arcade. `entry`는 장소의 고정 입구 이름(`default`, lobby `west`/`east`, garden `west`, arcade `door`)만 쓰고 그 외 값은 `default`로 바꾼다. 같은 입구에 이미 사람이 있으면 서버가 16도트 이내 빈 자리로 비켜 세운다. 클라이언트는 409(이전 소켓 정리 전 재접속)를 700ms 간격 최대 6회 재시도한다. 반환 room의 sessionId는 연결 식별자이며 플레이어 id는 인증된 PB 사용자 ID다.
+`joinOrCreate('town', {zone,entry?})`(토큰은 `client.auth.token`), zone은 lobby/garden/arcade. `entry`는 장소의 고정 입구 이름(`default`, lobby `west`/`east`, garden `west`, arcade `door`)만 쓰고 그 외 값은 `default`로 바꾼다. 같은 입구에 이미 사람이 있으면 서버가 16도트 이내 빈 자리로 비켜 세운다. 클라이언트는 409(이전 소켓 정리 전 재접속)를 700ms 간격 최대 6회 재시도한다. 반환 room의 sessionId는 연결 식별자이며 플레이어 id는 인증된 PB 사용자 ID다.
 
 | 방향 | 메시지 | payload / 서버 규칙 |
 |---|---|---|
@@ -131,7 +131,7 @@ player는 `{id,name,x,y,color,look:{hat,top,pet}}`(look은 카탈로그 슬롯�
 
 ### API-004 건강 상태
 
-`GET http://127.0.0.1:12567/health` → 200 `{ok:true,persistence:{status,pending,lastError}}`. PB 장애에도 프로세스 health는 200일 수 있으므로 persistence를 함께 읽는다. PB health는 `GET http://127.0.0.1:18090/api/health`다.
+`GET http://127.0.0.1:12567/health` → 200 `{ok:true,service,persistence:{status,pending,lastError}}`. `/health/pocketbase`는 서버→PB 연결, `/me`는 Bearer 사용자 토큰 검증, `/monitor/`는 PB superuser Basic 인증 전용이다. HTTP·WebSocket 모두 `ALLOWED_ORIGINS`의 정확한 Origin만 허용한다(Origin 없는 요청은 통과, 인증은 별도). PB 장애에도 프로세스 health는 200일 수 있으므로 persistence를 함께 읽는다. PB health는 `GET http://127.0.0.1:18090/api/health`다.
 
 ## 6. 상태·저장·동기화
 
@@ -174,8 +174,11 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 |---|---|
 | VITE_PB_URL | 브라우저 PB, http://127.0.0.1:18090 |
 | VITE_GAME_URL | 승인된 브라우저 게임 URL 계약, ws://127.0.0.1:12567; 예제와 동일한 변수 |
-| PB_URL | 서버 PB URL, http://127.0.0.1:18090 |
-| SERVER_HOST / SERVER_PORT | Colyseus bind, 127.0.0.1 / 12567 |
+| PB_URL / POCKETBASE_URL | 서버 PB URL, http://127.0.0.1:18090 (Mac mini 8091) |
+| SERVER_HOST / SERVER_PORT / PORT | Colyseus bind, 127.0.0.1 / 12567 (Mac mini 2567) |
+| ALLOWED_ORIGINS / MONITOR_ORIGINS | 정확한 브라우저 Origin 목록, wildcard 없음 |
+| PB_ADMIN_EMAIL / PB_ADMIN_PASSWORD | outbox superuser(Mac mini `.env` 0600). 로컬은 PIXELTOWN_ENV_FILE |
+| `.env.remote` (VITE_PB_URL / VITE_GAME_URL) | `npm run dev:remote`: https://pixeltown.fastmake.net / wss://pixeltown-rt.fastmake.net |
 | PIXELTOWN_LOCAL_DIR | 바이너리·로컬 자산, pocketbase/.local |
 | PIXELTOWN_ENV_FILE | 비공개 관리자 파일, pocketbase/.env.local |
 | PB_DATA_DIR | 로컬 PB 데이터, pocketbase/.local/pb_data |

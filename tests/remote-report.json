@@ -1,0 +1,118 @@
+{
+  "startedAt": "2026-10-02T02:32:23.092Z",
+  "pocketbase": "https://pixeltown.fastmake.net",
+  "realtime": "wss://pixeltown-rt.fastmake.net",
+  "checks": {
+    "auth_and_forgery_rejected": {
+      "ok": true,
+      "invalidToken": 401,
+      "missingToken": 401,
+      "meWithToken": 200,
+      "meWithout": 401,
+      "otherProfileVisible": 0,
+      "profilePatch": 403,
+      "forgedResult": 403,
+      "forgedPurchase": 403,
+      "commitAsUser": 403,
+      "ms": 2558
+    },
+    "two_users_move_chat": {
+      "ok": true,
+      "movedBy": 30,
+      "target": 360,
+      "chatSenderIsServerId": true,
+      "ms": 1859
+    },
+    "zone_separation": {
+      "ok": true,
+      "lobbyPlayers": 1,
+      "gardenPlayers": 1,
+      "crossZoneChat": false,
+      "ms": 1658
+    },
+    "star_cap_collect_and_refill": {
+      "ok": true,
+      "startCountSeen": 5,
+      "cap": 12,
+      "maxObservedAtCap": 12,
+      "collected": 10,
+      "refillId": true,
+      "serverScore": 10,
+      "ms": 73809
+    },
+    "default_3min_settlement_saved": {
+      "ok": true,
+      "matchId": "19d17530-aa35-4ab4-8063-f33507c24fb6",
+      "scoreSaved": 10,
+      "inventoryQuantity": 10,
+      "serverScores": {
+        "bfibz83fzdylm8m": 10
+      },
+      "measuredPeriodMs": 179838,
+      "starsKeptIntoNextPeriod": true,
+      "otherUserCanRead": false,
+      "ms": 103866
+    },
+    "shop_equip_room_and_relogin": {
+      "ok": true,
+      "walletBefore": 10,
+      "walletAfter": 1,
+      "duplicateBuy": 400,
+      "unaffordable": 400,
+      "notOwnedEquip": 400,
+      "doorPlacement": 400,
+      "savedRoom": [
+        {
+          "c": 11,
+          "item": "f_chair",
+          "r": 10
+        }
+      ],
+      "otherSeesHat": true,
+      "reloginLook": "hat_ribbon",
+      "ms": 3701
+    },
+    "monitor_admin_only": {
+      "ok": true,
+      "anonymous": 401,
+      "gameUser": 401,
+      "wrongPassword": 401,
+      "ms": 956
+    },
+    "outbox_outage_restart_recovery": {
+      "ok": true,
+      "matchId": "039f2021-9b62-4f1b-81ec-14c12887c187",
+      "pocketbaseWhileDown": 502,
+      "outboxFilesOnDisk": 1,
+      "pendingAfterColyseusRestart": 1,
+      "flushedStatus": "saved",
+      "savedScore": 1,
+      "ms": 34628
+    }
+  },
+  "users": {
+    "user1": "bfibz83fzdylm8m",
+    "user2": "p2srnojs4omvb9g"
+  },
+  "matchId": "19d17530-aa35-4ab4-8063-f33507c24fb6",
+  "finishedAt": "2026-10-02T02:35:32.538Z",
+  "summary": {
+    "passed": 8,
+    "failed": 0
+  },
+  "serverSide": {
+    "persistence": {
+      "matchId": "19d17530-aa35-4ab4-8063-f33507c24fb6",
+      "replayStatus": 200,
+      "rowsAfterReplay": {
+        "results": 1,
+        "inventory": 1
+      },
+      "conflictingStatus": 400,
+      "partialBatchStatus": 404,
+      "partialRowsWritten": 0,
+      "runner": "tests/remote-persistence.mjs on the Mac mini"
+    }
+  },
+  "outageRunAt": "2026-10-02T02:36:56.261Z"
+}

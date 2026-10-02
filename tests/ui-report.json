@@ -1,14 +1,14 @@
 {
- "startedAt": "2026-10-02T02:13:49.210Z",
- "url": "http://127.0.0.1:5173/",
+ "startedAt": "2026-10-02T02:41:24.054Z",
+ "url": "http://127.0.0.1:5273/",
  "checks": {
   "depth_and_collision_lobby": {
    "ok": true,
    "underCanopy": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 148.51,
-    "y": 171.33,
+    "x": 145.52,
+    "y": 170.9,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -19,8 +19,8 @@
    "inFront": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 147.34,
-    "y": 194.73,
+    "x": 147.62,
+    "y": 195.51,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -31,8 +31,8 @@
    "trunkStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 147.34,
-    "y": 187.23,
+    "x": 147.62,
+    "y": 186.51,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -43,8 +43,8 @@
    "behindHouse": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 120.72,
-    "y": 48.93,
+    "x": 121.58,
+    "y": 49.16,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -55,8 +55,8 @@
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 118.56,
-    "y": 99.8,
+    "x": 120.55,
+    "y": 99.54,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -70,7 +70,7 @@
    "behindCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 107.92,
+    "x": 107.89,
     "y": 190.97,
     "color": "#ffb347",
     "look": {
@@ -82,8 +82,8 @@
    "frontCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 108.59,
-    "y": 222.75,
+    "x": 107.77,
+    "y": 222.91,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -94,8 +94,8 @@
    "behindPillar": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 200.51,
-    "y": 121.11,
+    "x": 200.27,
+    "y": 120.24,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -106,8 +106,8 @@
    "behindCounter": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 540.96,
-    "y": 312.99,
+    "x": 539.52,
+    "y": 312.63,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -118,8 +118,8 @@
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 321.13,
-    "y": 52.13,
+    "x": 322.15,
+    "y": 51.71,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -244,11 +244,11 @@
    "startButton": false,
    "activeOnJoin": true,
    "initial": 5,
-   "minimumSpacing": 193,
+   "minimumSpacing": 163,
    "secondsToNextSettlement": 167,
    "myScore": 3,
    "stillActiveAfterSettlement": true,
-   "notebook": "Demo 1demo1@pixeltown.local별 보상 7개★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오전 11:183점오락실26. 10. 2. 오전 11:033점광장26. 10. 2. 오전 4:440점광장26. 10. 2. 오전 4:411점광장26. 10."
+   "notebook": "Demo 1demo1@pixeltown.local별 보상 12개★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오전 11:453점오락실26. 10. 2. 오전 11:422점오락실26. 10. 2. 오전 11:183점오락실26. 10. 2"
   },
   "shop_dress_pet_and_miniroom": {
    "ok": true,
@@ -288,7 +288,7 @@
     "dy": -3
    },
    "besideBed": {
-    "id": "6bk2powuid3pp5b",
+    "id": "i394ez8z4g78hhe",
     "name": "쇼핑왕",
     "color": "#9fd0ff",
     "look": {
@@ -320,7 +320,7 @@
     "smoothing": false,
     "galmuri": true
    },
-   "mobileDpadMoved": 36,
+   "mobileDpadMoved": 33,
    "mobile": {
     "scroll": [
      390,
@@ -339,7 +339,7 @@
     "galmuri": true,
     "sendButtonVisible": true
    },
-   "landscapeDpadMoved": 33,
+   "landscapeDpadMoved": 36,
    "landscape": {
     "scroll": [
      844,
@@ -379,6 +379,6 @@
    }
   }
  },
- "finishedAt": "2026-10-02T02:18:31.735Z",
+ "finishedAt": "2026-10-02T02:46:07.092Z",
  "status": "passed"
 }

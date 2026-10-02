@@ -42,6 +42,16 @@ PIXELTOWN_PB_PORT=18190 PIXELTOWN_GAME_PORT=12667 PIXELTOWN_WEB_PORT=5273 npm ru
 
 Ctrl+C는 이 실행으로 시작한 서버들을 종료한다.
 
+### Mac mini 서버에 연결 (원격 모드)
+
+게임 서버는 Mac mini의 PocketBase(`https://pixeltown.fastmake.net`)와 Colyseus(`wss://pixeltown-rt.fastmake.net`)에도 설치되어 있다. 프런트만 이 컴퓨터에서 띄워 원격 서버로 플레이한다.
+
+```sh
+npm run dev:remote   # → http://127.0.0.1:5173 (.env.remote의 공개 주소 사용)
+```
+
+원격에는 로컬 데모 계정이 없다. 원격 테스트 계정은 무작위 암호로 만들었고 자격증명은 `pocketbase/.local/remote-accounts.json`(git 제외)에만 있다. 서버 배치·백업·운영은 [docs/SERVER_OPERATIONS.md](docs/SERVER_OPERATIONS.md)를 참고한다.
+
 ## 확인할 플레이 흐름
 
 1. 서로 다른 계정으로 입장한다. 미니홈피 프레임의 TODAY 숫자와 제목줄에 접속 인원이 보인다.
@@ -80,6 +90,7 @@ PocketBase는 사용자·프로필·방 메타데이터·결과·보상 원장�
 npm --prefix colyseus run init  # 아직 한 번도 실행하지 않았다면 바이너리와 시드 준비
 npm run test:integration   # 기본 포트가 사용 중이면 PIXELTOWN_TEST_PB_PORT / PIXELTOWN_TEST_GAME_PORT 지정
 PIXELTOWN_LOAD_100=1 npm run test:integration   # 선택: 100명 채널 방 분할 측정 추가
+node tests/remote-check.mjs  # 선택: Mac mini 원격 2유저 기능 검증(약 4분)
 npm --prefix colyseus test # 맵 연결성·깊이·충돌·별 상한 단위 테스트
 npm run build
 # 브라우저 검증: dev 서버 실행 중에 (Chromium 경로 지정)

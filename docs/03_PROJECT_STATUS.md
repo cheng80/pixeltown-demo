@@ -1,6 +1,6 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `965d266`(main, 재제작·PLAN-003 병합 완료). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-003.
+갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `576b261`(main). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-004(Mac mini 서버 이전, Colyseus 0.18). 서버 주소·배치·백업은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md).
 
 ## 1. 로드맵
 
@@ -12,14 +12,26 @@
 | M4 | 공개 GitHub 단계별 게시 | 완료 (`dc2e191`) |
 | M5 | 싸이월드 도트 감성 재제작 (PLAN-002) | 구현·검증 완료, main 병합(`965d266`). **사용자 디자인 승인 대기** |
 | M6 | 상시 별 이벤트·별 상점·옷장·펫·미니룸·클릭 이동·큰 채팅 (PLAN-003) | 구현·검증 완료, main 병합(`965d266`). 사용자 확인 대기 |
+| M7 | Mac mini PocketBase 0.39.7·Colyseus 0.18 이전, 로컬 프런트 원격 연동 (PLAN-004) | 이전·원격 검증 완료(원격 8/8, 서버 측 멱등·롤백, outbox 장애 복구) |
 
 ## 2. 계획
 
 - `plans/PLAN-001.md` — DONE. 1차 로컬 멀티플레이 데모. 백엔드 계약은 유지, 화면·맵·충돌은 PLAN-002로 대체.
 - `plans/PLAN-002.md` — DONE(구현·검증). 디자인 최종 승인은 사용자 판단.
+- `plans/PLAN-004.md` — DONE(이전·검증). Mac mini 서버 이전, Colyseus 0.18·`@colyseus/sdk` 전환, 백업·롤백.
 - `plans/PLAN-003.md` — DONE(구현·검증). 2026-10-02 추가 피드백(별 얼굴, 상시 이벤트, 상점·꾸미기·미니룸, 채팅·마우스 이동).
 
-## 3. 현재 작업 (PLAN-003)
+## 3. 현재 작업 (PLAN-004)
+
+- [x] S1 원격 읽기 전용 조사·SQLite online 백업·코드/훅/설정 백업
+- [x] S2 저장소 Colyseus 0.18.18·`@colyseus/sdk 0.18.4` 전환(토큰 `context.token`, `moveInputs`, express·Monitor 보호·Origin 공용 서버), nanoid 대체 모듈 제거, PB 0.39.7 훅 호환(통합 15/15)
+- [x] S3 원격 배치(app·독립 node_modules, outbox superuser·.env, 게임 훅·스키마 멱등 추가, 진입점 교체·Colyseus만 재시작)
+- [x] S4 무작위 암호 테스트 계정 2개, `tests/remote-check.mjs` 7/7(기본 3분 정산 포함)
+- [x] S5 Mac mini 서버 측 멱등·충돌·롤백, outbox 장애·재시작 복구(30초 단축 후 원복)
+- [x] S6 로컬 프런트 `npm run dev:remote` 2유저 브라우저 확인
+- [x] S7 문서(SERVER_OPERATIONS·verification 10절·TECH_SPEC·README·colyseus README)
+
+### 이전 작업 (PLAN-003)
 
 - [x] S1 별 그림(다리 사이 막대 제거) · S2 상시 이벤트·6초·넓은 배치·3분 정산 · S3 최단 경로·채팅 클릭 통과·큰 채팅 (`a01afab`)
 - [x] S4 카탈로그·purchases·shop 훅 · S5 모자·옷·펫 표시와 서버 look · S6 미니룸 배치·저장
@@ -42,7 +54,10 @@
 
 ## 5. 막힘 / 알려진 문제
 
-- 해결: `nanoid 2.x` audit 3건은 같은 API의 로컬 대체 모듈(`colyseus/vendor/nanoid`) override로 0건이 되었다. Colyseus 0.17+로 올리면 override를 제거한다.
+- 해결: Colyseus 0.18 전환으로 패치된 `nanoid 3.3.19`를 쓰고, 0.16용 대체 모듈은 제거했다. `npm audit` 0건.
+- `NEEDS-DECISION` 원격 `users`는 공개 가입이 열려 있다(기존 설정 보존). 가입만 한 사용자는 게임 `profiles`가 없어 입장이 거부된다. 프로필 자동 생성(서버 훅) 또는 가입 차단 중 하나를 정해야 한다. 현재 계정은 `scripts/provision-accounts.mjs`로 만든다.
+- 원격 outbox 저장은 전용 superuser(`colyseus-outbox@pixeltown.local`)를 쓴다. 이 계정도 Monitor에 로그인할 수 있으므로 `.env`(0600) 보호가 전제다.
+- 프런트 번들이 501KB로 Vite 500KB 경고 경계다(`@colyseus/sdk` 0.18). 필요하면 코드 분할한다.
 - 실제 iPhone/Android 가상 키보드·성능, 외부 배포·TLS·지속 운영은 미검증이다. 100명은 로컬 단일 머신에서 채널 방 자동 분할(32/32/32/4)까지만 측정했다(통합 opt-in). 한 화면 100명 동시 표시는 지원하지 않는다.
 - 클라이언트 예측 없이 서버 50ms snapshot을 보간한다. localhost에서는 자연스러웠으나 인터넷 지연 조작감은 미측정이다.
 - 그래픽은 절차 도트다. 사용자 디자인 승인 전이며 피드백에 따라 팔레트·소품을 조정한다.
@@ -53,8 +68,9 @@
 ## 6. 다음 작업
 
 1. 사용자 디자인 검토 피드백을 반영한다(승인 대기).
-2. 한 장소 32명 초과를 한 화면에 보여야 하는 요구가 확정되면 delta snapshot·관심 영역을 설계한다. 현재는 채널 방 자동 분할이다.
-3. 외부 배포·실기기 키보드·인터넷 지연 측정은 배포 환경과 실기기가 필요하다. 이 개발 세션은 loopback·운영 인증 금지 정책으로 수행하지 않는다. 외부 배포 전 Colyseus 0.17+ 업그레이드를 검토한다.
+2. 원격 공개 가입 사용자 프로필 처리(위 NEEDS-DECISION)를 정한다.
+3. 한 장소 32명 초과를 한 화면에 보여야 하는 요구가 확정되면 delta snapshot·관심 영역을 설계한다. 현재는 채널 방 자동 분할이다.
+4. 실기기 키보드·인터넷 지연 측정은 실기기와 실제 사용자 환경이 필요하다. 원격 서버는 소수 기능 테스트만 하고 공개 경로 부하는 하지 않는다.
 4. PWA·앱 포장은 웹 핵심 플레이 검증 후 별도 계획으로 다룬다.
 
 ## 7. 인수인계
@@ -67,7 +83,8 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 ## 8. 변경된 계약
 
-- 2026-10-02 재개: 정면 볼 때 펫을 주인 옆에 배치, `colyseus/vendor/nanoid` override, 통합 opt-in `hundred_client_local_room_split`, `scripts/dev.mjs`·`dev-backend.mjs`가 자식 종료를 기다린 뒤 끝나도록 변경(PocketBase 종료가 늦을 때 포트가 남아 재시작이 거부되던 문제).
+- PLAN-004: Colyseus 0.16 → 0.18.18, 클라이언트 `colyseus.js` → `@colyseus/sdk 0.18.4`. 토큰은 join 옵션의 `token`이 아니라 `client.auth.token`(서버 `context.token`). 서버에 express·`/health/pocketbase`·`/me`·`/monitor/`(PB superuser)·`ALLOWED_ORIGINS` 추가, `/health`에 `service`. 환경변수 `POCKETBASE_URL`·`PORT`·`PB_ADMIN_*`(프로세스 환경 우선)·`MONITOR_ORIGINS` 인식. `seed(_, {remote:true})`, `provision-accounts.mjs`, `deploy-macmini.sh`, `.env.remote`·`npm run dev:remote`, 훅 카탈로그 경로 `pb_hooks/catalog.json` 우선. `vendor/nanoid`와 그 단위 테스트 제거.
+- 2026-10-02 재개: 정면 볼 때 펫을 주인 옆에 배치, `colyseus/vendor/nanoid` override(PLAN-004에서 제거), 통합 opt-in `hundred_client_local_room_split`, `scripts/dev.mjs`·`dev-backend.mjs`가 자식 종료를 기다린 뒤 끝나도록 변경(PocketBase 종료가 늦을 때 포트가 남아 재시작이 거부되던 문제).
 - PLAN-003: `startGame` 메시지 제거, 별 30초 라운드 → 상시 이벤트(6초 생성·3분 정산·0점 미기록·별 유지). 메시지 `look` 추가, player에 `look`, game에 `id`. PB `purchases` 컬렉션과 profiles `outfit`/`room` 필드, `/api/pixeltown/shop/{buy,equip,room}` 훅. `shared/catalog.json` 추가. 구 `scripts/verify-backend.mjs`·`verify-stars.mjs` 제거(통합 테스트로 대체).
 - 재제작(PLAN-002): 월드 960×640 단일 지형 → 장소별 640×416 타일맵. 수집 거리 32 → 16도트, 서버 틱 100 → 50ms, 이동 3도트/틱. `joinOrCreate` 옵션에 `entry` 추가(고정 입구 이름만 허용). 충돌 정본이 `colyseus/town.js`에서 `shared/world.js`로 이동.
 
@@ -84,22 +101,25 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 | 항목 | 결과 | 근거 | 날짜 | 리비전 | 유효성 | 출처 / 공백 |
 |---|---|---|---|---|---|---|
-| 단위 19개(맵·깊이·충돌 9, 상점·미니룸 4, nanoid 1 포함) | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | `npm --prefix colyseus test` |
-| 통합 15개 + 100명 opt-in 1개(별도 포트 18191/12668) | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | `tests/report.json` |
-| 브라우저 UI 7개 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
+| 단위 18개(Colyseus 0.18 서버) | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | `npm --prefix colyseus test` |
+| 통합 15개 + 100명 opt-in 1개(0.18, 별도 포트 18191/12668) | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | `tests/report.json`. PB 0.39.7 바이너리로도 15/15 |
+| 브라우저 UI 7개(로컬 5273) | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
+| **원격** Mac mini 2유저 기능·보안·기본 3분 정산·상점·미니룸·Monitor | PASS 7/7 | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | `tests/remote-report.json`, verification 10절 |
+| **원격** 멱등·충돌·롤백, outbox 장애·재시작 복구 | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | `tests/remote-persistence.mjs`, `PIXELTOWN_REMOTE_OUTAGE=1` |
+| **원격** 로컬 프런트 원격 모드 2유저 | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | `tests/remote-ui.mjs`, `docs/assets/remote-lobby-two-users.png` |
 | 깊이·충돌·맵 AC-014/015 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 실제 클릭·방향키 이동 좌표와 앞/뒤 스크린샷 |
 | 도트 스케일·4 뷰포트 AC-011/016 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | scroll=viewport, 정수 배율 3/6, smoothing false |
 | 상시 별 이벤트·기본 3분 정산 AC-007/008/013 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 브라우저 기본값, 통합 단축값 |
 | 상점·옷장·펫·미니룸 AC-017–019 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 통합 위조·동시 구매, 브라우저 2유저 |
 | 클릭 이동·큰 채팅 AC-020 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 채팅 위 클릭·키 취소·막힌 곳 |
-| 빌드 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | `npm run build` |
+| 빌드 | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | `npm run build`, JS 501KB |
 | 미니룸·정면 펫 가림 수정 | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | UI `petFacingDown` dx −14, 스크린샷 |
-| npm audit(루트·colyseus) | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | 0건, `npm ci` 재현, `test/ids.test.js` |
+| npm audit(루트·colyseus·원격 app) | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | 0건 |
 | 100명 로컬 채널 분할 | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | `PIXELTOWN_LOAD_100=1`, `tests/report.json` load100 |
 | launcher 종료 시 포트 해제 | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | SIGTERM 후 launcher 종료 시점에 3포트 비어 있음 |
 | 디자인 승인 | PENDING | NONE | - | - | UNKNOWN | 사용자 판단 |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
-| 인터넷 지연·운영 배포·한 화면 100명 | NOT_RUN | NONE | - | - | UNKNOWN | 배포 환경 필요, 범위 밖 |
+| 공개 경로 부하·인터넷 지연·한 화면 100명·관리자 Monitor 로그인 | NOT_RUN | NONE | - | - | UNKNOWN | 정책상 금지 또는 관리자 암호 미사용 |
 
 거절판(`9bc3d66`)의 화면 증거는 삭제했고 백엔드 검증은 위 재실행으로 대체했다.
 
@@ -109,9 +129,14 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 ```sh
 npm install && npm --prefix colyseus install
-npm run dev:all   # main 체크아웃: http://127.0.0.1:5173, PB 18090, Colyseus 12567 (첫 실행 시 PB·demo 계정 seed)
+npm run dev:remote   # 원격 모드: http://127.0.0.1:5173 → Mac mini (계정: pocketbase/.local/remote-accounts.json)
+PIXELTOWN_PB_PORT=18190 PIXELTOWN_GAME_PORT=12667 PIXELTOWN_WEB_PORT=5273 npm run dev:all   # 독립 로컬 모드: http://127.0.0.1:5273, demo1/demo2
 npm --prefix colyseus test
-PIXELTOWN_TEST_PB_PORT=18191 PIXELTOWN_TEST_GAME_PORT=12668 npm run test:integration
-CHROME_PATH=/path/to/chromium PIXELTOWN_WEB_PORT=5173 PIXELTOWN_PB_PORT=18090 node tests/ui-check.mjs   # UI_ONLY=shop 처럼 일부만
+PIXELTOWN_TEST_PB_PORT=18191 PIXELTOWN_TEST_GAME_PORT=12668 npm run test:integration   # PIXELTOWN_LOAD_100=1, PIXELTOWN_PB_BINARY=…/pb-0.39.7/pocketbase 선택
+CHROME_PATH=/path/to/chromium PIXELTOWN_WEB_PORT=5273 PIXELTOWN_PB_PORT=18190 node tests/ui-check.mjs   # UI_ONLY=shop 처럼 일부만
 npm run build
+node tests/remote-check.mjs                              # 원격 2유저 기능(약 4분, 기본 3분 정산)
+PIXELTOWN_REMOTE_OUTAGE=1 node tests/remote-check.mjs    # 원격 outbox 장애 복구(SSH, PB를 잠시 중단)
+CHROME_PATH=/path/to/chromium node tests/remote-ui.mjs  # dev:remote 실행 중 브라우저 2유저
+scripts/deploy-macmini.sh                                # 원격 코드 갱신(Colyseus만 재시작)
 ```

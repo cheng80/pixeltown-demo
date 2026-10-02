@@ -1,23 +1,23 @@
 # 검증 증거 (재제작판)
 
-검증일: 2026-10-02 (Asia/Seoul). 최초 증거는 브랜치 `cheng80/cyworld-remake`(`a714104`)에서 만들었고, main 병합(`965d266`) 후 main 체크아웃에서 단위·통합·UI·build를 다시 실행해 모두 통과했다. 1절 수치·5절 별 간격과 `docs/assets/` 스크린샷은 재확인 실행 값이다. 2–8절의 상세 좌표·문장은 최초 실행 기록이며 재실행 원값은 `tests/ui-report.json`에 있다(차이는 1도트 안팎). 1–4·6절은 PLAN-002 판(`12aefce`) 증거를 PLAN-003 코드로 다시 실행해 통과했다. 5·7·8절은 PLAN-003(상시 별 이벤트·별 상점·미니룸·클릭 이동) 증거다. 진행 상태 정본은 [PROJECT_STATUS](03_PROJECT_STATUS.md)다. 거절된 1차 판(`dc2e191`)의 화면 증거는 삭제했다.
+검증일: 2026-10-02 (Asia/Seoul). 최초 증거는 브랜치 `cheng80/cyworld-remake`(`a714104`)에서 만들었고, main 병합(`965d266`) 후 main 체크아웃에서 단위·통합·UI·build를 다시 실행해 모두 통과했다. 1절 수치·5절 별 간격과 `docs/assets/` 스크린샷은 재확인 실행 값이다. 2–8절의 상세 좌표·문장은 최초 실행 기록이며 재실행 원값은 `tests/ui-report.json`에 있다(차이는 1도트 안팎). 1–4·6절은 PLAN-002 판(`12aefce`) 증거를 PLAN-003 코드로 다시 실행해 통과했다. 5·7·8절은 PLAN-003(상시 별 이벤트·별 상점·미니룸·클릭 이동) 증거다. PLAN-004에서 Colyseus 0.18로 올린 뒤 1절 자동 테스트와 UI를 다시 실행했다. Mac mini 원격 검증은 10절에 따로 적었다(로컬 결과와 섞지 않는다). 진행 상태 정본은 [PROJECT_STATUS](03_PROJECT_STATUS.md)다. 거절된 1차 판(`dc2e191`)의 화면 증거는 삭제했다.
 
-실행 환경: 최초 검증은 재제작 worktree 전용 개발 서버(Vite 5273, PB 18190, Colyseus 12667), 병합 후 재확인은 main 체크아웃 기본 개발 서버(Vite 5173, PB 18090, Colyseus 12567). 통합 테스트는 두 경우 모두 전용 서버(PB 18191, Colyseus 12668)와 임시 DB를 쓴다. 외부 접속은 PocketBase 공식 바이너리 다운로드(checksum 검증)와 원본 사이트 읽기 전용 관찰(MQTT 차단)뿐이다.
+실행 환경: 최초 검증은 재제작 worktree 전용 개발 서버(Vite 5273, PB 18190, Colyseus 12667), 병합 후 재확인은 main 체크아웃 기본 개발 서버(Vite 5173, PB 18090, Colyseus 12567). PLAN-004 이후 로컬 독립 모드는 Vite 5273, PB 18190, Colyseus 12667(5173은 원격 모드 프런트). 통합 테스트는 두 경우 모두 전용 서버(PB 18191, Colyseus 12668)와 임시 DB를 쓴다. 외부 접속은 PocketBase 공식 바이너리 다운로드(checksum 검증)와 원본 사이트 읽기 전용 관찰(MQTT 차단)뿐이다.
 
 ## 1. 자동 테스트
 
 | 명령 | 결과 | 내용 |
 |---|---|---|
-| `npm --prefix colyseus test` | 19/19 | outbox·별 상한·정산·PB 훅 5개, 맵·깊이·충돌 9개, 상점 카탈로그·미니룸 규칙(화면·훅 대조)·미니룸 맵·look 4개, nanoid 대체 모듈 1개 |
-| `PIXELTOWN_LOAD_100=1 PIXELTOWN_TEST_PB_PORT=18191 PIXELTOWN_TEST_GAME_PORT=12668 npm run test:integration` | 16/16 | [tests/report.json](../tests/report.json) — 기본 15개 + 100명 채널 분할 opt-in 1개 |
-| `CHROME_PATH=… PIXELTOWN_WEB_PORT=5173 PIXELTOWN_PB_PORT=18090 node tests/ui-check.mjs` | 7/7 | [tests/ui-report.json](../tests/ui-report.json), 스크린샷 `docs/assets/` |
-| `npm run build` | 통과 | JS 459KB(gzip 146KB), Galmuri11 woff2 2개 671KB |
+| `npm --prefix colyseus test` | 18/18 | outbox·별 상한·정산·PB 훅 5개, 맵·깊이·충돌 9개, 상점 카탈로그·미니룸 규칙(화면·훅 대조)·미니룸 맵·look 4개. Colyseus 0.18 서버 기준. 0.16용 nanoid 대체 모듈 검사는 모듈과 함께 제거 |
+| `PIXELTOWN_LOAD_100=1 PIXELTOWN_TEST_PB_PORT=18191 PIXELTOWN_TEST_GAME_PORT=12668 npm run test:integration` | 16/16 | [tests/report.json](../tests/report.json) — 기본 15개 + 100명 채널 분할 opt-in 1개. Colyseus 0.18·`@colyseus/sdk` 기준. 같은 훅으로 PB 0.39.7 바이너리(`PIXELTOWN_PB_BINARY`)에서도 15/15 |
+| `CHROME_PATH=… PIXELTOWN_WEB_PORT=5273 PIXELTOWN_PB_PORT=18190 node tests/ui-check.mjs` | 7/7 | [tests/ui-report.json](../tests/ui-report.json), 스크린샷 `docs/assets/` |
+| `npm run build` | 통과 | JS 501KB(gzip 159KB, `@colyseus/sdk` 0.18), Galmuri11 woff2 2개 671KB |
 
 신규 단위 테스트(`colyseus/test/world.test.js`): 세 장소 모두 입구가 비어 있음, 걷는 8도트 칸 전부가 시작점과 연결(고립 0), 출입구 도달 가능, 세 맵의 타일·소품 구성이 서로 다름, 모든 footprint가 그림 안·그림 넓이 60% 미만·발선에 붙음, 나무 수관 아래 통과·밑동 차단, 건물 벽 바닥 차단·지붕 뒤 잔디 도달, 물·오락실 벽 차단·다리 횡단, 밑동 모서리 비켜가기, 오락기 섬 뒤 통과, 서버 입구 이름 검증(`__proto__` 등 거부).
 
-통합 테스트 주요 수치(생성 1.5초·정산 30초로 단축): 별 5 → 생성 간격 1500–1550ms → 10.1초에 12개 → 3.1초간 12 유지 → 회수 후 1037ms에 새 ID로 12 복귀, 12개일 때 별 사이 최소 거리 102도트, 정산 직후 같은 별로 다음 기간 계속. 점수 있는 사람만 결과 행(0점 행 0개). 20명 smoke: 입장 58ms, 입력 600개(클라이언트당 9.9Hz), snapshot 최소 58회, 채팅 p95 43ms. 단일 머신 짧은 기능 점검이며 수용량 측정이 아니다. 채팅 지연 값은 테스트의 40ms 폴링 해상도에 묶인다.
+통합 테스트 주요 수치(생성 1.5초·정산 30초로 단축): 별 5 → 생성 간격 1526–1532ms → 10.1초에 12개 → 3.1초간 12 유지 → 회수 후 572ms에 새 ID로 12 복귀, 12개일 때 별 사이 최소 거리 101도트, 정산 직후 같은 별로 다음 기간 계속. 점수 있는 사람만 결과 행(0점 행 0개). 20명 smoke: 입장 61ms, 입력 600개(클라이언트당 10.0Hz), snapshot 최소 59회, 채팅 p95 43ms. 단일 머신 짧은 기능 점검이며 수용량 측정이 아니다. 채팅 지연 값은 테스트의 40ms 폴링 해상도에 묶인다.
 
-100명 로컬 측정(`PIXELTOWN_LOAD_100=1`, opt-in): 100명이 광장에 입장하면 채널 방 4개(32/32/32/4)로 자동 분할된다. 모든 클라이언트가 자기 방 인원만 정확히 본다. 입장 285 ms, 입력 3000개(클라이언트당 9.85 Hz), snapshot 최소 59회, 방 안 채팅 p95 45ms. 다른 채널 방 사람은 서로 보이지 않는다. 인터넷·운영 수용량 측정이 아니다.
+100명 로컬 측정(`PIXELTOWN_LOAD_100=1`, opt-in): 100명이 광장에 입장하면 채널 방 4개(32/32/32/4)로 자동 분할된다. 모든 클라이언트가 자기 방 인원만 정확히 본다. 입장 292 ms, 입력 3000개(클라이언트당 9.98 Hz), snapshot 최소 59회, 방 안 채팅 p95 42ms. 다른 채널 방 사람은 서로 보이지 않는다. 인터넷·운영 수용량 측정이 아니다.
 
 ## 2. 깊이·충돌 (AC-014) — 실제 브라우저에서 클릭 이동과 방향키로 확인
 
@@ -136,3 +136,26 @@ Demo 1이 오락실에 들어가자 시작 버튼 없이 바로 진행 중이었
 - 연습 모드(혼자 둘러보기)는 이동·별 생성·연습 점수만 확인했고 서버 기록은 만들지 않는다. 연습 모드에는 상점·미니룸이 없다.
 - 다른 사람의 미니룸 방문은 범위 밖이다. 미니룸은 자기 브라우저에서만 걷는다.
 - 브라우저 상점 검증은 개발 DB에 임시 계정(`ui-*@pixeltown.local`)과 지급 별을 남긴다.
+
+## 10. Mac mini 원격 검증 (PLAN-004, 2026-10-02)
+
+로컬 결과(1–9절)와 별개인 원격 증거다. 대상은 Mac mini PocketBase 0.39.7(`https://pixeltown.fastmake.net`, 내부 8091)과 Colyseus 0.18.18(`wss://pixeltown-rt.fastmake.net`, 내부 2567)이다. 서버 배치·백업·롤백은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md) 6절에 있다. 원본은 [tests/remote-report.json](../tests/remote-report.json)이며 자격증명·토큰은 기록하지 않았다. 계정은 무작위 암호 테스트 계정 2개(Tester 1/2)다.
+
+| 검사 | 결과 |
+|---|---|
+| 인증·위조 (`node tests/remote-check.mjs`) | 잘못된 토큰·토큰 없음 입장 401, `/me` 토큰 200·없음 401, 타인 프로필 0건, 프로필 PATCH 403, 결과·구매 직접 생성 403, 사용자 토큰 `commit-match` 403, 미로그인 결과 조회 0건 |
+| 2유저 이동·채팅 | 상대 화면에서 30도트 이동 확인. `id`를 위조한 채팅도 서버가 발신자를 실제 사용자 ID로 바꿈 |
+| 장소 분리 | 광장 1명·정원 1명, 광장 채팅이 정원에 전달되지 않음 |
+| 별 이벤트(기본 6초) | 시작 5개 → 12개 상한, 상한에서 8초 동안 최대 12, 10개 회수(서버 점수 10), 새 ID로 보충 |
+| 기본 3분 정산 | 다음 기간 `endsAt` − 정산 시각 = 179,838ms. 결과 점수 10·별 보상 10 저장, 다른 사용자는 조회 0건, 별은 다음 기간으로 유지 |
+| 상점·미니룸·재로그인 | 지갑 10 → 리본 모자(5)·의자(4) 구매 후 1. 중복 구매·잔액 부족·미보유 장착·문 앞 배치 400. 의자 (11,10) 저장. 상대가 모자를 봄. 새 로그인에서 outfit·room·입장 look 복원 |
+| Monitor | 미로그인·게임 사용자 Basic·오답 모두 401 |
+| 멱등·원자성 (Mac mini에서 `tests/remote-persistence.mjs`) | 같은 결과 재전송 200 후에도 results·inventory 각 1행, 다른 점수 재전송 400, 없는 두 번째 참가자 포함 배치 404·기록 0행(롤백) |
+| outbox 장애·재시작 (`PIXELTOWN_REMOTE_OUTAGE=1`) | 정산 주기를 30초로 줄이고 1점 수집 → PB 중단(공개 502) → 정산이 디스크 outbox 1건으로 남음 → Colyseus 재시작 후에도 pending 1 → PB 복귀 후 saved, 점수 1 저장. 끝에 단축값 제거·PB 기동 확인. 이후 화면 HUD가 "다음 정산까지 2:57"로 기본값 복귀를 보임 |
+| 로컬 프런트 원격 모드 (`npm run dev:remote`, `node tests/remote-ui.mjs`) | 5173에서 2유저 로그인·같은 방·채팅. 요청 대상 `https://pixeltown.fastmake.net`, `wss://pixeltown-rt.fastmake.net`. 페이지 오류 0 |
+
+![원격 서버 광장 2유저](assets/remote-lobby-two-users.png)
+
+초기 실패와 수정: 원격 UI 스크립트의 채팅 확인이 접힌 채팅창 때문에 두 번 시간 초과했다(서버 문제 아님, 두 브라우저는 같은 방에 있었다). outbox 시험 스크립트는 상수 초기화 순서 오류로 한 번 원격 변경 없이 중단했고, 한 번은 끊긴 방의 `leave()`가 멈춰 보고서를 쓰지 못했다(저장은 완료). 수정 후 각각 통과했다.
+
+미검증: 공개 경로 부하(정책상 금지, 100명은 로컬만), 관리자 계정으로 Monitor 화면 로그인(관리자 암호를 쓰지 않음), 실제 모바일 기기, 원격에서 진행 중 경기의 강제 종료 복원(설계상 미지원).
