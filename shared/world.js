@@ -9,7 +9,7 @@ export const ZONE_IDS = ['lobby', 'garden', 'arcade'];
 export const FOOT = { hw: 5, hh: 3 }; // player ground box half extents
 export const STEP_PER_TICK = 3; // px per 50ms server tick (60 px/s)
 export const TICK_MS = 50;
-export const MAX_QUEUED_INPUTS = 20; // the server keeps 1 s of steps; a client stops predicting a few steps before that
+export const MAX_QUEUED_INPUTS = 60; // 3 s of steps: the server keeps that many, a client stops predicting a few steps before (a 1 s ping alone keeps ~20 in flight)
 // Star pickup = the avatar body box overlaps the drawn star box. Boxes are [x, y, w, h] from the foot point and
 // match the sprites (render.js draws the avatar body ~25 dots tall, the 13x13 star 3-16 dots above its foot point).
 export const BODY_BOX = [-7, -25, 14, 25];

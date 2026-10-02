@@ -156,10 +156,11 @@ export class Town extends Room {
       const entry=this.moveInputs.get(session);
       if(!entry)continue;
       // One step per 50 ms of real time, counted from the clock and not from ticks (a timer runs 51-52 ms late; a
-      // tick-counted credit fell behind a walking client by ~1 s a minute). Credit is kept for up to 1 s (the queue
-      // size): on the internet inputs stall and then arrive in a burst, and a credit capped at 2 steps could never catch
-      // up, so the backlog grew until the queue overflowed and the avatar snapped back. Over any longer stretch a client
-      // still gets at most one step per 50 ms, however fast it sends.
+      // tick-counted credit fell behind a walking client by ~1 s a minute). Credit is kept for up to the queue size
+      // (3 s): on the internet inputs stall and then arrive in a burst, and a small credit could never catch up, so the
+      // backlog grew until the queue overflowed and the avatar snapped back. Over any longer stretch a client still
+      // gets at most one step per 50 ms, however fast it sends.
+      // ponytail: a client idle for 3 s may spend 60 steps at once (180 dots); lower the cap if that gets abused.
       entry.credit=Math.min(MAX_QUEUED_INPUTS,entry.credit+(entry.at===undefined?1:(now-entry.at)/TICK_MS));entry.at=now;
       while(entry.credit>=1&&entry.queue.length){
         const input=entry.queue.shift();entry.credit--;

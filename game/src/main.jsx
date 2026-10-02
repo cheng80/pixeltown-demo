@@ -272,7 +272,7 @@ function App() {
         s.players = [{ id: user.id, name: profileRef.current?.name || user.name || "나", color: profileRef.current?.color, look: { ...profileRef.current?.outfit, ...profileRef.current?.avatar }, ...soloPos.current }];
         setSnap({ ...s });
       } else if (room.current && pending.current.length >= MAX_QUEUED_INPUTS - 4) {
-        // The server has not confirmed ~1 s of steps (the connection stalled): wait in place instead of predicting further
+        // The server has not confirmed ~3 s of steps (the connection stalled): wait in place instead of predicting further
         // ahead. Past the server's queue the oldest steps would be dropped and the avatar would snap back when it resumes.
       } else if (room.current) {
         const msg = `${dx.toFixed(2)},${dy.toFixed(2)}`;
@@ -298,7 +298,7 @@ function App() {
     if (!entered || !canvasRef.current) return;
     const view = (viewRef.current = createView(canvasRef.current)), sc = scene(map), anim = new Map();
     let raf, last = performance.now();
-    window.__pixeltown = { view, zone, anim, state, route, marker, picked, corrections, self: selfId }; // read-only hooks for UI verification scripts
+    window.__pixeltown = { view, zone, anim, state, route, marker, picked, corrections, pending, self: selfId }; // read-only hooks for UI verification scripts
     const frame = t => {
       const dt = Math.min(0.05, (t - last) / 1000); last = t;
       const s = state.current, now = Date.now(), avatars = [], renderT = now - serverClock.current.offset - 100;

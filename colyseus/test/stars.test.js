@@ -113,7 +113,7 @@ test('inputs are one step each, acknowledged, and sending faster never moves fas
   const tick=t=>{const before=e.queue.length;r.tick(t);consumed+=before-e.queue.length;};
   const x0=p.x;send(1);tick(1050);
   assert.equal(p.ack,1);assert(Math.abs(p.x-x0+3)<0.01,'one input = one 3-dot step');
-  // A client flooding 4 inputs every tick for 10 s gets at most one step per 50 ms plus the 1 s burst allowance.
+  // A client flooding 4 inputs every tick for 10 s gets at most one step per 50 ms plus the 3 s burst allowance.
   consumed=0;for(let t=0;t<200;t++){send(4);tick(2000+t*50);}
   assert(consumed<=200+MAX_QUEUED_INPUTS,`consumed ${consumed} steps in 200 ticks`);
 });
