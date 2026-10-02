@@ -94,6 +94,14 @@
 
 ## 7. 인수인계
 
+### 세션 인계 (2026-10-02, 커밋 `879e10e` 이후)
+
+- 이전 Claude 개발 세션은 맥락이 가득 차 새 세션으로 넘겼다. 완료: Mac mini 이전, 게스트 자동 가입·남용 방지(시간당 20), `pixeltown-pb.fastmake.net` 이전과 Cloudflare Pages 배포(`https://pixeltown.fastmake.net`, main push 시 자동 빌드), 이동 흔들림·대각선 방향 수정, 검증용 관리자 Monitor 확인, 운영 정리(SERVER_OPERATIONS 11절). 마지막 검증: 원격 검사 8/8, 배포 주소 원격 UI 통과, 로컬 UI 통과.
+- 진행 중 작업 없음. 다음 작업은 6절(디자인 피드백 대기가 1순위).
+- 로컬 개발 서버는 세션과 무관하게 계속 돈다: `npm run dev:remote`(5173, Mac mini 연결), `npm run dev:all`(5273/18190/12667, 독립 로컬). 멈추려면 해당 npm 프로세스를 종료한다.
+- 자격증명은 git 밖 0600 파일에만 있다: `pocketbase/.local/remote-accounts.json`(Tester 1·2), `pocketbase/.local/remote-admin.env`(검증용 관리자). 출력·커밋 금지. 원격 SSH 키는 ssh 실행에만 쓰고 내용을 읽지 않는다.
+- 금지 경계: `cheng80@gmail.com` 관리자 비밀번호 재설정, stonematch(8090)·Oracle A1 예약·다른 터널, 원격 DB를 로컬 `pb_data`로 덮어쓰기, 공개 터널 부하 테스트. 원격 DB 변경 전에는 SQLite `.backup`으로 백업한다. 실제 방문자가 찍힌 스크린샷은 커밋하지 않는다. `tests/README.md`(추적 안 함)는 커밋하지 않는다.
+
 변경하면 안 되는 경계: 운영 PocketBase·Oracle 작업·외부 브로커·클라우드 인증에는 접근하지 않는다. 개발 launcher는 기본 18090/12567/5173(환경변수로 변경 가능)을 loopback으로만 사용하고 포트 점유 시 시작을 거부한다. 재제작 브랜치 worktree 검증은 5273/18190/12667을 썼다. 병합 후 main 체크아웃은 기본 5173/18090/12567로 실행하고, 통합은 18191/12668을 쓴다. main을 fast-forward한 뒤에는 `npm install && npm --prefix colyseus install`(병합으로 `galmuri` 추가)을 하고 개발 서버를 재시작해야 한다. 구 실행이 남아 있으면 이전 코드를 서비스한다. `.env.local`, `.local`, DB, 다운로드 바이너리와 node_modules를 공개 저장소에 넣지 않는다.
 
 주요 파일은 `shared/world.js`(맵·충돌·미니룸 정본), `shared/catalog.json`(상점 정본), `pocketbase/pb_hooks/shop.pb.js`·`shop_lib.js`, `game/src/main.jsx`, `game/src/render.js`, `game/src/sprites.js`, `colyseus/town.js`, `colyseus/outbox.js`, `pocketbase/pb_hooks/matches.pb.js`, `scripts/init-pocketbase.mjs`, `tests/integration.mjs`, `tests/ui-check.mjs`다. 실제 명령은 루트 README에 있다. 맵을 고치면 `npm --prefix colyseus test`가 연결성·footprint 규칙을 자동 검사한다. Colyseus는 `shared/`를 import하므로 맵 수정 후 서버를 재시작해야 프런트와 판정이 일치한다.
