@@ -34,7 +34,7 @@ React / Canvas
             → 성공 시 outbox 삭제
 ```
 
-맵·충돌 정본은 `shared/world.js`다(ADR-002). 장소별 40×26 타일(16도트, 월드 640×416) 타일맵, 소품 배치와 정의(`w,h,ax,ay` 그림, `foot` 바닥 충돌, `layer` sort/fg/ground), 입구·출입구, `blocked`·`moveActor`·`findPath`·`starSpots`를 담는다. `game/src/render.js`가 ground(굽기) → 발밑 y 정렬(소품·별·아바타) → fg → 화면 해상도 글자 순서로 그린다. Canvas 보간은 서버 위치 사이를 부드럽게 그릴 뿐 권한 위치를 갱신하지 않는다. `?debug=collision`은 visual bounds(파랑)와 footprint·막힌 타일(빨강)을 겹쳐 그린다.
+맵·충돌 정본은 `shared/world.js`다(ADR-002). 장소별 40×26 타일(16도트, 월드 640×416) 타일맵, 소품 배치와 정의(`w,h,ax,ay` 그림, `foot` 바닥 충돌, `layer` sort/fg/ground), 입구·출입구, `blocked`·`moveActor`·`findPath`·`starSpots`를 담는다. `game/src/render.js`가 ground(굽기) → 발밑 y 정렬(소품·별·아바타) → fg → 화면 해상도 글자 순서로 그린다. Canvas 보간은 서버 위치 사이를 부드럽게 그릴 뿐 권한 위치를 갱신하지 않는다. `?debug=collision`은 visual bounds(파랑)와 footprint·막힌 타일(빨강)을 겹쳐 그린다. 걷기 프레임은 몸 높이가 같고 다리·팔만 바뀐다(1px 들썩임이 8Hz로 화면을 떨게 했다).
 
 `server.define('town',Town).filterBy(['zone'])`로 장소별 방을 만든다. 각 방 maxClients=32, maxMessagesPerSecond=40이며 메시지 snapshot은 50ms tick마다 전체 상태를 전송한다. 32명 제한은 32명 성능 검증을 의미하지 않는다.
 
@@ -98,7 +98,7 @@ player는 `{id,name,x,y,color,look:{hat,top,pet,skin,hair,style}}`(look은 카�
 
 서버는 50ms마다 `moveActor(map,x,y,dx,dy,3)`을 적용하며 입력이 300ms보다 오래되면 움직이지 않는다. 이동은 1.5도트 이하로 쪼개 축별로 미끄러지고, 한 축만 막히면 수직 방향 6도트 이내 빈틈으로 비켜 간다. 플레이어 발 상자 10×6이 막힌 타일·소품 footprint·맵 경계와 겹치면 막힌다. 별은 `spreadSpot`이 `starSpots`(시작점에서 닿고 sort 소품 그림에 가리지 않은 타일 중심) 후보 24개 중 기존 별·플레이어와 가장 먼 곳을 고른다. 이벤트는 첫 입장 때 시작해 계속된다. 최소 5개를 채우고, `STAR_SPAWN_INTERVAL_MS`(기본 6000, 1000..60000)마다 상한 12 미만이면 1개 생성한다. `GAME_DURATION_MS`(기본 180000, 1000..300000)마다 `settle`: 점수 1 이상인 사람만 outbox에 넣고 `gameEnded`를 보낸 뒤, 별을 유지한 채 새 match_id·0점으로 다음 기간을 시작한다. 기간 합계가 64(`MAX_MATCH_SCORE`)에 닿으면 즉시 정산하고, 정산 대기 중 64를 넘는 수집은 거부한다. 전원 이탈·dispose 때 정산하고 멈춘다. 진행 중 합류자를 scores에 등록하고 이탈자의 점수는 정산까지 유지한다. solo 연습도 최소5·6초·상한12와 충돌을 적용하며 DB 보상은 없다.
 
-클릭 이동: `findPath`는 8도트 걷기 격자 BFS(모서리 자르기 없음) 뒤 `clearWalk`(2도트 간격 발 상자 검사)로 막히지 않는 가장 먼 점까지 직선을 이어 붙인다. 막힌 곳을 누르면 목표와 가장 가까운 도달 가능 칸이 끝점이다.
+클릭 이동: `findPath`는 8도트 걷기 격자 BFS(모서리 자르기 없음) 뒤 `clearWalk`(2도트 간격 발 상자 검사)로 막히지 않는 가장 먼 점까지 이어 붙인다. 각 구간은 키보드와 같은 8방향(45° 부분 + 직선 부분, 대각 먼저 안 되면 직선 먼저)으로 나눈다. 임의 각도 구간은 정수 픽셀 카메라가 두 축을 서로 다른 박자로 움직여 화면이 계단처럼 떨렸다. 클라이언트는 틱마다 `routeStep`으로 한 걸음(4도트)을 걷고, 꺾는 점에서 남은 걸음을 다음 구간에 이어 쓴다. 막힌 곳을 누르면 목표와 가장 가까운 도달 가능 칸이 끝점이다.
 
 ### API-003 원자적 결과 커밋
 

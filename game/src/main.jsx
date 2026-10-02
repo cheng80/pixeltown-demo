@@ -4,7 +4,7 @@ import PocketBase from "pocketbase";
 import { Client } from "@colyseus/sdk";
 import g11 from "galmuri/dist/Galmuri11.woff2";
 import g11b from "galmuri/dist/Galmuri11-Bold.woff2";
-import { getMap, moveActor, stepInput, facing, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, touchesStar, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
+import { getMap, stepInput, routeStep, facing, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, touchesStar, TICK_MS } from "../../shared/world.js";
 import { scene, createView } from "./render.js";
 import { feed, play } from "./playback.js";
 import { avatarSprite, lookFor, petSprite, propSprite } from "./sprites.js";
@@ -261,7 +261,7 @@ function App() {
     addEventListener("keydown", down); addEventListener("keyup", up); addEventListener("blur", reset); document.addEventListener("visibilitychange", reset);
     const tick = setInterval(() => {
       const m = local ? mapRef.current : getMap(zone), s = state.current; // this room's own map: mapRef switches to the next zone first
-      let dx = touch.current.dx, dy = touch.current.dy, to = null;
+      let dx = touch.current.dx, dy = touch.current.dy, routed = false;
       for (const k of keys.current) if (MOVE_KEYS[k]) { dx += MOVE_KEYS[k][0]; dy += MOVE_KEYS[k][1]; }
       const me = local ? soloPos.current : pred.current;
       if (!me) return;
@@ -270,20 +270,19 @@ function App() {
         const moved = Math.hypot(me.x - stall.current.x, me.y - stall.current.y) > 0.5;
         stall.current = { x: me.x, y: me.y, n: moved ? 0 : stall.current.n + 1 };
         if (stall.current.n >= 10) { route.current = findPath(m, me, route.current.at(-1)); stall.current.n = 0; }
-        while (route.current.length && Math.hypot(route.current[0].x - me.x, route.current[0].y - me.y) < 2) route.current.shift();
-        if (route.current.length) { dx = route.current[0].x - me.x; dy = route.current[0].y - me.y; if (route.current.length === 1) to = route.current[0]; }
-        else marker.current = null;
+        routed = true;
       }
       const len = Math.hypot(dx, dy);
       if (len > 1e-6) { dx /= len; dy /= len; } else { dx = 0; dy = 0; }
+      const walk = () => { const q = routed ? routeStep(m, me, route.current) : stepInput(m, me, { dx, dy }); if (routed && !route.current.length) marker.current = null; return q; };
       if (local) {
         if (blocked(m, me.x, me.y)) Object.assign(soloPos.current, nearestFree(m, me.x, me.y)); // furniture placed on top of me
-        if (dx || dy) { Object.assign(soloPos.current, moveActor(m, me.x, me.y, dx, dy, STEP_PER_TICK)); setPred(soloPos.current); }
+        if (dx || dy || routed) { Object.assign(soloPos.current, walk()); setPred(soloPos.current); }
         s.players = [mePlayer(soloPos.current)];
         setSnap({ ...s });
-      } else if ((room.current || (status === "connecting" && early.current?.length < 60)) && (dx || dy)) {
+      } else if ((room.current || (status === "connecting" && early.current?.length < 60)) && (dx || dy || routed)) {
         // Lag never holds the avatar back or pulls it back: the step is mine at once, the server only checks it.
-        const next = stepInput(m, me, { dx, dy, to });
+        const next = walk();
         if (next.x !== me.x || next.y !== me.y) {
           const step = { ...next, seq: ++seq.current, fix: fix.current };
           if (room.current) room.current.send("move", step); else early.current.push(step);

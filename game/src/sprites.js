@@ -243,7 +243,7 @@ function paintHat(c, L, dir, y0) {
 }
 const shade = (col, f) => '#' + hex(col).map(v => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, '0')).join('');
 function paintAvatar(c, L, dir, frame) {
-  const y0 = frame ? 0 : 1; // walking frames lift the body by 1px. dir: 0 down, 1 up, 2 side(right)
+  const y0 = 1; // body height is the same in every frame (a 1px walking lift shook the view). dir: 0 down, 1 up, 2 side(right)
   const shirt = TOPS[L.top]?.shirt || L.shirt, shirtD = shade(shirt, 0.78), pants = TOPS[L.top]?.pants || '#3b4a7a', shoe = '#2a2238';
   // legs
   const lA = frame === 1 ? 2 : 3, lB = frame === 2 ? 2 : 3;

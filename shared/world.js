@@ -355,15 +355,38 @@ export function findPath(map, from, to) {
   for (let i = goal; i >= 0; i = prev[i]) path.unshift(cellCenter(i));
   // The start cell centre stays as a fallback first step; string pulling below skips it whenever a straight walk exists.
   if (path.length && !blocked(map, to.x, to.y) && Math.hypot(path[path.length - 1].x - to.x, path[path.length - 1].y - to.y) < 8) path[path.length - 1] = { x: to.x, y: to.y };
-  // String pulling: from each corner, head straight for the farthest following point with a clear walk.
+  // String pulling: from each corner, head for the farthest following point reachable by an 8-direction walk.
   const out = [];
   let a = blocked(map, from.x, from.y) ? start : from;
   for (let i = 0; i < path.length;) {
     let j = i;
-    while (j + 1 < path.length && clearWalk(map, a, path[j + 1])) j++;
-    out.push(path[j]); a = path[j]; i = j + 1;
+    while (j + 1 < path.length && octoLeg(map, a, path[j + 1])) j++;
+    out.push(...(octoLeg(map, a, path[j]) || [path[j]])); a = path[j]; i = j + 1;
   }
   return out;
+}
+// Click routes walk in the keyboard's 8 directions: a leg at any other angle scrolls the pixel camera one axis at a time
+// in an uneven rhythm, which shakes the screen. a -> b becomes a 45° part and a straight part (diagonal first, else
+// straight first), or null when neither fits between the blockers.
+function octoLeg(map, a, b) {
+  const ox = b.x - a.x, oy = b.y - a.y, d = Math.min(Math.abs(ox), Math.abs(oy));
+  if (d < 0.5 || Math.abs(Math.abs(ox) - Math.abs(oy)) < 0.5) return clearWalk(map, a, b) ? [b] : null;
+  const sx = Math.sign(ox) * d, sy = Math.sign(oy) * d;
+  for (const m of [{ x: a.x + sx, y: a.y + sy }, { x: b.x - sx, y: b.y - sy }]) if (clearWalk(map, a, m) && clearWalk(map, m, b)) return [m, b];
+  return null;
+}
+// One tick along a click route (waypoints are removed as they are reached). Turns at a waypoint keep the rest of the
+// tick's step, so corners do not hitch.
+export function routeStep(map, p, route) {
+  let left = STEP_PER_TICK;
+  while (route.length && left > 0.01) {
+    const w = route[0], ox = w.x - p.x, oy = w.y - p.y, d = Math.hypot(ox, oy);
+    if (d < 0.5) { route.shift(); continue; }
+    const q = moveActor(map, p.x, p.y, ox / d, oy / d, Math.min(left, d));
+    if (q.x === p.x && q.y === p.y) break; // pushed into a blocker: the stall re-plan takes over
+    left -= Math.min(left, d); p = q;
+  }
+  return { x: p.x, y: p.y };
 }
 
 // A straight walk from a to b never overlaps a blocker (sampled every 2px of the foot box).

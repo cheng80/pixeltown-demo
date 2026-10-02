@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MAPS, ZONE_IDS, PROPS, blocked, moveActor, findPath, facing, unreachableCells, starSpots, entryPoint, portalAt, tileAt, TILE } from '../../shared/world.js';
+import { MAPS, ZONE_IDS, PROPS, blocked, moveActor, findPath, routeStep, facing, unreachableCells, starSpots, entryPoint, portalAt, tileAt, TILE } from '../../shared/world.js';
 import * as server from '../town.js';
 
 const walk = (map, from, dx, dy, ticks) => { let p = { ...from }; for (let i = 0; i < ticks; i++) p = moveActor(map, p.x, p.y, dx, dy); return p; };
@@ -123,6 +123,27 @@ test('click routes start from any free spot, even next to a prop where the 8-dot
   }
   const arcade = MAPS.arcade, p = findPath(arcade, { x: 233.8, y: 371.6 }, { x: 536, y: 378 });
   assert.ok(p.length && Math.hypot(p.at(-1).x - 536, p.at(-1).y - 378) < 8);
+});
+
+test('click routes walk in 8 directions and routeStep reaches the end', () => {
+  for (const zone of ZONE_IDS) {
+    const m = MAPS[zone], home = entryPoint(m, 'default');
+    let legs = 0, octo = 0;
+    for (let y = 7; y < m.tiles.length * TILE; y += 23.3) for (let x = 7; x < m.tiles[0].length * TILE; x += 29.1) {
+      if (blocked(m, x, y) || Math.hypot(home.x - x, home.y - y) < 4) continue;
+      const route = findPath(m, { x, y }, home);
+      let a = { x, y };
+      for (const w of route) { const ax = Math.abs(w.x - a.x), ay = Math.abs(w.y - a.y); legs++; if (ax < 0.6 || ay < 0.6 || Math.abs(ax - ay) < 0.6) octo++; a = w; }
+      let p = { x, y };
+      for (let t = 0; t < 1500 && route.length; t++) {
+        const q = routeStep(m, p, route);
+        assert.ok(Math.hypot(q.x - p.x, q.y - p.y) <= 4.01, 'one tick never moves more than a step');
+        p = q;
+      }
+      assert.ok(Math.hypot(home.x - p.x, home.y - p.y) < 4, `${zone} (${x.toFixed(1)}, ${y.toFixed(1)}) ended at (${p.x}, ${p.y})`);
+    }
+    assert.equal(octo, legs, `${zone}: legs in 8 directions`);
+  }
 });
 
 test('sprite facing: axes face their way, diagonals keep the side view', () => {
