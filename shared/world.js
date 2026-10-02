@@ -259,9 +259,10 @@ export function moveActor(map, x, y, dx, dy, dist = STEP_PER_TICK) {
     let hitX = false, hitY = false;
     if (sx) { if (!blocked(map, x + sx, y)) x += sx; else hitX = true; }
     if (sy) { if (!blocked(map, x, y + sy)) y += sy; else hitY = true; }
-    // Corner nudge: pushing straight into an edge slides toward the nearest opening within 6px.
-    if (hitX && !sy) y += nudge(map, x, y, sx, 0);
-    if (hitY && !sx) x += nudge(map, x, y, 0, sy);
+    // Corner nudge: pushing (almost) straight into an edge slides toward the nearest opening within 6px. "Almost" matters:
+    // a route waypoint 0.03 dot off the rounded position must not disable the slide and leave the player stuck on a corner.
+    if (hitX && Math.abs(sy) < Math.abs(sx) * 0.25) y += nudge(map, x, y, sx, 0);
+    if (hitY && Math.abs(sx) < Math.abs(sy) * 0.25) x += nudge(map, x, y, 0, sy);
   }
   return { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
 }
@@ -301,9 +302,24 @@ const cellOf = (x, y) => Math.min(GR - 1, Math.max(0, Math.floor(y / CELL))) * G
 const cellCenter = i => ({ x: (i % GC) * CELL + 4, y: Math.floor(i / GC) * CELL + 4 });
 
 // Waypoints from `from` to the reachable cell closest to `to`. Empty array if already there.
+// Start from the nearest walkable 8-dot cell the player can walk straight to. A free spot next to a prop can sit in a
+// cell whose centre is blocked, or behind a footprint corner from its own centre. Returns -1 when no walkable cell is within two cells.
+function walkCellNear(map, walk, p) {
+  const c0 = Math.floor(p.x / CELL), r0 = Math.floor(p.y / CELL);
+  let best = -1, bestD = Infinity, any = -1, anyD = Infinity;
+  for (let r = r0 - 2; r <= r0 + 2; r++) for (let c = c0 - 2; c <= c0 + 2; c++) {
+    if (c < 0 || r < 0 || c >= GC || r >= GR || !walk[r * GC + c]) continue;
+    const q = cellCenter(r * GC + c), d = (q.x - p.x) ** 2 + (q.y - p.y) ** 2;
+    if (d < anyD) { anyD = d; any = r * GC + c; }
+    if (d < bestD && clearWalk(map, p, q)) { bestD = d; best = r * GC + c; }
+  }
+  return best >= 0 ? best : any; // in a one-dot slot no centre is straight ahead; sliding movement gets there
+}
 export function findPath(map, from, to) {
-  const start = nearestFree(map, from.x, from.y, 12);
-  const prev = bfs(map, start);
+  const start = nearestFree(map, from.x, from.y, 12), walk = walkGrid(map);
+  const own = cellOf(start.x, start.y), near = walkCellNear(map, walk, start), s = near >= 0 ? near : walk[own] ? own : -1;
+  if (s < 0) return [];
+  const prev = bfs(map, cellCenter(s));
   let goal = -1, best = Infinity;
   for (let i = 0; i < prev.length; i++) if (prev[i] !== -2) {
     const p = cellCenter(i), d = (p.x - to.x) ** 2 + (p.y - to.y) ** 2;
@@ -311,7 +327,7 @@ export function findPath(map, from, to) {
   }
   const path = [];
   for (let i = goal; i >= 0; i = prev[i]) path.unshift(cellCenter(i));
-  path.shift();
+  // The start cell centre stays as a fallback first step; string pulling below skips it whenever a straight walk exists.
   if (path.length && !blocked(map, to.x, to.y) && Math.hypot(path[path.length - 1].x - to.x, path[path.length - 1].y - to.y) < 8) path[path.length - 1] = { x: to.x, y: to.y };
   // String pulling: from each corner, head straight for the farthest following point with a clear walk.
   const out = [];

@@ -95,3 +95,32 @@ test('server uses the shared module and validates entry names', () => {
   assert.deepEqual(entryPoint(lobby, 'nope'), lobby.entries.default);
   assert.ok(PROPS.arch.layer === 'fg' && PROPS.pergola.layer === 'fg' && !PROPS.arch.foot);
 });
+
+test('click routes start from any free spot, even next to a prop where the 8-dot cell centre is blocked', () => {
+  // Regression: a player standing at arcade (233.8, 371.6) got an empty route and walked straight into a cabinet.
+  for (const zone of ZONE_IDS) {
+    const m = MAPS[zone], home = entryPoint(m, 'default');
+    let tried = 0;
+    for (let y = 2; y < m.tiles.length * TILE; y += 5.3) for (let x = 2; x < m.tiles[0].length * TILE; x += 6.1) {
+      if (blocked(m, x, y)) continue;
+      // only spots a player can actually stand on and walk away from (the server never puts anyone inside a closed pocket)
+      if (![[3, 0], [-3, 0], [0, 3], [0, -3]].some(([dx, dy]) => { const q = moveActor(m, x, y, dx / 3, dy / 3, 3); return q.x !== x || q.y !== y; })) continue;
+      const path = findPath(m, { x, y }, home);
+      if (Math.hypot(home.x - x, home.y - y) < 4) continue;
+      tried++;
+      assert.ok(path.length, `${zone} (${x.toFixed(1)}, ${y.toFixed(1)}): empty route`);
+      // Follow it the way the client does (2-dot arrival) with the server's movement, including wall sliding.
+      let p = { x, y }, route = [...path];
+      for (let t = 0; t < 1500 && route.length; t++) {
+        while (route.length && Math.hypot(route[0].x - p.x, route[0].y - p.y) < 2) route.shift();
+        if (!route.length) break;
+        const dx = route[0].x - p.x, dy = route[0].y - p.y, l = Math.hypot(dx, dy);
+        p = moveActor(m, p.x, p.y, dx / l, dy / l, 3);
+      }
+      assert.ok(Math.hypot(home.x - p.x, home.y - p.y) < 4, `${zone} (${x.toFixed(1)}, ${y.toFixed(1)}) stuck at (${p.x.toFixed(1)}, ${p.y.toFixed(1)})`);
+    }
+    assert.ok(tried > 500, zone);
+  }
+  const arcade = MAPS.arcade, p = findPath(arcade, { x: 233.8, y: 371.6 }, { x: 536, y: 378 });
+  assert.ok(p.length && Math.hypot(p.at(-1).x - 536, p.at(-1).y - 378) < 8);
+});
