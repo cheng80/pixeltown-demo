@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,8 +43,10 @@ async function test(name, fn) {
     report.tests.push({ name, status: 'passed', durationMs: Math.round(performance.now() - started), evidence });
     console.log(`PASS ${name}`);
   } catch (error) {
-    report.tests.push({ name, status: 'failed', durationMs: Math.round(performance.now() - started), error: error.message });
-    console.error(`FAIL ${name}: ${error.message}`);
+    // PocketBase SDK errors carry status/url; status 0 means the request never got an HTTP answer (e.g. PB restarting).
+    const detail = error.status !== undefined ? ` (status ${error.status}${error.url ? ` ${error.url.replace(/\?.*/, '')}` : ''})` : '';
+    report.tests.push({ name, status: 'failed', durationMs: Math.round(performance.now() - started), error: error.message + detail });
+    console.error(`FAIL ${name}: ${error.message}${detail}`);
   }
   await saveReport();
 }
@@ -364,7 +366,7 @@ async function playMatch(state, account, { verifyGeneration = false } = {}) {
 }
 
 function startPB() {
-  return launch(runtime.binary, ['serve', `--http=127.0.0.1:${PB_PORT}`, '--dir', runtime.dataDir, '--hooksDir', resolve(root, 'pocketbase/pb_hooks'), '--automigrate=0']);
+  return launch(runtime.binary, ['serve', `--http=127.0.0.1:${PB_PORT}`, '--dir', runtime.dataDir, '--hooksDir', runtime.hooksDir, '--automigrate=0']);
 }
 function startServer() {
   return launch(process.execPath, [resolve(root, 'colyseus/server.js')], { env: runtime.env });
@@ -381,6 +383,11 @@ async function setup() {
   await writeFile(envFile, `PB_ADMIN_EMAIL=integration-${randomBytes(8).toString('hex')}@pixeltown.local\nPB_ADMIN_PASSWORD=${randomBytes(32).toString('hex')}\n`, { mode: 0o600 });
   runtime = { runId: randomBytes(5).toString('hex'), local, dataDir: resolve(local, 'pb_data'), outboxDir: resolve(local, 'outbox'), binary: resolve(process.env.PIXELTOWN_PB_BINARY || resolve(root, 'pocketbase/.local/pocketbase')) };
   assert.ok(existsSync(runtime.binary), 'Backend owner must prepare local PocketBase binary first; this test never downloads it');
+  // Snapshot the hooks (plus the catalogue they read): PocketBase restarts when a watched hook file changes, which made a
+  // run fail with "Something went wrong." (status 0) when hooks were edited mid-test.
+  runtime.hooksDir = resolve(local, 'pb_hooks');
+  await cp(resolve(root, 'pocketbase/pb_hooks'), runtime.hooksDir, { recursive: true });
+  await cp(resolve(root, 'shared/catalog.json'), resolve(runtime.hooksDir, 'catalog.json'));
   runtime.gameDurationMs = 30000; // Settlement period: growth to the cap, two capped periods, collection and refill fit in one or two periods.
   runtime.starSpawnMs = 1500; // Shortened from the 6s default so growth to the cap is observable in seconds.
   runtime.env = { ...process.env, PIXELTOWN_LOCAL_DIR: local, PIXELTOWN_ENV_FILE: envFile, PB_DATA_DIR: runtime.dataDir, OUTBOX_PATH: runtime.outboxDir, GAME_DURATION_MS: String(runtime.gameDurationMs), STAR_SPAWN_INTERVAL_MS: String(runtime.starSpawnMs), PB_URL, POCKETBASE_URL: PB_URL, COLYSEUS_PORT: String(GAME_PORT), COLYSEUS_HOST: '127.0.0.1', SERVER_PORT: String(GAME_PORT), SERVER_HOST: '127.0.0.1' };
@@ -508,6 +515,10 @@ async function shopChecks() {
     assert.equal((await save(c, { ...ok, name: caseName })).status, 200);
     const caseVariant = (await save(d, { ...ok, name: caseName.toLowerCase(), color: '#89cff0' })).status;
     assert.equal(caseVariant, 400, 'Case variant of a taken nickname accepted');
+    // Spaces, '_' and '-' do not make a different nickname either.
+    const spacing = {};
+    for (const variant of [`S tar${runtime.runId.slice(0, 4)}`, `Star_${runtime.runId.slice(0, 4)}`, `st-ar${runtime.runId.slice(0, 4)}`]) spacing[variant] = (await save(d, { ...ok, name: variant, color: '#89cff0' })).status;
+    assert.ok(Object.values(spacing).every(v => v === 400), JSON.stringify(spacing));
     assert.equal((await save(c, ok)).status, 200);
     const stored = await runtime.admin.collection('profiles').getFirstListItem(`user="${c.id}"`);
     assert.deepEqual([stored.name, stored.color, stored.avatar], [ok.name, ok.color, ok.avatar]);
@@ -515,7 +526,7 @@ async function shopChecks() {
     const seen = await waitUntil(() => { const p = rd.snapshot.players.find(q => q.id === c.id); return p?.name === ok.name && p.look.skin === 3 && p; }, 'other player sees the new character');
     assert.deepEqual([seen.color, seen.look.hair, seen.look.style], [ok.color, 6, 2]);
     await leave(rc); await leave(rd);
-    return { rejected, duplicateNickname: taken, duplicateMessage: takenResponse.data?.message, caseVariant, saved: true, seenByOther: { name: true, skin: seen.look.skin, hair: seen.look.hair, style: seen.look.style, color: seen.color } };
+    return { rejected, duplicateNickname: taken, duplicateMessage: takenResponse.data?.message, caseVariant, spacingVariants: spacing, saved: true, seenByOther: { name: true, skin: seen.look.skin, hair: seen.look.hair, style: seen.look.style, color: seen.color } };
   });
 }
 

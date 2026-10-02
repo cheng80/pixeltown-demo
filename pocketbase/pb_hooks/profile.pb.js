@@ -8,7 +8,7 @@ routerAdd("POST", "/api/pixeltown/profile", (e) => {
   profile.set("name", p.name);
   profile.set("color", p.color);
   profile.set("avatar", p.avatar);
-  // The unique index idx_profiles_name (name COLLATE NOCASE) is the only nickname check, so racing saves cannot both win.
+  // The unique index idx_profiles_name_key (spaces, '_', '-' and letter case ignored) is the only nickname check, so racing saves cannot both win.
   try { $app.save(profile); }
   catch (err) {
     if (String(err).toLowerCase().indexOf("unique") >= 0) throw new BadRequestError("이미 쓰는 닉네임이에요. 다른 이름을 지어 주세요.", { name: "taken" });

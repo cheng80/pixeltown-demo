@@ -45,14 +45,16 @@ export async function startPocketBase() {
     throw new Error('PocketBase startup timed out');
   } catch(e) {child.kill();throw e;}
 }
-// Keeps the oldest profile's nickname and gives later duplicates (case-insensitive) a numbered name, e.g. "쇼핑왕" -> "쇼핑왕2".
+// Same comparison key as idx_profiles_name_key: spaces, '_' and '-' ignored, ASCII letters lower-cased (SQLite lower()).
+const nameKey = name => name.replace(/[ _-]/g, '').replace(/[A-Z]/g, c => c.toLowerCase());
+// Keeps the oldest profile's nickname and gives later duplicates a numbered name, e.g. "쇼핑왕" -> "쇼핑왕2".
 async function uniqueNames(pb) {
   const taken = new Set(); let renamed = 0;
   for (const p of await pb.collection('profiles').getFullList({ sort: 'created' })) {
     let name = p.name;
-    for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${p.name.slice(0, 12 - String(n).length)}${n}`;
+    for (let n = 2; taken.has(nameKey(name)); n++) name = `${p.name.slice(0, 12 - String(n).length)}${n}`;
     if (name !== p.name) { await pb.collection('profiles').update(p.id, { name }); renamed++; }
-    taken.add(name.toLowerCase());
+    taken.add(nameKey(name));
   }
   if (renamed) console.log(`Unique nickname index: renamed ${renamed} duplicate profile name(s)`);
 }
@@ -74,7 +76,7 @@ export async function seed(client, { remote = false } = {}) {
   ];
   const schemas = [
     {name:'rooms',listRule:"@request.auth.id != ''",viewRule:"@request.auth.id != ''",fields:[...timestamps,{name:'zone',type:'text',required:true},{name:'title',type:'text',required:true,max:80},{name:'max_players',type:'number',required:true,min:1,max:32}],indexes:['CREATE UNIQUE INDEX idx_rooms_zone ON rooms (zone)']},
-    {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true},{name:'outfit',type:'json',maxSize:2000},{name:'room',type:'json',maxSize:8000},{name:'avatar',type:'json',maxSize:200}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)','CREATE UNIQUE INDEX idx_profiles_name ON profiles (name COLLATE NOCASE)']},
+    {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true},{name:'outfit',type:'json',maxSize:2000},{name:'room',type:'json',maxSize:8000},{name:'avatar',type:'json',maxSize:200}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)',"CREATE UNIQUE INDEX idx_profiles_name_key ON profiles (lower(replace(replace(replace(name, ' ', ''), '_', ''), '-', '')))"]},
     {name:'results',fields:[...timestamps,relation,{name:'match_id',type:'text',required:true},{name:'zone',type:'text',required:true},{name:'score',type:'number',min:0},{name:'ended_at',type:'date',required:true}],indexes:['CREATE UNIQUE INDEX idx_results_match_user ON results (match_id, user)']},
     // Star shop ledger (ADR-004): written only by the shop hook, one row per owned item.
     {name:'purchases',fields:[...timestamps,relation,{name:'item',type:'text',required:true,max:40},{name:'price',type:'number',required:true,min:0}],indexes:['CREATE UNIQUE INDEX idx_purchases_user_item ON purchases (user, item)']},
@@ -90,7 +92,7 @@ export async function seed(client, { remote = false } = {}) {
       const indexName = sql => sql.match(/INDEX\s+(\w+)/)[1];
       const newIndexes = (schema.indexes||[]).filter(sql=>!existing.indexes.some(current=>indexName(current)===indexName(sql)));
       if(newIndexes.length) {
-        if(newIndexes.some(sql=>indexName(sql)==='idx_profiles_name')) await uniqueNames(pb);
+        if(newIndexes.some(sql=>indexName(sql)==='idx_profiles_name_key')) await uniqueNames(pb);
         await pb.collections.update(existing.id,{indexes:[...existing.indexes,...newIndexes]});
       }
     }

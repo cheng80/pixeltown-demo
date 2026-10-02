@@ -21,6 +21,7 @@ cp pocketbase/pb_hooks/matches.pb.js pocketbase/pb_hooks/shop.pb.js pocketbase/p
 # app/colyseus/node_modules lives only on the server; --delete never touches it (excluded).
 rsync -a --delete --exclude node_modules -e "$SSH" "$stage/app/" "$HOST:$RT/app/"
 # Only the game hook files are written; realtime.pb.js and any other hook stay as they are.
+# A changed hook file makes PocketBase restart itself: about 2-3 s of failed API calls.
 rsync -a -e "$SSH" "$stage/pb_hooks/" "$HOST:$PB/pb_hooks/"
 $SSH "$HOST" "set -e; cd $RT/app/colyseus; PATH=$RT/runtime/bin:\$PATH npm ci --no-fund --no-audit >/dev/null; \
   for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://127.0.0.1:8091/api/health >/dev/null 2>&1 && break; sleep 1; done; \
