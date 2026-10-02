@@ -24,7 +24,7 @@ export function feed(b, p, now) {
 // Advance playback `b` by `dt` ms and return the position to draw.
 export function play(b, dt) {
   const end = b.pts.at(-1).ack, lead = end - b.head;
-  b.want = Math.max(MIN_WANT, b.want - dt / 10000); // forget old stalls slowly
+  b.want = Math.max(MIN_WANT, b.want - dt / 30000); // forget old stalls slowly: one step per 30 s
   if (lead > b.want + MAX_WANT) b.head = end - b.want; // far behind (a hidden tab): skip ahead
   else b.head = Math.min(end, b.head + dt / TICK_MS * Math.min(3, Math.max(1, 1 + (lead - b.want) / 10)));
   while (b.pts.length > 1 && b.pts[1].ack <= b.head) b.pts.shift();

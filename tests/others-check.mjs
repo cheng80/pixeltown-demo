@@ -40,7 +40,10 @@ try {
     const loop = () => { const a = t.anim.get(id); if (a) out.push({ x: a.x, y: a.y, at: performance.now() }); performance.now() < end ? requestAnimationFrame(loop) : done(out); };
     requestAnimationFrame(loop);
   }), [walkerId, 12500]);
-  for (const k of ['ArrowRight', 'ArrowLeft', 'ArrowRight', 'ArrowLeft']) { await walker.keyboard.down(k); await sleep(2500); await walker.keyboard.up(k); await sleep(300); }
+  // The walker's own drawn x after each run and its corrections: tells a walker that could not move from a watcher that did not see it.
+  const own = () => walker.evaluate(id => ({ x: Math.round(window.__pixeltown.anim.get(id)?.x), offline: Boolean(document.querySelector('.sheet-backdrop.offline')), corrections: window.__pixeltown.corrections.current.length }), walkerId);
+  const walkerSide = [await own()];
+  for (const k of ['ArrowRight', 'ArrowLeft', 'ArrowRight', 'ArrowLeft']) { await walker.keyboard.down(k); await sleep(2500); await walker.keyboard.up(k); walkerSide.push(await own()); await sleep(300); }
   const s = await sampling;
   const steps = s.slice(1).map((q, i) => Math.hypot(q.x - s[i].x, q.y - s[i].y));
   // Only the stretch where the walker is visibly travelling: from its first move to its last.
@@ -48,7 +51,7 @@ try {
   const moving = steps.slice(first, last + 1);
   let run = 0, freezes = 0, longest = 0; for (const d of moving) { if (d < 0.05) { run++; longest = Math.max(longest, run); } else { if (run >= 4) freezes++; run = 0; } }
   const result = { base: BASE, jitter: JITTER, frames: moving.length, frozenFrames: moving.filter(d => d < 0.05).length, freezes4plus: freezes, longestFreezeFrames: longest,
-    jumps: moving.filter(d => d > 4).length, maxStep: +Math.max(...moving).toFixed(1), ping: await watcher.textContent('.ping').catch(() => null) };
+    jumps: moving.filter(d => d > 4).length, maxStep: +Math.max(...moving).toFixed(1), ping: await watcher.textContent('.ping').catch(() => null), walkerSide };
   // A walker turning round stands still for a few frames on purpose; allow those (4 turns).
   const ok = result.jumps === 0 && result.freezes4plus <= 4 && result.longestFreezeFrames <= 20;
   console.log(ok ? 'PASS' : 'FAIL', JSON.stringify(result));

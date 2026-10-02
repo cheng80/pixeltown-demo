@@ -1,6 +1,6 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `576b261`(main). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-006(첫 화면 캐릭터 만들기 + 게스트 자동 가입, 로그인·연습 모드 제거). 직전 PLAN-005(캐릭터 만들기). 직전 PLAN-004(Mac mini 서버 이전, Colyseus 0.18). 서버 주소·배치·백업은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md). **배포 주소 https://pixeltown.fastmake.net**(Cloudflare Pages), PB는 https://pixeltown-pb.fastmake.net.
+갱신일: 2026-10-03 (Asia/Seoul). 최신: 로컬 우선 이동 + 서버 검증 전환(ADR-005, 7절 맨 위). 기준 리비전 `576b261`(main). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-006(첫 화면 캐릭터 만들기 + 게스트 자동 가입, 로그인·연습 모드 제거). 직전 PLAN-005(캐릭터 만들기). 직전 PLAN-004(Mac mini 서버 이전, Colyseus 0.18). 서버 주소·배치·백업은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md). **배포 주소 https://pixeltown.fastmake.net**(Cloudflare Pages), PB는 https://pixeltown-pb.fastmake.net.
 
 ## 1. 로드맵
 
@@ -78,7 +78,7 @@
 - 해결: 원격 별 회수 검사 실패의 원인은 경로 탐색 버그였다. 소품 가장자리(칸 중심이 막힌 빈 위치)에서 `findPath`가 빈 경로를 돌려주고, 반올림 0.03도트 어긋남이 모서리 비켜가기를 꺼서 멈췄다. 실제 플레이어의 클릭 이동도 같은 위치에서 반응하지 않았다. 원격 지연(약 100–200ms) 때문에 이런 위치에 멈출 일이 많아 원격에서 드러났다. 수정과 회귀 테스트는 TECH_SPEC 마지막 절.
 - 해결: 프런트 번들은 vendor(221KB)와 앱(283KB)으로 나눠 Vite 500KB 경고가 없다.
 - 실제 iPhone/Android 가상 키보드·성능, 외부 배포·TLS·지속 운영은 미검증이다. 100명은 로컬 단일 머신에서 채널 방 자동 분할(32/32/32/4)까지만 측정했다(통합 opt-in). 한 화면 100명 동시 표시는 지원하지 않는다.
-- 클라이언트 예측 없이 서버 50ms snapshot을 보간한다. localhost에서는 자연스러웠으나 인터넷 지연 조작감은 미측정이다.
+- 내 이동은 로컬 우선(ADR-005)이라 지연이 조작감에 영향을 주지 않는다. 다른 플레이어는 걸음 단위로 재생하며, 지연이 처음 크게 출렁일 때 한 번 멈췄다가(배포 주소 핑 1640ms에서 최대 1.85초) 그만큼 뒤에서 따라간다.
 - 그래픽은 절차 도트다. 2026-10-02 사용자가 배포 화면 기준으로 디자인을 승인했다. 이후 피드백이 오면 팔레트·소품을 조정한다.
 - 이미 열려 있던 구 버전 탭이 제거된 `startGame`을 보내면 Colyseus가 연결을 끊는다. 새로고침하면 된다.
 - 미니룸은 본인만 본다. 다른 사람 방문·방명록·선물은 후속 범위다.
@@ -86,7 +86,7 @@
 
 ## 6. 다음 작업
 
-0. (진행 중, 2026-10-02 밤) 최악의 연결(핑 1초 이상 출렁임) 대응: 내 캐릭터 멈춤은 대기열·크레딧·대기 기준 3초로 해결(`5947bc5`). 남은 것은 다른 플레이어 표시 완충을 지연 변동에 맞춰 자동 조절(지금 100ms 고정). 측정 도구 `tests/others-check.mjs`(JITTER 600·1000 측정 미완). 근본 해결 후보: 서울 VPS 앞단 또는 Tailscale Funnel 지연 측정(사용자 결정 대기). Cloudflare 경로는 LAX(무료 요금제 한국 경로).
+0. 완료(2026-10-03): 로컬 우선 이동 + 서버 검증, 다른 플레이어 걸음 단위 재생(완충 자동 조절). 남은 근본 대책 후보: 서울 VPS 앞단 또는 Tailscale Funnel 지연 측정(사용자 결정 대기). Cloudflare 경로는 LAX(무료 요금제 한국 경로).
 0. 완료(2026-10-02): 핑 표시·끊김 기록(`/health` `connections`, 서비스 로그)·GitHub Actions 외부 감시. 끊김이 다시 보고되면 `/health`와 Actions 실행 기록부터 본다.
 1. 디자인은 승인됐다(2026-10-02). 새 디자인 피드백이 오면 반영한다.
 2. 채팅 신고·숨김, 다른 기기에서 이어 하기(계정 연결)는 필요해지면 계획한다.
@@ -95,6 +95,14 @@
 4. PWA·앱 포장은 웹 핵심 플레이 검증 후 별도 계획으로 다룬다.
 
 ## 7. 인수인계
+
+### 로컬 우선 이동 전환 (2026-10-03, 커밋 `bbb7776` 이후)
+
+- 사용자 결정(2026-10-03): "로컬 우선 + 서버 검증"으로 전환. ADR-005, TECH_SPEC "로컬 우선 이동", verification 23절.
+- 완료·배포: 브라우저가 내 위치를 정하고 `move {x,y,seq,fix}`를 보낸다. 서버는 한 걸음 6도트·빈 자리·속도 허용량만 검사하고 어기면 `fix`로 되돌린다. 별은 서버가 판정한다. 대기열·크레딧·예측 대기·`input` 메시지 제거. 다른 플레이어는 `ack` 걸음 단위 재생(`game/src/playback.js`). `maxMessagesPerSecond` 40 → 120. Mac mini 배포(`scripts/deploy-macmini.sh`)와 Pages 배포 완료.
+- 측정 도구 지연 흉내(`JITTER`)의 입장 시간 초과 원인은 도구가 SDK 버퍼를 복사하지 않은 것이었다. 고쳤다. 이제 JITTER 1000·1500도 측정된다.
+- 남은 일: (1) 근본 경로 대책(서울 VPS 또는 Tailscale Funnel) 사용자 결정 대기. (2) 배포 주소 others-check에서 1회 보는 쪽이 이동을 전혀 못 받은 일(재현 안 됨, `walkerSide` 진단 추가). (3) 구 버전 탭은 `input`을 보내면 끊긴다. 새로고침하면 된다.
+
 
 ### 세션 인계 (2026-10-03, 커밋 `085fa47` 이후)
 
@@ -106,8 +114,8 @@
 - 핵심 진단: `pixeltown-rt`·`pixeltown`·`pixeltown-pb`(Cloudflare 무료 요금제)는 한국에서 LAX 접속점으로 가서 핑 약 280ms, 저녁에는 100–1460ms로 출렁인다. 대시보드 설정으로 못 바꾼다. 이 컴퓨터의 Unicorn HTTPS VPN은 원인이 아니었다(꺼도 LAX). 사용자 지시: VPN이 없다고 보고 가장 나쁜 연결에서도 동작하게 할 것.
 - 사용자 결정 대기:
   1. 근본 해결 방향: 서울 VPS 앞단(Caddy, Tailscale로 Mac mini Colyseus) 또는 Tailscale Funnel 지연 측정(Mac mini 설정 변경이라 허락 필요). 집 서버 직접 공개는 사용자가 위험하다고 보류.
-  2. "로컬 우선 + 서버 검증" 전환 제안: 내 위치는 원본처럼 브라우저가 정하고 서버는 속도 상한·벽 통과만 검증, 별 판정은 서버 유지. 가장 나쁜 연결에 가장 강하다.
-- 진행 중이던 일: 다른 플레이어 표시 완충(지금 100ms 고정)을 지연 변동에 맞춰 자동 조절. 측정 도구 `tests/others-check.mjs`(WALKER·WATCHER·JITTER). 큰 JITTER(600·1000)는 핑이 1초를 넘을 때 입장 단계 시간 초과로 측정을 끝내지 못했다.
+  2. 결정·완료(2026-10-03): "로컬 우선 + 서버 검증" 전환. 위 절 참고.
+- 완료(2026-10-03): 다른 플레이어 표시 완충 자동 조절(걸음 단위 재생). 이전 기록: 측정 도구 `tests/others-check.mjs`(WALKER·WATCHER·JITTER). 큰 JITTER(600·1000)는 핑이 1초를 넘을 때 입장 단계 시간 초과로 측정을 끝내지 못했다.
 - Oracle A1 예약(Mac mini `net.fastmake.pixeltown-a1-retry`)은 매시 0·30분 실행 중이며 2026-10-02 22:30까지 38회 모두 `Out of host capacity`. 읽기만 했고 변경 금지.
 - 테스트 도구(새로 추가): `tests/rollback-check.mjs`(보정 0 기준, ZONE·SECONDS·HOPS·JITTER), `tests/offline-check.mjs`(4경우, STALE_AFTER), `tests/wallet-check.mjs`(SETTLE_MS), `tests/motion-check.mjs`(JITTER·ZONE, 보정·되돌아감 지표), `tests/remote-pickup.mjs`. 배포 주소 측정은 Tester 2 계정(Tester 1은 끊김 검사용)으로 한다.
 - 로컬 개발 서버는 모두 꺼져 있다. 필요하면 10절 명령으로 띄운다. Mac mini 배포는 `scripts/deploy-macmini.sh`, Tailscale 경로가 빠졌으면 `PATH="$PWD/.test-work/bin:$PATH" scripts/deploy-macmini.sh`(`tailscale nc` ssh 래퍼, git 제외). Mac mini: `mac-mini.tailc386bf.ts.net`(100.92.43.82, LAN 192.168.0.204), 이 컴퓨터: `cheng80-macbookair15.tailc386bf.ts.net`(100.105.34.114). MagicDNS 이름은 known_hosts에 없어 IP로 접속한다.
@@ -122,6 +130,7 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 ## 8. 변경된 계약
 
+- 로컬 우선 이동(2026-10-03, ADR-005): C→S `input` 제거, `move {x,y,seq,fix}` 추가. player에 `fix`. snapshot의 서버 시각 `t` 제거. `MAX_QUEUED_INPUTS` 제거, `MAX_HOP`·`MOVE_SLACK`·`MOVE_BURST_MS` 추가(shared/world.js). `maxMessagesPerSecond` 120.
 - 이동 크레딧(2026-10-02): 서버가 틱 횟수 대신 실제 흐른 시간(50ms당 1, 최대 20 = 1초)으로 이동 크레딧을 준다. 클라이언트는 미확인 입력이 16개면 예측을 멈춘다(`MAX_QUEUED_INPUTS`, shared/world.js). 클라이언트는 떠나는 방의 메시지를 무시하고 방마다 자기 장소 맵으로 예측·재적용한다.
 - 연결 끊김(2026-10-02): 서버 `onDrop`이 끊긴 플레이어를 15초(`RECONNECT_SECONDS`) 동안 남기고 SDK 재접속을 받는다. 그 사이 같은 사용자의 새 입장은 대기 세션을 정리하고 받는다. 입력 대기열 상한 6 → 20(`MAX_QUEUED_INPUTS`). 클라이언트는 끊기면 화면 전체를 막는 대화상자를 띄우고 입력을 막는다. 같은 세션 재접속 → 거절·무응답이면 자동 새 입장 → 그것도 실패하면 버튼 순서로 복구한다. 카메라는 원본과 같이 고정(데드존·댐핑은 시험 후 쓰지 않음). TECH_SPEC 마지막 절.
 - 별 수집 히트박스(2026-10-02): `COLLECT_RADIUS` 제거, `BODY_BOX`·`STAR_BOX`·`touchesStar` 추가(shared/world.js). 서버가 매 틱 자동 수집하고 클라이언트는 `collect`를 보내지 않는다(서버는 구 버전용으로 계속 받는다). 화면은 닿는 순간 별을 숨기고 1초 안에 서버가 지우지 않으면 다시 보인다. TECH_SPEC 마지막 절.
@@ -144,6 +153,7 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 | 항목 | 결과 | 근거 | 날짜 | 리비전 | 유효성 | 출처 / 공백 |
 |---|---|---|---|---|---|---|
+| 로컬 우선 이동: 단위 30, 통합 17, 로컬 JITTER 1000·1500 브라우저, 배포 주소 rollback·motion·others | PASS(others-check 멈춤 기준만 FAIL, 튐 0) | RECHECKED | 2026-10-03 | `bbb7776` | CURRENT | verification 23절 |
 | 단위 18개(Colyseus 0.18 서버) | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | `npm --prefix colyseus test` |
 | 통합 15개 + 100명 opt-in 1개(0.18, 별도 포트 18191/12668) | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | `tests/report.json`. PB 0.39.7 바이너리로도 15/15 |
 | 브라우저 UI 7개(로컬 5273) | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
