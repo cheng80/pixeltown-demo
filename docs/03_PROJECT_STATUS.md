@@ -42,8 +42,8 @@
 
 ## 5. 막힘 / 알려진 문제
 
-- `nanoid 2.x` 전이 의존성 관련 audit 3건(2 moderate, 1 high). 실제 서버에서 ID 크기는 상수로 지정한다. Colyseus 0.16/클라이언트 호환성 때문에 무리한 override를 하지 않았다. 공개 인터넷 서비스 전 최신 호환 client/server 업그레이드와 재검증 필요. 개발 전용 loopback 서버에 한정한다.
-- 실제 iPhone/Android 가상 키보드·성능, 외부 배포·TLS·지속 운영, 100명은 미검증이다.
+- 해결: `nanoid 2.x` audit 3건은 같은 API의 로컬 대체 모듈(`colyseus/vendor/nanoid`) override로 0건이 되었다. Colyseus 0.17+로 올리면 override를 제거한다.
+- 실제 iPhone/Android 가상 키보드·성능, 외부 배포·TLS·지속 운영은 미검증이다. 100명은 로컬 단일 머신에서 채널 방 자동 분할(32/32/32/4)까지만 측정했다(통합 opt-in). 한 화면 100명 동시 표시는 지원하지 않는다.
 - 클라이언트 예측 없이 서버 50ms snapshot을 보간한다. localhost에서는 자연스러웠으나 인터넷 지연 조작감은 미측정이다.
 - 그래픽은 절차 도트다. 사용자 디자인 승인 전이며 피드백에 따라 팔레트·소품을 조정한다.
 - 이미 열려 있던 구 버전 탭이 제거된 `startGame`을 보내면 Colyseus가 연결을 끊는다. 새로고침하면 된다.
@@ -52,9 +52,9 @@
 
 ## 6. 다음 작업
 
-1. 사용자 디자인 검토 피드백을 반영하고, 승인되면 PR·merge를 별도 요청으로 진행한다.
-2. 초기 데모 완료 후 100명 요구가 확정되면 delta snapshot·방 분할·관심 영역과 실제 인터넷 지연을 측정한다.
-3. 외부 배포 전 서버/클라이언트 버전 업그레이드와 실기기 키보드 검증을 수행한다.
+1. 사용자 디자인 검토 피드백을 반영한다(승인 대기).
+2. 한 장소 32명 초과를 한 화면에 보여야 하는 요구가 확정되면 delta snapshot·관심 영역을 설계한다. 현재는 채널 방 자동 분할이다.
+3. 외부 배포·실기기 키보드·인터넷 지연 측정은 배포 환경과 실기기가 필요하다. 이 개발 세션은 loopback·운영 인증 금지 정책으로 수행하지 않는다. 외부 배포 전 Colyseus 0.17+ 업그레이드를 검토한다.
 4. PWA·앱 포장은 웹 핵심 플레이 검증 후 별도 계획으로 다룬다.
 
 ## 7. 인수인계
@@ -67,6 +67,7 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 ## 8. 변경된 계약
 
+- 2026-10-02 재개: 정면 볼 때 펫을 주인 옆에 배치, `colyseus/vendor/nanoid` override, 통합 opt-in `hundred_client_local_room_split`, `scripts/dev.mjs`·`dev-backend.mjs`가 자식 종료를 기다린 뒤 끝나도록 변경(PocketBase 종료가 늦을 때 포트가 남아 재시작이 거부되던 문제).
 - PLAN-003: `startGame` 메시지 제거, 별 30초 라운드 → 상시 이벤트(6초 생성·3분 정산·0점 미기록·별 유지). 메시지 `look` 추가, player에 `look`, game에 `id`. PB `purchases` 컬렉션과 profiles `outfit`/`room` 필드, `/api/pixeltown/shop/{buy,equip,room}` 훅. `shared/catalog.json` 추가. 구 `scripts/verify-backend.mjs`·`verify-stars.mjs` 제거(통합 테스트로 대체).
 - 재제작(PLAN-002): 월드 960×640 단일 지형 → 장소별 640×416 타일맵. 수집 거리 32 → 16도트, 서버 틱 100 → 50ms, 이동 3도트/틱. `joinOrCreate` 옵션에 `entry` 추가(고정 입구 이름만 허용). 충돌 정본이 `colyseus/town.js`에서 `shared/world.js`로 이동.
 
@@ -83,8 +84,8 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 | 항목 | 결과 | 근거 | 날짜 | 리비전 | 유효성 | 출처 / 공백 |
 |---|---|---|---|---|---|---|
-| 단위 18개(맵·깊이·충돌 9, 상점·미니룸 4 포함) | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | `npm --prefix colyseus test` |
-| 통합 15개(별도 포트 18191/12668, 상점 2) | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | `tests/report.json` |
+| 단위 19개(맵·깊이·충돌 9, 상점·미니룸 4, nanoid 1 포함) | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | `npm --prefix colyseus test` |
+| 통합 15개 + 100명 opt-in 1개(별도 포트 18191/12668) | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | `tests/report.json` |
 | 브라우저 UI 7개 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
 | 깊이·충돌·맵 AC-014/015 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 실제 클릭·방향키 이동 좌표와 앞/뒤 스크린샷 |
 | 도트 스케일·4 뷰포트 AC-011/016 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | scroll=viewport, 정수 배율 3/6, smoothing false |
@@ -92,9 +93,13 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 | 상점·옷장·펫·미니룸 AC-017–019 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 통합 위조·동시 구매, 브라우저 2유저 |
 | 클릭 이동·큰 채팅 AC-020 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | 채팅 위 클릭·키 취소·막힌 곳 |
 | 빌드 | PASS | RECHECKED | 2026-10-02 | `965d266` | CURRENT | `npm run build` |
+| 미니룸·정면 펫 가림 수정 | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | UI `petFacingDown` dx −14, 스크린샷 |
+| npm audit(루트·colyseus) | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | 0건, `npm ci` 재현, `test/ids.test.js` |
+| 100명 로컬 채널 분할 | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | `PIXELTOWN_LOAD_100=1`, `tests/report.json` load100 |
+| launcher 종료 시 포트 해제 | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | SIGTERM 후 launcher 종료 시점에 3포트 비어 있음 |
 | 디자인 승인 | PENDING | NONE | - | - | UNKNOWN | 사용자 판단 |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
-| 인터넷 성능·100명·운영 배포 | NOT_RUN | NONE | - | - | UNKNOWN | 범위 밖 |
+| 인터넷 지연·운영 배포·한 화면 100명 | NOT_RUN | NONE | - | - | UNKNOWN | 배포 환경 필요, 범위 밖 |
 
 거절판(`9bc3d66`)의 화면 증거는 삭제했고 백엔드 검증은 위 재실행으로 대체했다.
 

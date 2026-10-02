@@ -15,7 +15,7 @@
 | 실행·seed | scripts/dev.mjs, dev-backend.mjs, init-pocketbase.mjs | macOS/Linux, curl/unzip, 바이너리 SHA-256 확인, localhost 제한 |
 | 검증 | tests/integration.mjs, tests/report.json | 별도 PB 데이터·outbox, 자기 프로세스만 관리 |
 
-라이브러리의 최신 버전 안내가 아니라 이 저장소의 설치·구현 계약이다. Colyseus 0.16 호환성에 따른 dependency 취약점 설명은 PROJECT_STATUS와 colyseus/README.md를 확인하고 공개 배포 판단 전에 실제 audit 결과를 검토한다. 이 문서는 audit 통과를 주장하지 않는다.
+라이브러리의 최신 버전 안내가 아니라 이 저장소의 설치·구현 계약이다. Colyseus 0.16의 `nanoid 2.x` 취약 의존성은 `colyseus/vendor/nanoid` 로컬 대체 모듈로 override했다(colyseus/README.md). 2026-10-02 기준 루트·colyseus `npm audit` 0건이며, 공개 배포 판단 전에는 audit을 다시 실행한다.
 
 ## 2. 아키텍처
 
@@ -94,7 +94,7 @@ DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체
 
 `startGame` 메시지는 제거했다. Colyseus는 등록되지 않은 메시지를 보낸 클라이언트의 연결을 끊는다.
 
-player는 `{id,name,x,y,color,look:{hat,top,pet}}`(look은 카탈로그 슬롯이 맞는 값만, 나머지 null). game은 `{id,active,endsAt,stars:[{id,x,y}],scores:{[userId]:integer}}`, `id`는 현재 정산 기간 match_id, `endsAt`은 다음 정산 시각. persistence는 `{status:'pending'|'saved',pending,lastError}`이며 전체 outbox 상태이므로 특정 매치만의 상태는 아니다.
+player는 `{id,name,x,y,color,look:{hat,top,pet}}`(look은 카탈로그 슬롯이 맞는 값만, 나머지 null). 펫은 화면에서만 주인을 따라가며, 주인이 아래(정면)를 볼 때는 몸에 가리지 않도록 옆(-14,-3도트)에 선다. game은 `{id,active,endsAt,stars:[{id,x,y}],scores:{[userId]:integer}}`, `id`는 현재 정산 기간 match_id, `endsAt`은 다음 정산 시각. persistence는 `{status:'pending'|'saved',pending,lastError}`이며 전체 outbox 상태이므로 특정 매치만의 상태는 아니다.
 
 서버는 50ms마다 `moveActor(map,x,y,dx,dy,3)`을 적용하며 입력이 300ms보다 오래되면 움직이지 않는다. 이동은 1.5도트 이하로 쪼개 축별로 미끄러지고, 한 축만 막히면 수직 방향 6도트 이내 빈틈으로 비켜 간다. 플레이어 발 상자 10×6이 막힌 타일·소품 footprint·맵 경계와 겹치면 막힌다. 별은 `spreadSpot`이 `starSpots`(시작점에서 닿고 sort 소품 그림에 가리지 않은 타일 중심) 후보 24개 중 기존 별·플레이어와 가장 먼 곳을 고른다. 이벤트는 첫 입장 때 시작해 계속된다. 최소 5개를 채우고, `STAR_SPAWN_INTERVAL_MS`(기본 6000, 1000..60000)마다 상한 12 미만이면 1개 생성한다. `GAME_DURATION_MS`(기본 180000, 1000..300000)마다 `settle`: 점수 1 이상인 사람만 outbox에 넣고 `gameEnded`를 보낸 뒤, 별을 유지한 채 새 match_id·0점으로 다음 기간을 시작한다. 기간 합계가 64(`MAX_MATCH_SCORE`)에 닿으면 즉시 정산하고, 정산 대기 중 64를 넘는 수집은 거부한다. 전원 이탈·dispose 때 정산하고 멈춘다. 진행 중 합류자를 scores에 등록하고 이탈자의 점수는 정산까지 유지한다. solo 연습도 최소5·6초·상한12와 충돌을 적용하며 DB 보상은 없다.
 
@@ -187,4 +187,4 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 
 테스트 날짜·리비전·결과·미실행 공백은 PROJECT_STATUS와 verification.md에서 관리한다.
 
-20명 smoke는 약 3초 입력 workload·10Hz 목표·단일 로컬 머신 기능 점검이다. 100명이나 인터넷 지연·실제 모바일 FPS를 보증하지 않는다. 이후 규모 확대는 schema delta/관심 영역, 방 분할, PB 저장량, 네트워크·CPU·모바일 렌더링 측정 후 결정한다. 공개 GitHub source push와 운영 배포를 구분한다.
+20명 smoke는 약 3초 입력 workload·10Hz 목표·단일 로컬 머신 기능 점검이다. `PIXELTOWN_LOAD_100=1`이면 100명을 한 장소에 넣어 `filterBy(['zone'])`·`maxClients=32`에 의한 채널 방 자동 분할(32/32/32/4)과 방별 snapshot·채팅을 추가로 측정한다. 다른 채널 방의 사용자는 서로 보이지 않는다. 인터넷 지연·실제 모바일 FPS·운영 수용량은 보증하지 않는다. 이후 규모 확대는 schema delta/관심 영역, 방 분할, PB 저장량, 네트워크·CPU·모바일 렌더링 측정 후 결정한다. 공개 GitHub source push와 운영 배포를 구분한다.

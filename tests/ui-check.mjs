@@ -218,11 +218,15 @@ await check('shop_dress_pet_and_miniroom', async () => {
   await s.reload(); await s.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0); await zone(s, '미니룸', 'home'); await sleep(800);
   const { adminClient } = await import('../colyseus/config.js'), admin = await adminClient();
   out.savedRoom = (await admin.collection('profiles').getFirstListItem(`user="${acc.id}"`)).room;
-  await walkTo(s, 240, 200); await sleep(600); await s.screenshot({ path: ASSETS + 'miniroom.png' });
+  await walkTo(s, 240, 200); await sleep(600);
+  // Facing the camera, the pet must sit beside the owner (not straight behind the body where it is fully covered).
+  await s.keyboard.down('ArrowDown'); await sleep(200); await s.keyboard.up('ArrowDown'); await sleep(1200);
+  out.petFacingDown = await s.evaluate(() => { const a = [...window.__pixeltown.anim.values()].find(v => v.pet); return a && { dir: a.dir, dx: +(a.pet.x - a.x).toFixed(1), dy: +(a.pet.y - a.y).toFixed(1) }; });
+  await s.screenshot({ path: ASSETS + 'miniroom.png' });
   out.besideBed = await pos(s);
   out.pageErrors = [...s.errs, ...o.errs];
   assert(out.seenByOther.hat === 'hat_crown' && out.seenByOther.top === 'top_sailor', 'outfit synced');
-  assert(/문 앞/.test(out.doorBlockedToast || ''), 'door rule'); assert(out.savedRoom?.length === 4, 'room saved'); assert(!out.pageErrors.length, 'page errors');
+  assert(out.petFacingDown?.dir === 0 && (Math.abs(out.petFacingDown.dx) >= 10 || out.petFacingDown.dy > 0), 'pet visible beside owner'); assert(/문 앞/.test(out.doorBlockedToast || ''), 'door rule'); assert(out.savedRoom?.length === 4, 'room saved'); assert(!out.pageErrors.length, 'page errors');
   return out;
 });
 await check('viewports_no_scroll_integer_scale', async () => {

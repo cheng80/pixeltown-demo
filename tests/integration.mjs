@@ -238,6 +238,44 @@ async function loadChecks() {
     return report.load;
   });
   await Promise.allSettled(clients.map(leave));
+  if (process.env.PIXELTOWN_LOAD_100 === '1') await hundredClientCheck();
+}
+
+// Opt-in (PIXELTOWN_LOAD_100=1): 100 clients into one zone. Rooms hold 32, so filterBy(['zone']) must open
+// extra channel rooms; measures join time, input rate, snapshot flow and in-room chat latency on this machine.
+async function hundredClientCheck() {
+  const N = 100, clients = [], accounts = [];
+  await Promise.allSettled([...rooms].map(room => room.leave())); rooms.clear(); await sleep(500); // last test: start from empty rooms
+  await test('hundred_client_local_room_split', async () => {
+    for (let i = 0; i < N; i += 10) accounts.push(...await Promise.all(Array.from({ length: 10 }, (_, k) => createAccount(1000 + i + k))));
+    const started = performance.now();
+    for (let i = 0; i < N; i += 20) clients.push(...await Promise.all(accounts.slice(i, i + 20).map(a => join(a, 'lobby'))));
+    const byRoom = new Map();
+    for (const s of clients) byRoom.set(s.room.roomId, [...(byRoom.get(s.room.roomId) || []), s]);
+    await waitUntil(() => clients.every(s => s.snapshot.players.length === byRoom.get(s.room.roomId).length), 'every client sees exactly its room', 20000);
+    const joinedMs = Math.round(performance.now() - started), sizes = [...byRoom.values()].map(r => r.length).sort((a, b) => b - a);
+    assert.equal(byRoom.size, Math.ceil(N / 32), `room split ${sizes}`);
+    assert.ok(sizes.every(n => n <= 32));
+    const countBefore = clients.map(s => s.snapshots.length), latencies = [], durationMs = 3000, workloadStarted = performance.now();
+    let sentInputs = 0;
+    for (let tick = 0; tick < durationMs / 100; tick++) {
+      const tickStarted = performance.now();
+      clients.forEach(s => { s.room.send('input', { dx: tick % 2 ? -1 : 1, dy: 0 }); sentInputs++; });
+      if (tick % 5 === 0) {
+        const members = [...byRoom.values()][tick / 5 % byRoom.size], text = `load100-${runtime.runId}-${tick}`, sendTime = performance.now();
+        members[0].room.send('chat', { text });
+        await waitUntil(() => members.every(s => s.messages.some(m => m.type === 'chat' && m.payload.text === text)), 'in-room chat broadcast', 3000);
+        latencies.push(performance.now() - sendTime);
+      }
+      await sleep(Math.max(0, 100 - (performance.now() - tickStarted)));
+    }
+    const snapshotCounts = clients.map((s, i) => s.snapshots.length - countBefore[i]), actualDurationMs = Math.round(performance.now() - workloadStarted);
+    assert.ok(snapshotCounts.every(n => n > 5), 'Snapshot broadcast stalled under load');
+    const sorted = latencies.sort((a, b) => a - b);
+    report.load100 = { clients: N, rooms: byRoom.size, roomSizes: sizes, joinedMs, sentInputs, durationMs: actualDurationMs, effectiveInputHzPerClient: Number((sentInputs / N / (actualDurationMs / 1000)).toFixed(2)), minimumSnapshots: Math.min(...snapshotCounts), chatBroadcastP95Ms: Math.round(sorted[Math.ceil(sorted.length * .95) - 1]), scope: 'single local machine; players in different channel rooms do not see each other; not an internet or capacity benchmark' };
+    return report.load100;
+  });
+  await Promise.allSettled(clients.map(leave));
 }
 
 // The star event is always on: there is no start command, scores are settled every period.

@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-02T01:58:52.147Z",
+ "startedAt": "2026-10-02T02:13:49.210Z",
  "url": "http://127.0.0.1:5173/",
  "checks": {
   "depth_and_collision_lobby": {
@@ -7,8 +7,8 @@
    "underCanopy": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 148.48,
-    "y": 171.32,
+    "x": 148.51,
+    "y": 171.33,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -19,8 +19,8 @@
    "inFront": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 146.38,
-    "y": 195.61,
+    "x": 147.34,
+    "y": 194.73,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -31,8 +31,8 @@
    "trunkStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 146.38,
-    "y": 186.61,
+    "x": 147.34,
+    "y": 187.23,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -43,8 +43,8 @@
    "behindHouse": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 122.87,
-    "y": 49.4,
+    "x": 120.72,
+    "y": 48.93,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -55,8 +55,8 @@
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 122.48,
-    "y": 99.29,
+    "x": 118.56,
+    "y": 99.8,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -70,8 +70,8 @@
    "behindCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 106.22,
-    "y": 191.03,
+    "x": 107.92,
+    "y": 190.97,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -82,8 +82,8 @@
    "frontCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 107.66,
-    "y": 222.9,
+    "x": 108.59,
+    "y": 222.75,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -94,8 +94,8 @@
    "behindPillar": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 200.31,
-    "y": 121.23,
+    "x": 200.51,
+    "y": 121.11,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -106,8 +106,8 @@
    "behindCounter": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 539.76,
-    "y": 312.69,
+    "x": 540.96,
+    "y": 312.99,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -118,8 +118,8 @@
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 322.23,
-    "y": 51.8,
+    "x": 321.13,
+    "y": 52.13,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -142,8 +142,8 @@
    "pondStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 273.96,
-    "y": 195.9,
+    "x": 273.97,
+    "y": 195.89,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -213,8 +213,8 @@
    "stoppedAt": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 123.97,
-    "y": 100.2,
+    "x": 123.95,
+    "y": 100.39,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -244,11 +244,11 @@
    "startButton": false,
    "activeOnJoin": true,
    "initial": 5,
-   "minimumSpacing": 177,
+   "minimumSpacing": 193,
    "secondsToNextSettlement": 167,
    "myScore": 3,
    "stillActiveAfterSettlement": true,
-   "notebook": "Demo 1demo1@pixeltown.local별 보상 4개★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오전 11:033점광장26. 10. 2. 오전 4:440점광장26. 10. 2. 오전 4:411점광장26. 10. 2. 오전 4:200점"
+   "notebook": "Demo 1demo1@pixeltown.local별 보상 7개★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오전 11:183점오락실26. 10. 2. 오전 11:033점광장26. 10. 2. 오전 4:440점광장26. 10. 2. 오전 4:411점광장26. 10."
   },
   "shop_dress_pet_and_miniroom": {
    "ok": true,
@@ -282,8 +282,13 @@
      "r": 18
     }
    ],
+   "petFacingDown": {
+    "dir": 0,
+    "dx": -14,
+    "dy": -3
+   },
    "besideBed": {
-    "id": "qw8r7mqcrqd1eqe",
+    "id": "6bk2powuid3pp5b",
     "name": "쇼핑왕",
     "color": "#9fd0ff",
     "look": {
@@ -292,7 +297,7 @@
      "top": "top_sailor"
     },
     "x": 241.33,
-    "y": 201.29
+    "y": 213.29
    },
    "pageErrors": []
   },
@@ -353,7 +358,7 @@
     "galmuri": true,
     "sendButtonVisible": true
    },
-   "shortDpadMoved": 36,
+   "shortDpadMoved": 33,
    "short": {
     "scroll": [
      390,
@@ -374,6 +379,6 @@
    }
   }
  },
- "finishedAt": "2026-10-02T02:03:34.212Z",
+ "finishedAt": "2026-10-02T02:18:31.735Z",
  "status": "passed"
 }
