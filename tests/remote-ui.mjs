@@ -24,7 +24,8 @@ async function open({ email, password }) {
 }
 try {
   const a = await open(accounts[0]), b = await open(accounts[1]);
-  await a.waitForFunction(() => window.__pixeltown.state.current.players.length === 2, null, { timeout: 10000 });
+  // Real visitors may be in the same room, so wait for the other tester rather than an exact head count.
+  await a.waitForFunction(n => window.__pixeltown.state.current.players.some(q => q.name === n), accounts[1].name || 'Tester 2', { timeout: 15000 });
   for (const p of [a, b]) if (await p.$('.chat-fab')) await p.click('.chat-fab'); // open the chat overlay if it was collapsed
   await b.fill('.chat-form input', '원격 서버에서 안녕!'); await b.keyboard.press('Enter');
   await a.waitForFunction(() => document.querySelector('.chat-log')?.textContent.includes('원격 서버에서 안녕'), null, { timeout: 10000 });
