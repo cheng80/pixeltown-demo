@@ -83,15 +83,15 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 | 항목 | 결과 | 근거 | 날짜 | 리비전 | 유효성 | 출처 / 공백 |
 |---|---|---|---|---|---|---|
-| 단위 18개(맵·깊이·충돌 9, 상점·미니룸 4 포함) | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | `npm --prefix colyseus test` |
-| 통합 15개(별도 포트 18191/12668, 상점 2) | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | `tests/report.json` |
-| 브라우저 UI 7개 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
-| 깊이·충돌·맵 AC-014/015 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | 실제 클릭·방향키 이동 좌표와 앞/뒤 스크린샷 |
-| 도트 스케일·4 뷰포트 AC-011/016 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | scroll=viewport, 정수 배율 3/6, smoothing false |
-| 상시 별 이벤트·기본 3분 정산 AC-007/008/013 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | 브라우저 기본값, 통합 단축값 |
-| 상점·옷장·펫·미니룸 AC-017–019 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | 통합 위조·동시 구매, 브라우저 2유저 |
-| 클릭 이동·큰 채팅 AC-020 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | 채팅 위 클릭·키 취소·막힌 곳 |
-| 빌드 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | `npm run build` |
+| 단위 18개(맵·깊이·충돌 9, 상점·미니룸 4 포함) | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | `npm --prefix colyseus test` |
+| 통합 15개(별도 포트 18191/12668, 상점 2) | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | `tests/report.json` |
+| 브라우저 UI 7개 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
+| 깊이·충돌·맵 AC-014/015 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | 실제 클릭·방향키 이동 좌표와 앞/뒤 스크린샷 |
+| 도트 스케일·4 뷰포트 AC-011/016 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | scroll=viewport, 정수 배율 3/6, smoothing false |
+| 상시 별 이벤트·기본 3분 정산 AC-007/008/013 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | 브라우저 기본값, 통합 단축값 |
+| 상점·옷장·펫·미니룸 AC-017–019 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | 통합 위조·동시 구매, 브라우저 2유저 |
+| 클릭 이동·큰 채팅 AC-020 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | 채팅 위 클릭·키 취소·막힌 곳 |
+| 빌드 | PASS | RECHECKED | 2026-10-02 | `a714104` | CURRENT | `npm run build` |
 | 디자인 승인 | PENDING | NONE | - | - | UNKNOWN | 사용자 판단 |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
 | 인터넷 성능·100명·운영 배포 | NOT_RUN | NONE | - | - | UNKNOWN | 범위 밖 |
