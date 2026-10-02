@@ -15,8 +15,10 @@ const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath
 
 async function login(account = 1, { w = 1280, h = 720, mobile = false, query = '' } = {}) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: mobile ? 3 : 1, isMobile: mobile, hasTouch: mobile });
+  // No login screen any more (PLAN-006): an existing account enters like a returning guest, from saved credentials.
+  await ctx.addInitScript(([email, password]) => localStorage.setItem('pixeltown.guest', JSON.stringify({ email, password })), [`demo${account}@pixeltown.local`, 'PixelTown123!']);
   const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
-  await p.goto(BASE + query); await p.click(`text=이웃 ${account} 계정`); await p.click('text=타운 입장하기');
+  await p.goto(BASE + query);
   await p.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0, null, { timeout: 10000 })
     .catch(async e => { throw new Error(`login ${account}: ${await p.evaluate(() => document.querySelector('.toast')?.textContent)} ${e.message}`); });
   await sleep(400); p.name = `Demo ${account}`; return p;
@@ -34,8 +36,9 @@ async function shopper({ avatar = { skin: 2, hair: 4, style: 1 }, name = `쇼핑
 }
 async function loginAs({ email, password }, name, { w = 1280, h = 720 } = {}) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+  await ctx.addInitScript(([email, password]) => localStorage.setItem('pixeltown.guest', JSON.stringify({ email, password })), [email, password]);
   const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
-  await p.goto(BASE); await p.fill('input[type=email]', email); await p.fill('input[type=password]', password); await p.click('text=타운 입장하기');
+  await p.goto(BASE);
   await p.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0, null, { timeout: 10000 });
   await sleep(400); p.name = name; return p;
 }
@@ -230,11 +233,13 @@ await check('shop_dress_pet_and_miniroom', async () => {
   return out;
 });
 await check('character_setup_first_entry', async () => {
-  // A brand-new account sees the set-up screen first, builds a character, enters, and others see it (FR-014).
-  const acc = await shopper({ avatar: null, name: `새싹${Date.now().toString(36).slice(-4)}` }), out = {};
+  // A first-time visitor (no account) lands on the character set-up, which signs a guest up (PLAN-006); others see it (FR-014).
+  const out = {};
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } }), p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
-  await p.goto(BASE); await p.fill('input[type=email]', acc.email); await p.fill('input[type=password]', acc.password); await p.click('text=타운 입장하기');
+  await p.goto(BASE);
   await p.waitForSelector('[role=dialog][aria-label="캐릭터 만들기"]');
+  out.noLoginForm = !(await p.$('input[type=email]')) && !(await p.$('text=혼자 둘러보기')) && !(await p.$('input[type=password]'));
+  await p.screenshot({ path: ASSETS + 'first-screen.png' });
   out.roomJoinedBeforeSetup = await p.evaluate(() => Boolean(window.__pixeltown?.state.current.players?.length));
   const nick = `별돌이${Date.now().toString(36).slice(-3)}`;
   await p.fill('[role=dialog] input', '가'); out.shortNameDisabled = await p.isDisabled('[role=dialog] button:has-text("이대로 입장")');
@@ -248,6 +253,10 @@ await check('character_setup_first_entry', async () => {
   await p.screenshot({ path: ASSETS + 'character-setup.png' });
   await p.click('button:has-text("이대로 입장")');
   await p.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0, null, { timeout: 10000 }).catch(async e => { throw new Error(`enter after set-up: ${await p.evaluate(() => document.querySelector('[role=alert]')?.textContent)} ${e.message}`); });
+  out.guestSaved = await p.evaluate(() => /@guest\.pixeltown\.local$/.test(JSON.parse(localStorage.getItem('pixeltown.guest') || '{}').email || ''));
+  // Returning visitor: a reload enters the town again as the same character without any screen in between.
+  await p.reload(); await p.waitForFunction(n => window.__pixeltown?.state.current.players?.some(q => q.name === n), nick, { timeout: 15000 });
+  out.reloadSameCharacter = true;
   const o = await login(2);
   const seen = await o.waitForFunction(n => window.__pixeltown.state.current.players.find(q => q.name === n), nick, { timeout: 10000 }).then(h => h.jsonValue())
     .catch(async e => { throw new Error(`seen by other: ${JSON.stringify(await o.evaluate(() => window.__pixeltown.state.current.players.map(q => q.name)))} ${e.message}`); });
@@ -258,7 +267,7 @@ await check('character_setup_first_entry', async () => {
   await o.waitForFunction(n => window.__pixeltown.state.current.players.some(q => q.name === n && q.color === '#ffb347'), nick + '2', { timeout: 10000 });
   out.editedName = nick + '2'; await sleep(500); await p.screenshot({ path: ASSETS + 'character-in-town.png' });
   out.pageErrors = [...p.errs, ...o.errs];
-  assert(!out.roomJoinedBeforeSetup && out.shortNameDisabled && !out.pageErrors.length, JSON.stringify(out));
+  assert(out.noLoginForm && out.guestSaved && !out.roomJoinedBeforeSetup && out.shortNameDisabled && !out.pageErrors.length, JSON.stringify(out));
   await ctx.close(); await o.context().close();
   return out;
 });

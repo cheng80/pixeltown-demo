@@ -12,7 +12,9 @@ async function open({ email, password }) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } }), p = await ctx.newPage();
   p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
   p.on('request', r => out.hosts.add(new URL(r.url()).origin)); p.on('websocket', ws => out.hosts.add(new URL(ws.url()).origin));
-  await p.goto(BASE); await p.fill('input[type=email]', email); await p.fill('input[type=password]', password); await p.click('text=타운 입장하기');
+  // Existing accounts enter from saved credentials, like a returning guest (no login screen since PLAN-006).
+  await ctx.addInitScript(([email, password]) => localStorage.setItem('pixeltown.guest', JSON.stringify({ email, password })), [email, password]);
+  await p.goto(BASE);
   // First entry without a chosen look shows the character set-up (FR-014); keep the account name and pick a look.
   const setup = await p.waitForSelector('[role=dialog][aria-label="캐릭터 만들기"]', { timeout: 8000 }).catch(() => null);
   if (setup) { out.setupShown = (out.setupShown || 0) + 1; await p.click('button[aria-label="머리 색 6"]'); await p.click('button:has-text("이대로 입장")'); }
@@ -32,5 +34,14 @@ try {
   out.pageErrors = [...a.errs, ...b.errs];
   out.hosts = [...out.hosts].filter(h => !h.startsWith('data:')).sort();
   if (!out.hosts.includes('https://pixeltown.fastmake.net') || !out.hosts.includes('wss://pixeltown-rt.fastmake.net') || out.pageErrors.length) throw new Error(JSON.stringify(out));
+  // A first-time visitor on the remote server: character screen → guest account → town; a reload comes back as the same character.
+  const g = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage(); g.errs = []; g.on('pageerror', e => g.errs.push(e.message));
+  await g.goto(BASE); await g.waitForSelector('[role=dialog][aria-label="캐릭터 만들기"]');
+  const nick = `원격손님${Date.now().toString(36).slice(-4)}`;
+  await g.fill('[role=dialog] input', nick); await g.click('button[aria-label="옷 색 7"]'); await g.click('button:has-text("이대로 입장")');
+  await a.waitForFunction(n => window.__pixeltown.state.current.players.some(q => q.name === n), nick, { timeout: 15000 });
+  await g.reload(); await g.waitForFunction(n => window.__pixeltown?.state.current.players?.some(q => q.name === n), nick, { timeout: 15000 });
+  out.guest = { created: true, seenByOther: true, reloadSameCharacter: true, pageErrors: g.errs };
+  if (g.errs.length) throw new Error(JSON.stringify(out));
   out.ok = true; console.log('PASS remote_ui_two_users', JSON.stringify(out));
 } finally { await browser.close(); }

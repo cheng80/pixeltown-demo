@@ -10,8 +10,9 @@ const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const out = { url: BASE, clicks: [] };
 try {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
-  await p.goto(BASE); await p.fill('input[type=email]', acc.email); await p.fill('input[type=password]', acc.password); await p.click('text=타운 입장하기');
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  await ctx.addInitScript(([email, password]) => localStorage.setItem('pixeltown.guest', JSON.stringify({ email, password })), [acc.email, acc.password]);
+  const p = await ctx.newPage(); await p.goto(BASE);
   await p.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0, null, { timeout: 15000 });
   if (await p.$('.chat-head >> text=접기')) await p.click('.chat-head >> text=접기');
   const me = () => p.evaluate(id => { const q = window.__pixeltown.state.current.players.find(x => x.name === id); return q && { x: q.x, y: q.y }; }, acc.name);

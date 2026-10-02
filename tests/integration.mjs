@@ -526,7 +526,26 @@ async function shopChecks() {
     const seen = await waitUntil(() => { const p = rd.snapshot.players.find(q => q.id === c.id); return p?.name === ok.name && p.look.skin === 3 && p; }, 'other player sees the new character');
     assert.deepEqual([seen.color, seen.look.hair, seen.look.style], [ok.color, 6, 2]);
     await leave(rc); await leave(rd);
-    return { rejected, duplicateNickname: taken, duplicateMessage: takenResponse.data?.message, caseVariant, spacingVariants: spacing, saved: true, seenByOther: { name: true, skin: seen.look.skin, hair: seen.look.hair, style: seen.look.style, color: seen.color } };
+    // Guest sign-up (PLAN-006): character + random account in one request, atomic, nickname rules shared.
+    const guestPassword = randomBytes(24).toString('hex'), guestName = `손님${runtime.runId.slice(0, 4)}`;
+    const guest = await request('/api/pixeltown/guest', { method: 'POST', body: { name: guestName, color: '#c9a7ff', avatar: { skin: 0, hair: 2, style: 3 }, password: guestPassword } });
+    assert.equal(guest.status, 200, JSON.stringify(guest.data)); assert.ok(guest.data.token && /@guest\.pixeltown\.local$/.test(guest.data.record.email));
+    const relogin = await request('/api/collections/users/auth-with-password', { method: 'POST', body: { identity: guest.data.record.email, password: guestPassword } });
+    assert.equal(relogin.status, 200, 'Guest cannot sign in again with the browser-kept password');
+    const guestAccount = { id: guest.data.record.id, token: relogin.data.token };
+    const guestProfile = await runtime.admin.collection('profiles').getFirstListItem(`user="${guestAccount.id}"`);
+    assert.deepEqual([guestProfile.name, guestProfile.avatar], [guestName, { skin: 0, hair: 2, style: 3 }]);
+    const usersBefore = (await runtime.admin.collection('users').getList(1, 1)).totalItems;
+    const guestRejected = {
+      takenName: (await request('/api/pixeltown/guest', { method: 'POST', body: { ...ok, name: ok.name.replace('지기', ' 지기'), password: guestPassword } })).status, // c holds ok.name
+      shortPassword: (await request('/api/pixeltown/guest', { method: 'POST', body: { ...ok, name: `새손님${runtime.runId.slice(0, 3)}`, password: 'short' } })).status,
+      reserved: (await request('/api/pixeltown/guest', { method: 'POST', body: { ...ok, name: '운영자님', password: guestPassword } })).status,
+    };
+    assert.ok(Object.values(guestRejected).every(v => v === 400), JSON.stringify(guestRejected));
+    assert.equal((await runtime.admin.collection('users').getList(1, 1)).totalItems, usersBefore, 'A refused guest sign-up left a user behind');
+    const rg = await join(guestAccount, 'garden');
+    assert.equal(player(rg, guestAccount).name, guestName); await leave(rg);
+    return { rejected, duplicateNickname: taken, duplicateMessage: takenResponse.data?.message, caseVariant, spacingVariants: spacing, guest: { created: true, relogin: true, joinedTown: true, rejected: guestRejected, noOrphanUser: true }, saved: true, seenByOther: { name: true, skin: seen.look.skin, hair: seen.look.hair, style: seen.look.style, color: seen.color } };
   });
 }
 

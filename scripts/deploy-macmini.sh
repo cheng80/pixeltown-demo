@@ -17,7 +17,7 @@ mkdir -p "$stage/app/colyseus" "$stage/app/shared" "$stage/app/scripts" "$stage/
 cp colyseus/server.js colyseus/town.js colyseus/outbox.js colyseus/config.js colyseus/monitor-auth.js colyseus/package.json colyseus/package-lock.json "$stage/app/colyseus/"
 cp shared/world.js shared/catalog.json "$stage/app/shared/"
 cp scripts/init-pocketbase.mjs scripts/provision-accounts.mjs "$stage/app/scripts/"
-cp pocketbase/pb_hooks/matches.pb.js pocketbase/pb_hooks/shop.pb.js pocketbase/pb_hooks/profile.pb.js pocketbase/pb_hooks/shop_lib.js shared/catalog.json "$stage/pb_hooks/"
+cp pocketbase/pb_hooks/matches.pb.js pocketbase/pb_hooks/shop.pb.js pocketbase/pb_hooks/profile.pb.js pocketbase/pb_hooks/guest.pb.js pocketbase/pb_hooks/shop_lib.js shared/catalog.json "$stage/pb_hooks/"
 # app/colyseus/node_modules lives only on the server; --delete never touches it (excluded).
 rsync -a --delete --exclude node_modules -e "$SSH" "$stage/app/" "$HOST:$RT/app/"
 # Only the game hook files are written; realtime.pb.js and any other hook stay as they are.
