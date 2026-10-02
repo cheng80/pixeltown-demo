@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-02T11:46:11.587Z",
+  "startedAt": "2026-10-02T12:20:54.570Z",
   "pocketbase": "https://pixeltown-pb.fastmake.net",
   "realtime": "wss://pixeltown-rt.fastmake.net",
   "checks": {
@@ -15,14 +15,14 @@
       "forgedPurchase": 403,
       "commitAsUser": 403,
       "publicSignup": 403,
-      "ms": 16204
+      "ms": 10012
     },
     "two_users_move_chat": {
       "ok": true,
-      "movedBy": 21,
+      "movedBy": 36,
       "target": 360,
       "chatSenderIsServerId": true,
-      "ms": 5108
+      "ms": 12861
     },
     "zone_separation": {
       "ok": true,
@@ -30,65 +30,23 @@
       "lobbyPlayers": 1,
       "gardenPlayers": 1,
       "crossZoneChat": false,
-      "ms": 2817
+      "ms": 4057
     },
     "star_cap_collect_and_refill": {
-      "ok": true,
-      "startCountSeen": 5,
-      "cap": 12,
-      "maxObservedAtCap": 12,
-      "collected": 10,
-      "refillId": true,
-      "serverScore": 10,
-      "ms": 112636
+      "ok": false,
+      "error": "walk timeout: from 356,300 to 280,202, at 356,300, 3 waypoints left"
     },
     "default_3min_settlement_saved": {
-      "ok": true,
-      "matchId": "7dc3ff2a-e884-4bdf-adeb-9ac11fb243a9",
-      "scoreSaved": 10,
-      "inventoryQuantity": 10,
-      "serverScores": {
-        "bfibz83fzdylm8m": 10
-      },
-      "measuredPeriodMs": 181823,
-      "starsKeptIntoNextPeriod": true,
-      "otherUserCanRead": false,
-      "ms": 64329
+      "ok": false,
+      "error": "timeout: gameEnded"
     },
     "shop_equip_room_and_relogin": {
-      "ok": true,
-      "bought": [],
-      "wear": "hat_ribbon",
-      "furniture": "f_chair",
-      "walletBefore": 10,
-      "walletAfter": 10,
-      "duplicateBuy": 400,
-      "unaffordable": 400,
-      "notOwnedEquip": 400,
-      "doorPlacement": 400,
-      "savedRoom": [
-        {
-          "c": 11,
-          "item": "f_chair",
-          "r": 10
-        }
-      ],
-      "otherSeesOutfit": true,
-      "ms": 20575
+      "ok": false,
+      "error": "timeout: other sees the outfit"
     },
     "character_setup_profile": {
-      "ok": true,
-      "anonymous": 401,
-      "badColour": 400,
-      "saved": 200,
-      "duplicateNickname": 400,
-      "seenByOther": {
-        "skin": 2,
-        "hair": 3,
-        "style": 1,
-        "color": "#ffb347"
-      },
-      "ms": 3521
+      "ok": false,
+      "error": "timeout: other sees the character"
     },
     "monitor_admin_only": {
       "ok": true,
@@ -99,17 +57,16 @@
       "adminApi": 200,
       "adminApiReturnsRooms": true,
       "crossOriginWithAdmin": 403,
-      "ms": 3199
+      "ms": 4596
     }
   },
   "users": {
     "user1": "bfibz83fzdylm8m",
     "user2": "p2srnojs4omvb9g"
   },
-  "matchId": "7dc3ff2a-e884-4bdf-adeb-9ac11fb243a9",
-  "finishedAt": "2026-10-02T11:50:02.201Z",
+  "finishedAt": "2026-10-02T12:28:56.630Z",
   "summary": {
-    "passed": 8,
-    "failed": 0
+    "passed": 4,
+    "failed": 4
   }
 }

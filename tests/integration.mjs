@@ -345,7 +345,8 @@ async function playMatch(state, account, { verifyGeneration = false } = {}) {
   assert.ok(scoreAfterPickup < 5, `Forged collection score accepted: ${scoreAfterPickup}`);
   const matchId = scored.game.id;
   if (verifyGeneration) {
-    await waitUntil(() => state.snapshots.slice(collectOffset).some(s => s.game.stars.length === 11 && !s.game.stars.some(star => star.id === nearest.id)), 'collection frees one star slot');
+    // Walking there can also pick up a star on the way (the server collects on touch): one slot per star scored.
+    await waitUntil(() => state.snapshots.slice(collectOffset).some(s => s.game.stars.length === 12 - (s.game.scores[account.id] || 0) && !s.game.stars.some(star => star.id === nearest.id)), 'collection frees one star slot per star');
     await waitUntil(() => state.snapshot.game.stars.length === 12 && state.snapshot.game.stars.some(star => !beforeCollectIds.includes(star.id)), 'next generation period refills collected slot', runtime.starSpawnMs + 400);
     assert.ok(!state.snapshot.game.stars.some(s => s.id === nearest.id), 'Collected star ID was reused');
     generation.refillDelayMs = Math.round(performance.now() - collectedAt);
@@ -594,9 +595,9 @@ async function gameChecks() {
     await waitUntil(async () => (await records('results', a, `match_id="${match.match_id}"`)).length === 1, 'result persisted');
     const results = await records('results', a, `match_id="${match.match_id}"`);
     row = results[0];
-    assert.equal(row.user, a.id); assert.equal(row.score, 1); assert.equal(row.zone, 'garden');
+    assert.equal(row.user, a.id); assert.equal(row.score, match.scores[a.id]); assert.ok(row.score >= 1); assert.equal(row.zone, 'garden'); // stars picked up on the way also count
     const items = await records('inventory', a, `match_id="${match.match_id}"`);
-    assert.equal(items.length, 1); assert.equal(items[0].quantity, 1); assert.equal(items[0].item, 'star');
+    assert.equal(items.length, 1); assert.equal(items[0].quantity, row.score); assert.equal(items[0].item, 'star');
     const ownB = await records('results', b, `match_id="${match.match_id}"`);
     assert.equal(ownB.length, 0, 'A player without points must not get an empty result row');
     return { matchId: match.match_id, serverScore: row.score, resultsPerScoringUser: 1, rewardPerScoringUser: 1, zeroScoreRows: 0 };
@@ -623,8 +624,8 @@ async function gameChecks() {
     }
     const spoofProfile = await request(`/api/collections/profiles/records/${ownProfile.id}`, { token: a.token, method: 'PATCH', body: { user: b.id, name: 'SPOOFED' } });
     assert.ok([400, 403, 404].includes(spoofProfile.status));
-    assert.equal((await records('results', a, filter))[0].score, 1);
-    assert.equal((await records('inventory', a, filter))[0].quantity, 1);
+    assert.equal((await records('results', a, filter))[0].score, match.scores[a.id]);
+    assert.equal((await records('inventory', a, filter))[0].quantity, match.scores[a.id]);
     for (const token of [undefined, a.token, b.token]) {
       const commit = await request('/api/pixeltown/commit-match', { token, method: 'POST', body: { ...match, scores: { [a.id]: 12 } } });
       assert.ok([401, 403].includes(commit.status), 'Non-admin could commit a forged authoritative match');
@@ -653,8 +654,8 @@ async function gameChecks() {
   await test('conflicting_replay_denied_and_transaction_rollback', async () => {
     const conflicting = await request('/api/pixeltown/commit-match', { token: runtime.admin.authStore.token, method: 'POST', body: { ...match, scores: { ...match.scores, [a.id]: 12 } } });
     assert.equal(conflicting.status, 400, 'Conflicting authoritative replay permitted');
-    assert.equal((await records('results', a, `match_id="${match.match_id}"`))[0].score, 1);
-    assert.equal((await records('inventory', a, `match_id="${match.match_id}"`))[0].quantity, 1);
+    assert.equal((await records('results', a, `match_id="${match.match_id}"`))[0].score, match.scores[a.id]);
+    assert.equal((await records('inventory', a, `match_id="${match.match_id}"`))[0].quantity, match.scores[a.id]);
     const rollbackId = randomUUID();
     const badSecondParticipant = await request('/api/pixeltown/commit-match', { token: runtime.admin.authStore.token, method: 'POST', body: { ...match, match_id: rollbackId, scores: { [a.id]: 2, missinguser0000: 1 } } });
     assert.ok([400, 404].includes(badSecondParticipant.status), 'Invalid second participant was accepted');

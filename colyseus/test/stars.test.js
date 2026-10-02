@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Town, INITIAL_STARS, MAX_STARS, STAR_SPAWN_INTERVAL_MS, RECONNECT_SECONDS } from '../town.js';
+import { Town, INITIAL_STARS, MAX_STARS, STAR_SPAWN_INTERVAL_MS, RECONNECT_SECONDS, MAX_QUEUED_INPUTS } from '../town.js';
 const T=STAR_SPAWN_INTERVAL_MS;
 import { outbox } from '../outbox.js';
 // Never touch the real outbox directory from unit tests.
@@ -108,15 +108,21 @@ test('a click route ends exactly on its target even when the client reacts late 
 });
 
 test('inputs are one step each, acknowledged, and sending faster never moves faster',()=>{
-  const r=room(),p=r.players.get('session'),send=(n,seq)=>{const e=r.moveInputs.get('session')||{queue:[],credit:1};for(let i=0;i<n;i++)e.queue.push({dx:1,dy:0,to:null,seq:seq+i});if(e.queue.length>6)e.queue.splice(0,e.queue.length-6);r.moveInputs.set('session',e);};
-  const x0=p.x;send(1,1);r.tick(1050);
-  assert.equal(p.ack,1);assert(Math.abs(p.x-x0-3)<0.01,'one input = one 3-dot step');
-  // A client flooding 4 inputs per tick for 10 ticks still moves at most ~1 step per tick.
-  const x1=p.x;for(let t=0;t<10;t++){send(4,10+t*4);r.tick(2000+t*50);}
-  assert(p.x-x1<=33.01,`moved ${p.x-x1}`);
-  // A tick without input lets the next tick catch up by one step (jitter), not more.
-  const x2=p.x;r.moveInputs.set('session',{queue:[],credit:r.moveInputs.get('session').credit});r.tick(3000);
-  send(3,100);r.tick(3050);assert(p.x-x2<=6.01);
+  const r=room(),p=r.players.get('session'),e={queue:[],credit:1};r.moveInputs.set('session',e);
+  let seq=0,consumed=0;const send=n=>{for(let i=0;i<n;i++)e.queue.push({dx:i%2?1:-1,dy:0,to:null,seq:++seq});if(e.queue.length>MAX_QUEUED_INPUTS)e.queue.splice(0,e.queue.length-MAX_QUEUED_INPUTS);};
+  const tick=t=>{const before=e.queue.length;r.tick(t);consumed+=before-e.queue.length;};
+  const x0=p.x;send(1);tick(1050);
+  assert.equal(p.ack,1);assert(Math.abs(p.x-x0+3)<0.01,'one input = one 3-dot step');
+  // A client flooding 4 inputs every tick for 10 s gets at most one step per 50 ms plus the 1 s burst allowance.
+  consumed=0;for(let t=0;t<200;t++){send(4);tick(2000+t*50);}
+  assert(consumed<=200+MAX_QUEUED_INPUTS,`consumed ${consumed} steps in 200 ticks`);
+});
+
+test('inputs that stall and then arrive in a burst are caught up at once (no backlog, no overflow)',()=>{
+  const r=room(),e={queue:[],credit:1};r.moveInputs.set('session',e);let seq=0;
+  // The server ticks every 50 ms; the client's 50 ms steps reach it in bursts of 12 every 600 ms.
+  for(let t=1000,k=0;k<9;t+=50){if((t-1000)%600===0&&t>1000){for(let i=0;i<12;i++)e.queue.push({dx:0,dy:0,to:null,seq:++seq});r.tick(t);assert.equal(e.queue.length,0,`backlog ${e.queue.length} after burst ${k}`);k++;}else r.tick(t);}
+  assert.equal(r.players.get('session').ack,seq);
 });
 
 test('a dropped player is kept for reconnection; a join refused in onJoin is not (its rejection crashed the server)',async()=>{
