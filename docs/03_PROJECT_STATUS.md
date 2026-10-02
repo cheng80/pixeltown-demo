@@ -96,14 +96,23 @@
 
 ## 7. 인수인계
 
-### 세션 인계 (2026-10-02, 커밋 `879e10e` 이후)
+### 세션 인계 (2026-10-03, 커밋 `085fa47` 이후)
 
-- 이전 Claude 개발 세션은 맥락이 가득 차 새 세션으로 넘겼다. 완료: Mac mini 이전, 게스트 자동 가입·남용 방지(시간당 20), `pixeltown-pb.fastmake.net` 이전과 Cloudflare Pages 배포(`https://pixeltown.fastmake.net`, main push 시 자동 빌드), 이동 흔들림·대각선 방향 수정, 검증용 관리자 Monitor 확인, 운영 정리(SERVER_OPERATIONS 11절). 마지막 검증: 원격 검사 8/8, 배포 주소 원격 UI 통과, 로컬 UI 통과.
-- 진행 중 작업 없음. 다음 작업은 6절. 디자인은 2026-10-02 사용자 승인으로 대기 항목에서 빠졌다.
-- 이 컴퓨터는 Unicorn HTTPS VPN이 기본 경로를 잡아 배포 주소 핑이 약 285ms다(verification 21절). 끊김·멈춤 재현은 이 점을 감안한다. Tailscale 경로도 빠져 있어 Mac mini 배포는 `tailscale nc`를 쓰는 임시 ssh 래퍼(`.test-work/bin/ssh`, git 제외)로 했다: `PATH="$PWD/.test-work/bin:$PATH" scripts/deploy-macmini.sh`.
-- 로컬 개발 서버는 2026-10-02 사용자 요청으로 모두 종료했다(`dev:all` 5273/18190/12667, `dev:remote` 5173). 서비스는 배포 주소와 Mac mini가 맡는다. UI 검사·원격 측정이 필요하면 10절 명령으로 다시 띄운다.
+- 이전 Claude 세션은 사용자 지시로 새 세션(main 체크아웃)에 넘겼다. 이번 세션 완료(모두 배포·검증, 세부는 verification 17–22절):
+  - 별 수집 히트박스·서버 자동 수집, 지갑 즉시 반영(정산 대기 표시, "+1"), 디자인 M5·M6 승인 기록.
+  - 연결 끊김: 화면 차단 대화상자, 같은 세션 재접속(서버 15초 대기) → 실패·무응답이면 자동 새 입장 → 서버 불가일 때만 "다시 연결" 버튼.
+  - 이동 롤백: 시간 기반 이동 크레딧, 장소 이동 시 이전 방 메시지·맵 분리, 대기열·크레딧·예측 대기 기준 3초(`MAX_QUEUED_INPUTS=60`, shared/world.js), 먹은 별 다시 보임·대각선 카메라 튐 수정.
+  - 핑 표시, 끊김 기록(`/health` `connections`, Mac mini `server.out.log`), GitHub Actions `health` 10분 외부 감시.
+- 핵심 진단: `pixeltown-rt`·`pixeltown`·`pixeltown-pb`(Cloudflare 무료 요금제)는 한국에서 LAX 접속점으로 가서 핑 약 280ms, 저녁에는 100–1460ms로 출렁인다. 대시보드 설정으로 못 바꾼다. 이 컴퓨터의 Unicorn HTTPS VPN은 원인이 아니었다(꺼도 LAX). 사용자 지시: VPN이 없다고 보고 가장 나쁜 연결에서도 동작하게 할 것.
+- 사용자 결정 대기:
+  1. 근본 해결 방향: 서울 VPS 앞단(Caddy, Tailscale로 Mac mini Colyseus) 또는 Tailscale Funnel 지연 측정(Mac mini 설정 변경이라 허락 필요). 집 서버 직접 공개는 사용자가 위험하다고 보류.
+  2. "로컬 우선 + 서버 검증" 전환 제안: 내 위치는 원본처럼 브라우저가 정하고 서버는 속도 상한·벽 통과만 검증, 별 판정은 서버 유지. 가장 나쁜 연결에 가장 강하다.
+- 진행 중이던 일: 다른 플레이어 표시 완충(지금 100ms 고정)을 지연 변동에 맞춰 자동 조절. 측정 도구 `tests/others-check.mjs`(WALKER·WATCHER·JITTER). 큰 JITTER(600·1000)는 핑이 1초를 넘을 때 입장 단계 시간 초과로 측정을 끝내지 못했다.
+- Oracle A1 예약(Mac mini `net.fastmake.pixeltown-a1-retry`)은 매시 0·30분 실행 중이며 2026-10-02 22:30까지 38회 모두 `Out of host capacity`. 읽기만 했고 변경 금지.
+- 테스트 도구(새로 추가): `tests/rollback-check.mjs`(보정 0 기준, ZONE·SECONDS·HOPS·JITTER), `tests/offline-check.mjs`(4경우, STALE_AFTER), `tests/wallet-check.mjs`(SETTLE_MS), `tests/motion-check.mjs`(JITTER·ZONE, 보정·되돌아감 지표), `tests/remote-pickup.mjs`. 배포 주소 측정은 Tester 2 계정(Tester 1은 끊김 검사용)으로 한다.
+- 로컬 개발 서버는 모두 꺼져 있다. 필요하면 10절 명령으로 띄운다. Mac mini 배포는 `scripts/deploy-macmini.sh`, Tailscale 경로가 빠졌으면 `PATH="$PWD/.test-work/bin:$PATH" scripts/deploy-macmini.sh`(`tailscale nc` ssh 래퍼, git 제외). Mac mini: `mac-mini.tailc386bf.ts.net`(100.92.43.82, LAN 192.168.0.204), 이 컴퓨터: `cheng80-macbookair15.tailc386bf.ts.net`(100.105.34.114). MagicDNS 이름은 known_hosts에 없어 IP로 접속한다.
 - 자격증명은 git 밖 0600 파일에만 있다: `pocketbase/.local/remote-accounts.json`(Tester 1·2), `pocketbase/.local/remote-admin.env`(검증용 관리자). 출력·커밋 금지. 원격 SSH 키는 ssh 실행에만 쓰고 내용을 읽지 않는다.
-- 금지 경계: `cheng80@gmail.com` 관리자 비밀번호 재설정, stonematch(8090)·Oracle A1 예약·다른 터널, 원격 DB를 로컬 `pb_data`로 덮어쓰기, 공개 터널 부하 테스트. 원격 DB 변경 전에는 SQLite `.backup`으로 백업한다. 실제 방문자가 찍힌 스크린샷은 커밋하지 않는다.
+- 금지 경계: `cheng80@gmail.com` 관리자 비밀번호 재설정, stonematch(8090)·Oracle A1 예약·다른 터널·`cloudflared` 설정, 원격 DB를 로컬 `pb_data`로 덮어쓰기, 공개 터널 부하 테스트. 원격 DB 변경 전에는 SQLite `.backup`으로 백업한다. 실제 방문자가 찍힌 스크린샷은 커밋하지 않는다.
 
 변경하면 안 되는 경계: 운영 PocketBase·Oracle 작업·외부 브로커·클라우드 인증에는 접근하지 않는다. 개발 launcher는 기본 18090/12567/5173(환경변수로 변경 가능)을 loopback으로만 사용하고 포트 점유 시 시작을 거부한다. 재제작 브랜치 worktree 검증은 5273/18190/12667을 썼다. 병합 후 main 체크아웃은 기본 5173/18090/12567로 실행하고, 통합은 18191/12668을 쓴다. main을 fast-forward한 뒤에는 `npm install && npm --prefix colyseus install`(병합으로 `galmuri` 추가)을 하고 개발 서버를 재시작해야 한다. 구 실행이 남아 있으면 이전 코드를 서비스한다. `.env.local`, `.local`, DB, 다운로드 바이너리와 node_modules를 공개 저장소에 넣지 않는다.
 
