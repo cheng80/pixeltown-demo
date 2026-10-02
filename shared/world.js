@@ -325,6 +325,13 @@ export function stepInput(map, p, input) {
   }
   return input.dx || input.dy ? moveActor(map, p.x, p.y, input.dx, input.dy, STEP_PER_TICK) : { x: p.x, y: p.y };
 }
+// Sprite facing from a (smoothed) movement vector: 0 down, 1 up, 2 right, 3 left. Diagonals (axes within 2:1) face
+// sideways, so walking diagonally keeps one stable sprite instead of flipping between side and front/back every frame.
+export function facing(vx, vy) {
+  const ax = Math.abs(vx), ay = Math.abs(vy);
+  if (ay > ax * 2) return vy > 0 ? 0 : 1;
+  return vx > 0 ? 2 : 3;
+}
 export function findPath(map, from, to) {
   const start = nearestFree(map, from.x, from.y, 12), walk = walkGrid(map);
   const own = cellOf(start.x, start.y), near = walkCellNear(map, walk, start), s = near >= 0 ? near : walk[own] ? own : -1;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MAPS, ZONE_IDS, PROPS, blocked, moveActor, findPath, unreachableCells, starSpots, entryPoint, portalAt, tileAt, TILE } from '../../shared/world.js';
+import { MAPS, ZONE_IDS, PROPS, blocked, moveActor, findPath, facing, unreachableCells, starSpots, entryPoint, portalAt, tileAt, TILE } from '../../shared/world.js';
 import * as server from '../town.js';
 
 const walk = (map, from, dx, dy, ticks) => { let p = { ...from }; for (let i = 0; i < ticks; i++) p = moveActor(map, p.x, p.y, dx, dy); return p; };
@@ -123,4 +123,11 @@ test('click routes start from any free spot, even next to a prop where the 8-dot
   }
   const arcade = MAPS.arcade, p = findPath(arcade, { x: 233.8, y: 371.6 }, { x: 536, y: 378 });
   assert.ok(p.length && Math.hypot(p.at(-1).x - 536, p.at(-1).y - 378) < 8);
+});
+
+test('sprite facing: axes face their way, diagonals keep the side view', () => {
+  assert.deepEqual([facing(0, 1), facing(0, -1), facing(1, 0), facing(-1, 0)], [0, 1, 2, 3]);
+  // keyboard diagonals (1:1) and route segments up to 2:1 all face sideways, on both sides of the 45° line
+  for (const [vx, vy, d] of [[1, 1, 2], [1, -1, 2], [-1, 1, 3], [-1, -1, 3], [1, 1.9, 2], [1.02, 0.98, 2], [0.98, 1.02, 2], [-0.6, 1.1, 3]]) assert.equal(facing(vx, vy), d, `${vx},${vy}`);
+  assert.equal(facing(0.4, 1), 0); assert.equal(facing(-0.4, -1), 1);
 });

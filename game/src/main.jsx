@@ -4,7 +4,7 @@ import PocketBase from "pocketbase";
 import { Client } from "@colyseus/sdk";
 import g11 from "galmuri/dist/Galmuri11.woff2";
 import g11b from "galmuri/dist/Galmuri11-Bold.woff2";
-import { getMap, moveActor, stepInput, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, COLLECT_RADIUS, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
+import { getMap, moveActor, stepInput, facing, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, COLLECT_RADIUS, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
 import { scene, createView } from "./render.js";
 import { avatarSprite, lookFor, petSprite, propSprite } from "./sprites.js";
 import "./style.css";
@@ -255,7 +255,10 @@ function App() {
         const target = p.id === selfId.current ? glidePos(performance.now()) || p : trailPos(trails.current[p.id], renderT) || p;
         const ddx = target.x - a.x, ddy = target.y - a.y, dist = Math.hypot(ddx, ddy);
         a.x = target.x; a.y = target.y;
-        if (dist > 0.05) { a.dir = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 2 : 3) : (ddy > 0 ? 0 : 1); a.moving = now + 120; }
+        if (dist > 0.05) { // average the last few frames so tiny per-frame differences cannot flip the sprite
+          a.vx = (a.vx || 0) * 0.75 + ddx * 0.25; a.vy = (a.vy || 0) * 0.75 + ddy * 0.25;
+          a.dir = facing(a.vx, a.vy); a.moving = now + 120;
+        }
         if (a.moving > now) a.walk += dist; else a.walk = 0;
         const self = p.id === selfId.current, look = lookFor(p);
         // pets trot to a spot just behind their owner; facing the camera they sit beside, not hidden behind the body
