@@ -301,3 +301,9 @@ Demo 1이 오락실에 들어가자 시작 버튼 없이 바로 진행 중이었
 - UI 8/8(기본 3분 정산). 모바일 화면에서 별 안내가 두 줄로 들어간다.
 - 배포 주소(`323faf7`, 실제 3분 정산) `tests/wallet-check.mjs` PASS: 수집 즉시 20→21, 상점 쓸 수 있는 별 20·"정산 대기 ★1", 181초 뒤 정산 저장 후 21 유지(관측값 21만). 먹고 정원으로 옮긴 뒤 22, 20초 뒤 저장분으로 넘어가며 22 유지.
 
+## 21. 핑·끊김 기록·외부 감시 (2026-10-02)
+
+- 단위 29/29(끊김 집계: 복귀=reconnect, 미복귀=lost, 페이지 떠남 1001 제외). 로컬 offline-check에서 서비스 로그 줄과 `/health` `connections` 집계 확인. 통합 17/17, UI 8/8(화면 상단 "핑 1ms").
+- GitHub Actions `health` 수동 실행 성공(run 37013365047): 배포 주소 200, 게임 서버 health(끊김 집계 포함), PocketBase 연결, PB health 모두 정상.
+- 배포 주소 핑(이 컴퓨터): 284–293ms, 노랑. 같은 시각 `www.cloudflare.com` 연결 0.013초·전체 0.025초, `pixeltown-rt.fastmake.net` 연결 0.133초·TLS 0.464초·전체 1.27초(둘 다 Cloudflare ICN). 이 컴퓨터에 Unicorn HTTPS VPN이 연결되어 기본 경로(utun9)를 잡고 있다. 게임 연결이 이 VPN을 거치며 지연·멈춤이 생겼을 가능성이 크다(NEEDS-DECISION: 사용자가 fastmake.net을 VPN에서 제외하거나 끈 상태로 비교).
+
