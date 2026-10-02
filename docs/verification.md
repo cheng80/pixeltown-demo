@@ -222,3 +222,5 @@ Demo 1이 오락실에 들어가자 시작 버튼 없이 바로 진행 중이었
 | 설정·운영 | 로컬 개발 PB는 제한 끔(테스트 반복용) | `rateLimits.enabled`, 게스트 규칙 시간당 5회, PB 기본 규칙, `CF-Connecting-IP` 신뢰, loopback 제외 확인. 로그에 실제 방문자 IP(`219.251.x.x`), Colyseus 요청은 127.0.0.1. Tester `last_seen` 기록. 정리 30일 0건. 이 PC IP에서 5번째 발급 요청 뒤 429, 다른 API 200. 확인 뒤 PB 재시작으로 카운터 초기화 |
 
 반영 전 백업 `pixeltown-abuse-limits-20261002`(DB·`pb_hooks`).
+
+게스트 발급 한도 상향(사용자 지시): 시간당 5회 → 20회. 통합 `guest_abuse_limits_and_cleanup`에서 같은 IP 20번까지 400(정상 처리), 21번째 429. 원격 배포 후 규칙 `POST /api/pixeltown/guest` `maxRequests: 20`, `enabled: true`, `CF-Connecting-IP` 확인. 원격에서 21회 요청 시험은 이 PC IP를 1시간 막기 때문에 하지 않았다(규칙 동작은 5회 기준으로 원격 확인 완료).

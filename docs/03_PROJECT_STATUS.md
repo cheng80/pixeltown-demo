@@ -68,8 +68,8 @@
 
 - 해결: Colyseus 0.18 전환으로 패치된 `nanoid 3.3.19`를 쓰고, 0.16용 대체 모듈은 제거했다. `npm audit` 0건.
 - 갱신(PLAN-006): 가입 경로는 게스트 훅 `POST /api/pixeltown/guest` 하나다. 공개 `users` 직접 생성은 여전히 막는다.
-- 해결(사용자 지시): 게스트 발급은 방문자 IP(Cloudflare `CF-Connecting-IP`)당 시간당 5회, PB 기본 rate limit 활성(게임 서버 loopback 제외), 30일 미접속 게스트 매일 자동 삭제(PLAN-006 5절).
-- 남은 한계: 브라우저 저장소를 지우면 캐릭터를 되찾을 수 없고 다른 기기에서 이어 할 수 없다. 같은 IP를 쓰는 사람들은 한도를 나눠 쓴다. rate limit 카운터는 PB 재시작 시 초기화된다. 채팅 신고 없음.
+- 해결(사용자 지시): 게스트 발급은 방문자 IP(Cloudflare `CF-Connecting-IP`)당 시간당 20회, PB 기본 rate limit 활성(게임 서버 loopback 제외), 30일 미접속 게스트 매일 자동 삭제(PLAN-006 5절).
+- 남은 한계: 브라우저 저장소를 지우면 캐릭터를 되찾을 수 없고 다른 기기에서 이어 할 수 없다. 같은 IP를 쓰는 사람들은 시간당 20개 한도를 나눠 쓴다. rate limit 카운터는 PB 재시작 시 초기화된다. 채팅 신고 없음.
 - 결정(2026-10-02 사용자): 원격 공개 가입 차단. `users.createRule`을 `''` → `null`로 바꿨다(다른 규칙·계정 유지, 직전 백업 `/Users/cheng80/Servers/backups/pixeltown-signup-close-20261002/data.db`). 새 사용자는 superuser 권한의 `scripts/provision-accounts.mjs`로만 만든다(계정+프로필). 실제 공개 가입을 열 때는 가입 UI·이메일 인증·가입 속도 제한·프로필 자동 생성 훅을 함께 도입한다. Mac mini의 옛 `verify.mjs`(lobby 검증)는 공개 가입에 의존하므로 더 이상 쓰지 않는다.
 - 원격 outbox 저장은 전용 superuser(`colyseus-outbox@pixeltown.local`)를 쓴다. Monitor 보호가 이 계정을 거부한다.
 - 해결: 닉네임은 DB unique 식 인덱스(띄어쓰기·_·-·영문 대소문자 무시)와 사칭 단어 거부로 막고, 화면이 입력칸 아래에 안내한다. 일반 욕설 필터는 없다.

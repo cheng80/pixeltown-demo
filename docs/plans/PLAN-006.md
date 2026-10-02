@@ -35,7 +35,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 게스트 발급 제한 | PocketBase 내장 rate limiter 규칙 `POST /api/pixeltown/guest`: 방문자 IP당 1시간에 5회(잘못된 요청 포함). 초과하면 429, 화면 안내 "이 곳에서 새 캐릭터를 너무 많이 만들었어요. 한 시간쯤 뒤에 다시 시도해 주세요." |
+| 게스트 발급 제한 | PocketBase 내장 rate limiter 규칙 `POST /api/pixeltown/guest`: 방문자 IP당 1시간에 20회(잘못된 요청 포함). 초과하면 429, 화면 안내 "이 곳에서 새 캐릭터를 너무 많이 만들었어요. 한 시간쯤 뒤에 다시 시도해 주세요." |
 | 방문자 IP | Cloudflare 터널 뒤라 PB에는 모두 127.0.0.1로 보인다. `trustedProxy.headers = ["CF-Connecting-IP"]`로 실제 IP를 쓴다. PB는 loopback에만 열려 있어 터널을 거치지 않고는 이 헤더를 넣을 수 없다 |
 | 게임 서버 제외 | `excludedIPs: 127.0.0.1, ::1`. Colyseus가 입장마다 하는 authRefresh와 outbox 저장이 제한에 걸리지 않게 한다 |
 | PB 기본 규칙 | 함께 켰다: 인증 `*:auth` 3초에 2회, 생성 `*:create` 5초에 20회, `/api/batch` 1초에 3회, `/api/` 10초에 300회(방문자 IP 기준). 재방문 자동 로그인이 429를 받으면 클라이언트가 3초 뒤 최대 5회 다시 시도한다 |
@@ -43,7 +43,9 @@
 | 미접속 정리 | 매일 04:17 cron `pixeltown_guest_cleanup`: `@guest.pixeltown.local` 계정 중 `last_seen`(없으면 생성 시각)이 30일 넘은 것을 삭제한다. 프로필·결과·별 보상·구매는 relation cascade로 함께 지운다. 일반 계정(Tester 등)은 건드리지 않는다. 즉시 실행: superuser `POST /api/pixeltown/guest-cleanup {days}` |
 | 설정 적용 | `scripts/init-pocketbase.mjs` `applyAbuseLimits()`, 원격 시드(`seed(_, {remote:true})`, 배포 스크립트가 실행)만 적용한다. 로컬 개발 PB는 테스트 반복을 위해 끈다 |
 
+상향(같은 날 사용자 지시): 같은 공유기·회사 IP를 여러 사람이 쓰는 경우를 위해 5회 → 20회(`GUEST_PER_HOUR`). 통합에서 같은 IP 21번째 요청이 429, 원격 규칙 `maxRequests: 20` 확인.
+
 한계: rate limiter 카운터는 PB 메모리에만 있어 PB를 재시작하면 초기화된다. 같은 공유기·회사 IP를 쓰는 여러 사람은 한도를 나눠 쓴다. 채팅 신고는 아직 없다.
 
-검증: 통합 `guest_abuse_limits_and_cleanup`(0.40.4·0.39.7). 같은 프록시 IP 6번째 429, 다른 IP와 loopback은 통과, 로그인 시 `last_seen` 기록, 40일 묵은 게스트만 삭제되고 활동 게스트·일반 계정은 남음, 미인증 정리 요청 401. 원격: 설정 적용 확인, 로그에 실제 방문자 IP 기록, Tester `last_seen` 기록, 정리 0건, 이 PC IP에서 5번째 요청 뒤 429, 다른 API 200. 확인 뒤 원격 PB를 재시작해 카운터를 비웠다. 반영 전 백업 `pixeltown-abuse-limits-20261002`(DB·`pb_hooks`). 되돌리기: superuser로 `rateLimits.enabled=false`, `trustedProxy.headers=[]`.
+검증: 통합 `guest_abuse_limits_and_cleanup`(0.40.4·0.39.7). 같은 프록시 IP 6번째 429(상향 후 21번째), 다른 IP와 loopback은 통과, 로그인 시 `last_seen` 기록, 40일 묵은 게스트만 삭제되고 활동 게스트·일반 계정은 남음, 미인증 정리 요청 401. 원격: 설정 적용 확인, 로그에 실제 방문자 IP 기록, Tester `last_seen` 기록, 정리 0건, 이 PC IP에서 5번째 요청 뒤 429, 다른 API 200. 확인 뒤 원격 PB를 재시작해 카운터를 비웠다. 반영 전 백업 `pixeltown-abuse-limits-20261002`(DB·`pb_hooks`). 되돌리기: superuser로 `rateLimits.enabled=false`, `trustedProxy.headers=[]`.
 

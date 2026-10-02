@@ -62,7 +62,7 @@ async function uniqueNames(pb) {
 // Cloudflare puts in CF-Connecting-IP (PB listens on loopback only, so nobody can reach it without the tunnel), at most
 // GUEST_PER_HOUR guest sign-ups per IP, and PB's default rules (auth brute force etc.). Loopback callers (the Colyseus
 // server: authRefresh on every join, outbox saves) are excluded so the game server is never throttled.
-export const GUEST_PER_HOUR = 5;
+export const GUEST_PER_HOUR = 20; // several people can share one office or home IP
 export async function applyAbuseLimits(pb) {
   const { rateLimits } = await pb.settings.getAll();
   const label = 'POST /api/pixeltown/guest';
