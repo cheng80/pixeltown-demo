@@ -62,7 +62,7 @@ client.auth.token = pb.authStore.token;
 const room = await client.joinOrCreate('town', { zone: 'lobby' });
 ```
 
-`server.js`는 express 위에 `/health`(outbox 상태 포함), `/health/pocketbase`, `/me`(Bearer 사용자 토큰), PocketBase `_superusers` Basic 인증으로 보호한 `/monitor/`(`monitor-auth.js`), Origin allowlist(HTTP·WebSocket)를 둔다. 로컬과 Mac mini가 같은 파일을 쓴다.
+`server.js`는 express 위에 `/health`(outbox 상태 포함), `/health/pocketbase`, `/me`(Bearer 사용자 토큰), PocketBase `_superusers` Basic 인증으로 보호한 `/monitor/`(`monitor-auth.js`, outbox 서비스 계정 `PB_ADMIN_EMAIL`은 거부), Origin allowlist(HTTP·WebSocket)를 둔다. 로컬과 Mac mini가 같은 파일을 쓴다.
 
 zone은 `lobby` / `garden` / `arcade`; `filterBy(['zone'])`로 분리. zone 변경은 기존 room을 leave한 후 새 zone으로 join한다. 동일 사용자의 같은 zone 중복 접속은 거부한다. 최대 32명, 서버 스냅샷 10Hz.
 

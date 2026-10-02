@@ -134,9 +134,9 @@ launchctl kickstart -k gui/501/com.fastmake.pixeltown.pocketbase
 | `pixeltown-colyseus/app/scripts/` | `init-pocketbase.mjs`(`seed(_, {remote:true})`), `provision-accounts.mjs` |
 | `pixeltown-colyseus/outbox/` | 영구 outbox(0700). `.env`의 `OUTBOX_PATH` |
 | `pixeltown-colyseus/server.lobby-20261002.mjs` | 이전 `lobby` 서버 진입점(롤백용) |
-| `pixeltown/pb_hooks/` | 기존 `realtime.pb.js` 유지 + `matches.pb.js`, `shop.pb.js`, `shop_lib.js`, `catalog.json` |
+| `pixeltown/pb_hooks/` | 기존 `realtime.pb.js` 유지 + `matches.pb.js`, `shop.pb.js`, `profile.pb.js`(캐릭터, PLAN-005), `shop_lib.js`, `catalog.json` |
 
-원격 `.env` 키(값은 기록하지 않음): `PORT`, `POCKETBASE_URL`, `ALLOWED_ORIGINS`, `NODE_ENV`(기존) + `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `OUTBOX_PATH`(추가). 파일 권한 0600. `PB_ADMIN_*`는 outbox 저장 전용 superuser `colyseus-outbox@pixeltown.local`이며 PocketBase CLI(`pocketbase superuser create`)로 만들었다. 암호는 원격에서 `openssl rand -hex 32`로 생성해 `.env`에만 썼고 출력하지 않았다. 기존 관리자 `cheng80@gmail.com`은 바꾸지 않았다. 이 계정은 superuser라 Monitor에도 로그인할 수 있으므로 `.env` 권한을 유지한다.
+원격 `.env` 키(값은 기록하지 않음): `PORT`, `POCKETBASE_URL`, `ALLOWED_ORIGINS`, `NODE_ENV`(기존) + `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `OUTBOX_PATH`(추가). 파일 권한 0600. `PB_ADMIN_*`는 outbox 저장 전용 superuser `colyseus-outbox@pixeltown.local`이며 PocketBase CLI(`pocketbase superuser create`)로 만들었다. 암호는 원격에서 `openssl rand -hex 32`로 생성해 `.env`에만 썼고 출력하지 않았다. 기존 관리자 `cheng80@gmail.com`은 바꾸지 않았다. 이 계정은 superuser지만 Colyseus Monitor 보호가 `PB_ADMIN_EMAIL`을 거부한다(원격 확인: Monitor 401, PB 저장 인증 200). `.env` 0600 권한은 그대로 유지한다.
 
 데이터 이전 내역:
 
@@ -150,9 +150,11 @@ launchctl kickstart -k gui/501/com.fastmake.pixeltown.pocketbase
 ssh … 'cd /Users/cheng80/Servers/pixeltown-colyseus/app && ../runtime/bin/node --env-file=../.env scripts/provision-accounts.mjs' < accounts.json
 ```
 
-코드 갱신 배포: 저장소 루트에서 `scripts/deploy-macmini.sh`(app·게임 훅 복사, `npm ci`, Colyseus만 재시작, 내부 health 출력). 스키마 변경이 있으면 Mac mini에서 `cd …/pixeltown-colyseus/app && ../runtime/bin/node --env-file=../.env --input-type=module -e 'const m=await import("./scripts/init-pocketbase.mjs");await m.seed(undefined,{remote:true})'`.
+코드 갱신 배포: 저장소 루트에서 `scripts/deploy-macmini.sh`(app·게임 훅 복사, `npm ci`, 게임 스키마 추가분 반영(`seed` remote 모드, 추가만), Colyseus만 재시작, 내부 health 출력). 스키마 변경이 있으면 Mac mini에서 `cd …/pixeltown-colyseus/app && ../runtime/bin/node --env-file=../.env --input-type=module -e 'const m=await import("./scripts/init-pocketbase.mjs");await m.seed(undefined,{remote:true})'`.
 
 ### 6.2 백업과 롤백(실제 위치)
+
+추가 백업: 가입 차단 직전 `…/backups/pixeltown-signup-close-20261002/data.db`, 캐릭터 기능(PLAN-005) 반영 직전 `…/backups/pixeltown-character-20261002/`(DB·`pb_hooks`·`app`), 닉네임 유니크 인덱스 직전 `…/backups/pixeltown-nickname-20261002/data.db`.
 
 백업 `/Users/cheng80/Servers/backups/pixeltown-migration-20261002/`(0700): `data.db`·`auxiliary.db`(실행 중 DB의 SQLite online `.backup`, integrity_check ok, sha256 `c2294748…523b` / `2c5d66e3…d717`), `pb_hooks/`, `types.d.ts`, `colyseus/`(server·server.before-monitor·monitor-auth·verify·package·lock·README·.env), `launchd/`(plist 2개). 롤백 명령은 [PLAN-004](plans/PLAN-004.md) 5절.
 
@@ -204,6 +206,7 @@ ssh … 'cd /Users/cheng80/Servers/pixeltown-colyseus/app && ../runtime/bin/node
 | 상점 구매·중복·잔액 부족·장착·문 앞 배치 거부·미니룸 저장·재로그인 복원·상대 화면 반영 | 통과 | 같은 스크립트 |
 | `match_id` 멱등·충돌 거부·부분 실패 롤백 | 재전송 200(행 1개), 충돌 400, 롤백 404·0행 | Mac mini에서 `tests/remote-persistence.mjs` |
 | outbox 장애·재시작 복구 | PB 중단(공개 502) 중 정산 → 디스크 1건 → Colyseus 재시작 후 pending 1 → PB 복귀 후 저장 | `PIXELTOWN_REMOTE_OUTAGE=1`, 30초 단축은 끝에 제거 |
+| 캐릭터 만들기·닉네임 유일성(PLAN-005) | 원격 검증 8/8, Tester 2명 첫 입장 화면 확인, unique 인덱스 적용(이름 변경 0건), outbox 계정 Monitor 401 | verification 11절 |
 | `scripts/deploy-macmini.sh` 실제 실행 | 원격 파일이 커밋 `c056e01`과 sha256 일치, 실행 후 health·`/health/pocketbase` 정상, `realtime.pb.js` 보존, 브라우저 2유저 재통과 | 배포 스크립트 |
 | 로컬 프런트(5173) 원격 모드 2유저 | 통과, 요청 대상 `https://pixeltown.fastmake.net`·`wss://pixeltown-rt.fastmake.net`, 페이지 오류 0 | `tests/remote-ui.mjs`, `docs/assets/remote-lobby-two-users.png` |
 

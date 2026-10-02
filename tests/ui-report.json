@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-02T02:41:24.054Z",
+ "startedAt": "2026-10-02T03:55:09.052Z",
  "url": "http://127.0.0.1:5273/",
  "checks": {
   "depth_and_collision_lobby": {
@@ -7,61 +7,76 @@
    "underCanopy": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 145.52,
-    "y": 170.9,
+    "x": 148.64,
+    "y": 171.37,
     "color": "#ffb347",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "inFront": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 147.62,
-    "y": 195.51,
+    "x": 147.31,
+    "y": 194.76,
     "color": "#ffb347",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "trunkStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 147.62,
-    "y": 186.51,
+    "x": 147.31,
+    "y": 187.26,
     "color": "#ffb347",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "behindHouse": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 121.58,
-    "y": 49.16,
+    "x": 121.56,
+    "y": 49.13,
     "color": "#ffb347",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 120.55,
-    "y": 99.54,
+    "x": 119.63,
+    "y": 99.06,
     "color": "#ffb347",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    }
   },
@@ -70,61 +85,76 @@
    "behindCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 107.89,
-    "y": 190.97,
+    "x": 108.06,
+    "y": 190.96,
     "color": "#ffb347",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "frontCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 107.77,
-    "y": 222.91,
+    "x": 108.58,
+    "y": 222.75,
     "color": "#ffb347",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "behindPillar": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 200.27,
-    "y": 120.24,
+    "x": 200.26,
+    "y": 121.24,
     "color": "#ffb347",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "behindCounter": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 539.52,
-    "y": 312.63,
+    "x": 540.45,
+    "y": 312.87,
     "color": "#ffb347",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 322.15,
-    "y": 51.71,
+    "x": 320.52,
+    "y": 51.55,
     "color": "#ffb347",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "underPergola": {
@@ -136,7 +166,10 @@
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "pondStop": {
@@ -148,7 +181,10 @@
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    }
   },
@@ -157,13 +193,16 @@
    "seenByOther": {
     "id": "f87ubkhwf2u1c4p",
     "name": "Demo 2",
-    "x": 376.55,
-    "y": 271.23,
+    "x": 376.57,
+    "y": 271.2,
     "color": "#89cff0",
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 1,
+     "hair": 5,
+     "style": 1
     }
    },
    "unreadWhileCollapsed": "1",
@@ -175,18 +214,6 @@
    "chatTextOpacity": "1",
    "opacityMax": "95",
    "opacityAfterReload": "75",
-   "portalArrival": {
-    "id": "f87ubkhwf2u1c4p",
-    "name": "Demo 2",
-    "x": 44,
-    "y": 218,
-    "color": "#89cff0",
-    "look": {
-     "hat": null,
-     "top": null,
-     "pet": null
-    }
-   },
    "otherZoneHidden": true,
    "portalBack": {
     "id": "f87ubkhwf2u1c4p",
@@ -197,7 +224,10 @@
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 1,
+     "hair": 5,
+     "style": 1
     }
    }
   },
@@ -219,7 +249,10 @@
     "look": {
      "hat": null,
      "top": null,
-     "pet": null
+     "pet": null,
+     "skin": 0,
+     "hair": 1,
+     "style": 0
     }
    },
    "starCount": 6
@@ -244,11 +277,11 @@
    "startButton": false,
    "activeOnJoin": true,
    "initial": 5,
-   "minimumSpacing": 163,
+   "minimumSpacing": 143,
    "secondsToNextSettlement": 167,
    "myScore": 3,
    "stillActiveAfterSettlement": true,
-   "notebook": "Demo 1demo1@pixeltown.local별 보상 12개★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오전 11:453점오락실26. 10. 2. 오전 11:422점오락실26. 10. 2. 오전 11:183점오락실26. 10. 2"
+   "notebook": "Demo 1demo1@pixeltown.local별 보상 18개★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오후 12:593점오락실26. 10. 2. 오후 12:333점오락실26. 10. 2. 오전 11:"
   },
   "shop_dress_pet_and_miniroom": {
    "ok": true,
@@ -257,7 +290,10 @@
    "seenByOther": {
     "hat": "hat_crown",
     "top": "top_sailor",
-    "pet": "pet_puppy"
+    "pet": "pet_puppy",
+    "skin": 2,
+    "hair": 4,
+    "style": 1
    },
    "doorBlockedToast": "문 앞은 비워 두어야 해요.",
    "savedRoom": [
@@ -288,17 +324,41 @@
     "dy": -3
    },
    "besideBed": {
-    "id": "i394ez8z4g78hhe",
-    "name": "쇼핑왕",
+    "id": "gsozegr8j47quc1",
+    "name": "쇼핑왕p3xy",
     "color": "#9fd0ff",
     "look": {
      "hat": "hat_crown",
      "pet": "pet_puppy",
-     "top": "top_sailor"
+     "top": "top_sailor",
+     "hair": 4,
+     "skin": 2,
+     "style": 1
     },
     "x": 241.33,
     "y": 213.29
    },
+   "pageErrors": []
+  },
+  "character_setup_first_entry": {
+   "ok": true,
+   "roomJoinedBeforeSetup": false,
+   "shortNameDisabled": true,
+   "takenMessage": "이미 쓰는 닉네임이에요. 다른 이름을 지어 주세요.",
+   "takenFieldInvalid": "true",
+   "seenByOther": {
+    "name": "별돌이fiv",
+    "color": "#9be38c",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null,
+     "skin": 3,
+     "hair": 6,
+     "style": 2
+    }
+   },
+   "editedName": "별돌이fiv2",
    "pageErrors": []
   },
   "viewports_no_scroll_integer_scale": {
@@ -320,7 +380,7 @@
     "smoothing": false,
     "galmuri": true
    },
-   "mobileDpadMoved": 33,
+   "mobileDpadMoved": 36,
    "mobile": {
     "scroll": [
      390,
@@ -379,6 +439,6 @@
    }
   }
  },
- "finishedAt": "2026-10-02T02:46:07.092Z",
+ "finishedAt": "2026-10-02T03:59:54.218Z",
  "status": "passed"
 }

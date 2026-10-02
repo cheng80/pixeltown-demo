@@ -1,6 +1,6 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `576b261`(main). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-004(Mac mini 서버 이전, Colyseus 0.18). 서버 주소·배치·백업은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md).
+갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `576b261`(main). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-005(첫 입장 캐릭터 만들기). 직전 PLAN-004(Mac mini 서버 이전, Colyseus 0.18). 서버 주소·배치·백업은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md).
 
 ## 1. 로드맵
 
@@ -13,15 +13,25 @@
 | M5 | 싸이월드 도트 감성 재제작 (PLAN-002) | 구현·검증 완료, main 병합(`965d266`). **사용자 디자인 승인 대기** |
 | M6 | 상시 별 이벤트·별 상점·옷장·펫·미니룸·클릭 이동·큰 채팅 (PLAN-003) | 구현·검증 완료, main 병합(`965d266`). 사용자 확인 대기 |
 | M7 | Mac mini PocketBase 0.39.7·Colyseus 0.18 이전, 로컬 프런트 원격 연동 (PLAN-004) | 이전·원격 검증 완료(원격 8/8, 서버 측 멱등·롤백, outbox 장애 복구) |
+| M8 | 첫 입장 캐릭터 만들기·꾸미기 (PLAN-005, A안: 관리자 발급 계정 유지) | 구현·로컬·원격 검증 완료 |
 
 ## 2. 계획
 
 - `plans/PLAN-001.md` — DONE. 1차 로컬 멀티플레이 데모. 백엔드 계약은 유지, 화면·맵·충돌은 PLAN-002로 대체.
 - `plans/PLAN-002.md` — DONE(구현·검증). 디자인 최종 승인은 사용자 판단.
+- `plans/PLAN-005.md` — DONE(구현·검증). FR-014 닉네임·피부·머리 색·머리 모양·옷 색, 첫 입장 게이트, 게임 안 수정.
 - `plans/PLAN-004.md` — DONE(이전·검증). Mac mini 서버 이전, Colyseus 0.18·`@colyseus/sdk` 전환, 백업·롤백.
 - `plans/PLAN-003.md` — DONE(구현·검증). 2026-10-02 추가 피드백(별 얼굴, 상시 이벤트, 상점·꾸미기·미니룸, 채팅·마우스 이동).
 
-## 3. 현재 작업 (PLAN-004)
+## 3. 현재 작업 (PLAN-005)
+
+- [x] S1 카탈로그 `avatar`·`profile.pb.js`·`cleanProfile`·시드(`profiles.avatar`, 데모 기본 외형)
+- [x] S2 서버 `lookOf`(색인 검사)·`look` 메시지로 이름·옷 색·외형 갱신, 렌더러 `lookFor`
+- [x] S3 SCREEN-008(첫 입장·게임 안 꾸미기), 프로필 로드 후 입장 게이트
+- [x] S4 Mac mini 반영(배포 스크립트에 훅·스키마 추가 포함), 원격 검증
+- [x] S5 문서
+
+### 이전 작업 (PLAN-004)
 
 - [x] S1 원격 읽기 전용 조사·SQLite online 백업·코드/훅/설정 백업
 - [x] S2 저장소 Colyseus 0.18.18·`@colyseus/sdk 0.18.4` 전환(토큰 `context.token`, `moveInputs`, express·Monitor 보호·Origin 공용 서버), nanoid 대체 모듈 제거, PB 0.39.7 훅 호환(통합 15/15)
@@ -56,8 +66,10 @@
 
 - 해결: Colyseus 0.18 전환으로 패치된 `nanoid 3.3.19`를 쓰고, 0.16용 대체 모듈은 제거했다. `npm audit` 0건.
 - 결정(2026-10-02 사용자): 원격 공개 가입 차단. `users.createRule`을 `''` → `null`로 바꿨다(다른 규칙·계정 유지, 직전 백업 `/Users/cheng80/Servers/backups/pixeltown-signup-close-20261002/data.db`). 새 사용자는 superuser 권한의 `scripts/provision-accounts.mjs`로만 만든다(계정+프로필). 실제 공개 가입을 열 때는 가입 UI·이메일 인증·가입 속도 제한·프로필 자동 생성 훅을 함께 도입한다. Mac mini의 옛 `verify.mjs`(lobby 검증)는 공개 가입에 의존하므로 더 이상 쓰지 않는다.
-- 원격 outbox 저장은 전용 superuser(`colyseus-outbox@pixeltown.local`)를 쓴다. 이 계정도 Monitor에 로그인할 수 있으므로 `.env`(0600) 보호가 전제다.
-- 프런트 번들이 501KB로 Vite 500KB 경고 경계다(`@colyseus/sdk` 0.18). 필요하면 코드 분할한다.
+- 원격 outbox 저장은 전용 superuser(`colyseus-outbox@pixeltown.local`)를 쓴다. Monitor 보호가 이 계정을 거부한다.
+- 해결: 닉네임은 DB unique 인덱스(대소문자 무시)와 사칭 단어 거부로 막고, 화면이 입력칸 아래에 안내한다. 일반 욕설 필터는 없다.
+- 해결: 원격 별 회수 검사 실패의 원인은 경로 탐색 버그였다. 소품 가장자리(칸 중심이 막힌 빈 위치)에서 `findPath`가 빈 경로를 돌려주고, 반올림 0.03도트 어긋남이 모서리 비켜가기를 꺼서 멈췄다. 실제 플레이어의 클릭 이동도 같은 위치에서 반응하지 않았다. 원격 지연(약 100–200ms) 때문에 이런 위치에 멈출 일이 많아 원격에서 드러났다. 수정과 회귀 테스트는 TECH_SPEC 마지막 절.
+- 해결: 프런트 번들은 vendor(221KB)와 앱(283KB)으로 나눠 Vite 500KB 경고가 없다.
 - 실제 iPhone/Android 가상 키보드·성능, 외부 배포·TLS·지속 운영은 미검증이다. 100명은 로컬 단일 머신에서 채널 방 자동 분할(32/32/32/4)까지만 측정했다(통합 opt-in). 한 화면 100명 동시 표시는 지원하지 않는다.
 - 클라이언트 예측 없이 서버 50ms snapshot을 보간한다. localhost에서는 자연스러웠으나 인터넷 지연 조작감은 미측정이다.
 - 그래픽은 절차 도트다. 사용자 디자인 승인 전이며 피드백에 따라 팔레트·소품을 조정한다.
@@ -83,6 +95,7 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 ## 8. 변경된 계약
 
+- PLAN-005: `profiles.avatar` json 필드, `POST /api/pixeltown/profile`, snapshot `look`에 `skin/hair/style`, `look` 메시지가 이름·옷 색도 갱신, `shared/catalog.json`에 `avatar` 선택지(렌더러의 피부·머리 색 상수 이동). 프로필에 외형이 없으면 클라이언트가 방 입장 전에 캐릭터 화면을 띄운다. `scripts/deploy-macmini.sh`가 원격 스키마 추가분도 반영한다.
 - PLAN-004: Colyseus 0.16 → 0.18.18, 클라이언트 `colyseus.js` → `@colyseus/sdk 0.18.4`. 토큰은 join 옵션의 `token`이 아니라 `client.auth.token`(서버 `context.token`). 서버에 express·`/health/pocketbase`·`/me`·`/monitor/`(PB superuser)·`ALLOWED_ORIGINS` 추가, `/health`에 `service`. 환경변수 `POCKETBASE_URL`·`PORT`·`PB_ADMIN_*`(프로세스 환경 우선)·`MONITOR_ORIGINS` 인식. `seed(_, {remote:true})`, `provision-accounts.mjs`, `deploy-macmini.sh`, `.env.remote`·`npm run dev:remote`, 훅 카탈로그 경로 `pb_hooks/catalog.json` 우선. `vendor/nanoid`와 그 단위 테스트 제거.
 - 2026-10-02 재개: 정면 볼 때 펫을 주인 옆에 배치, `colyseus/vendor/nanoid` override(PLAN-004에서 제거), 통합 opt-in `hundred_client_local_room_split`, `scripts/dev.mjs`·`dev-backend.mjs`가 자식 종료를 기다린 뒤 끝나도록 변경(PocketBase 종료가 늦을 때 포트가 남아 재시작이 거부되던 문제).
 - PLAN-003: `startGame` 메시지 제거, 별 30초 라운드 → 상시 이벤트(6초 생성·3분 정산·0점 미기록·별 유지). 메시지 `look` 추가, player에 `look`, game에 `id`. PB `purchases` 컬렉션과 profiles `outfit`/`room` 필드, `/api/pixeltown/shop/{buy,equip,room}` 훅. `shared/catalog.json` 추가. 구 `scripts/verify-backend.mjs`·`verify-stars.mjs` 제거(통합 테스트로 대체).
@@ -117,6 +130,9 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 | npm audit(루트·colyseus·원격 app) | PASS | RECHECKED | 2026-10-02 | `576b261`+PLAN-004 | CURRENT | 0건 |
 | 100명 로컬 채널 분할 | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | `PIXELTOWN_LOAD_100=1`, `tests/report.json` load100 |
 | launcher 종료 시 포트 해제 | PASS | RECHECKED | 2026-10-02 | `5899605`+재개 수정 | CURRENT | SIGTERM 후 launcher 종료 시점에 3포트 비어 있음 |
+| 캐릭터 만들기·닉네임 유일성(로컬 단위·통합·UI) | PASS | RECHECKED | 2026-10-02 | PLAN-005 커밋 | CURRENT | verification 11절: 단위 20, 통합 17(+PB 0.39.7 16), UI 8 |
+| **원격** 캐릭터·닉네임·기능 전체 | PASS 8/8 | RECHECKED | 2026-10-02 | PLAN-005 커밋 | CURRENT | `tests/remote-report.json`, `tests/remote-ui.mjs` |
+| 원격 별 회수 실패(경로 탐색 버그) 수정 | PASS | RECHECKED | 2026-10-02 | PLAN-005 커밋 | CURRENT | 원격 걷기 진단 10/10, 단위 회귀 테스트 |
 | 디자인 승인 | PENDING | NONE | - | - | UNKNOWN | 사용자 판단 |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
 | 공개 경로 부하·인터넷 지연·한 화면 100명·관리자 Monitor 로그인 | NOT_RUN | NONE | - | - | UNKNOWN | 정책상 금지 또는 관리자 암호 미사용 |

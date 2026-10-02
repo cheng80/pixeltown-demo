@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-02T03:05:07.310Z",
+  "startedAt": "2026-10-02T03:59:58.447Z",
   "pocketbase": "https://pixeltown.fastmake.net",
   "realtime": "wss://pixeltown-rt.fastmake.net",
   "checks": {
@@ -15,21 +15,21 @@
       "forgedPurchase": 403,
       "commitAsUser": 403,
       "publicSignup": 403,
-      "ms": 2582
+      "ms": 2604
     },
     "two_users_move_chat": {
       "ok": true,
-      "movedBy": 30,
+      "movedBy": 27,
       "target": 360,
       "chatSenderIsServerId": true,
-      "ms": 2108
+      "ms": 1930
     },
     "zone_separation": {
       "ok": true,
       "lobbyPlayers": 1,
       "gardenPlayers": 1,
       "crossZoneChat": false,
-      "ms": 1601
+      "ms": 1631
     },
     "star_cap_collect_and_refill": {
       "ok": true,
@@ -39,29 +39,31 @@
       "collected": 10,
       "refillId": true,
       "serverScore": 10,
-      "ms": 79144
+      "ms": 75610
     },
     "default_3min_settlement_saved": {
       "ok": true,
-      "matchId": "62499d99-31ca-44ed-8f59-2ab71dd3d926",
+      "matchId": "901ab954-c265-4757-b686-504deaa0c244",
       "scoreSaved": 10,
       "inventoryQuantity": 10,
       "serverScores": {
         "bfibz83fzdylm8m": 10
       },
-      "measuredPeriodMs": 179771,
+      "measuredPeriodMs": 179928,
       "starsKeptIntoNextPeriod": true,
       "otherUserCanRead": false,
-      "ms": 98473
+      "ms": 102065
     },
     "shop_equip_room_and_relogin": {
       "ok": true,
       "bought": [
-        "hat_beanie",
-        "f_plant"
+        "top_heart",
+        "f_lamp"
       ],
-      "walletBefore": 23,
-      "walletAfter": 11,
+      "wear": "top_heart",
+      "furniture": "f_lamp",
+      "walletBefore": 21,
+      "walletAfter": 9,
       "duplicateBuy": 400,
       "unaffordable": 400,
       "notOwnedEquip": 400,
@@ -69,20 +71,33 @@
       "savedRoom": [
         {
           "c": 11,
-          "item": "f_plant",
+          "item": "f_lamp",
           "r": 10
         }
       ],
-      "otherSeesHat": true,
-      "reloginLook": "hat_beanie",
-      "ms": 3780
+      "otherSeesOutfit": true,
+      "ms": 4042
+    },
+    "character_setup_profile": {
+      "ok": true,
+      "anonymous": 401,
+      "badColour": 400,
+      "saved": 200,
+      "duplicateNickname": 400,
+      "seenByOther": {
+        "skin": 2,
+        "hair": 3,
+        "style": 1,
+        "color": "#ffb347"
+      },
+      "ms": 522
     },
     "monitor_admin_only": {
       "ok": true,
       "anonymous": 401,
       "gameUser": 401,
       "wrongPassword": 401,
-      "ms": 1040
+      "ms": 723
     },
     "outbox_outage_restart_recovery": {
       "ok": true,
@@ -94,17 +109,17 @@
       "savedScore": 1,
       "ms": 34628,
       "runAt": "2026-10-02T02:36:56.261Z",
-      "note": "from the run before sign-up was closed; unchanged code path"
+      "note": "earlier run on the same outbox code path"
     }
   },
   "users": {
     "user1": "bfibz83fzdylm8m",
     "user2": "p2srnojs4omvb9g"
   },
-  "matchId": "62499d99-31ca-44ed-8f59-2ab71dd3d926",
-  "finishedAt": "2026-10-02T03:08:16.642Z",
+  "matchId": "901ab954-c265-4757-b686-504deaa0c244",
+  "finishedAt": "2026-10-02T04:03:08.183Z",
   "summary": {
-    "passed": 8,
+    "passed": 9,
     "failed": 0
   },
   "serverSide": {
@@ -121,12 +136,8 @@
       "runner": "tests/remote-persistence.mjs on the Mac mini"
     }
   },
-  "previousRun": {
-    "startedAt": "2026-10-02T02:32:23.092Z",
-    "matchId": "19d17530-aa35-4ab4-8063-f33507c24fb6",
-    "summary": {
-      "passed": 8,
-      "failed": 0
-    }
+  "walkDiagnostic": {
+    "before": "remote: 2 of 5 and 1 of 5 star walks stuck (empty route next to props)",
+    "after": "remote: 10/10 star walks reached, latency 82–91 ms"
   }
 }

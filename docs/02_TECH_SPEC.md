@@ -57,7 +57,7 @@ seed는 users/profiles/rooms/results/inventory/purchases를 준비한다. rooms�
 | 엔터티 | 필드·제약 |
 |---|---|
 | users | PB auth collection, email/password 등 PB 인증 필드, name text max40; 사용자 ID 15자리 |
-| profiles | user relation(users, required, cascadeDelete), name required text max40, color required text, outfit json(max 2000, `{hat,top,pet}`), room json(max 8000, `[{item,c,r}]`); unique(user). outfit/room은 shop 훅만 쓴다 |
+| profiles | user relation(users, required, cascadeDelete), name required text max40, color required text, outfit json(max 2000, `{hat,top,pet}`), room json(max 8000, `[{item,c,r}]`), avatar json(max 200, `{skin,hair,style}` 카탈로그 색인); unique(user). outfit/room은 shop 훅, name/color/avatar는 profile 훅만 쓴다. unique(name COLLATE NOCASE) |
 | purchases | user relation, item required text max40, price required number min0; unique(user,item). 일반 사용자 읽기는 본인만, 쓰기는 shop 훅만 |
 | rooms | zone required text unique(zone), title required text max80, max_players required number 1..32; 3개 장소 seed |
 | results | user relation, match_id required text, zone required text, score number min0, ended_at required date; unique(match_id,user) |
@@ -94,7 +94,7 @@ DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체
 
 `startGame` 메시지는 제거했다. Colyseus는 등록되지 않은 메시지를 보낸 클라이언트의 연결을 끊는다.
 
-player는 `{id,name,x,y,color,look:{hat,top,pet}}`(look은 카탈로그 슬롯이 맞는 값만, 나머지 null). 펫은 화면에서만 주인을 따라가며, 주인이 아래(정면)를 볼 때는 몸에 가리지 않도록 옆(-14,-3도트)에 선다. game은 `{id,active,endsAt,stars:[{id,x,y}],scores:{[userId]:integer}}`, `id`는 현재 정산 기간 match_id, `endsAt`은 다음 정산 시각. persistence는 `{status:'pending'|'saved',pending,lastError}`이며 전체 outbox 상태이므로 특정 매치만의 상태는 아니다.
+player는 `{id,name,x,y,color,look:{hat,top,pet,skin,hair,style}}`(look은 카탈로그 슬롯이 맞는 값과 `avatar` 범위 안의 색인만, 나머지 null. null 외형은 클라이언트가 ID 해시로 그린다). `look` 메시지는 프로필을 다시 읽어 이름·옷 색·외형을 갱신한다. 펫은 화면에서만 주인을 따라가며, 주인이 아래(정면)를 볼 때는 몸에 가리지 않도록 옆(-14,-3도트)에 선다. game은 `{id,active,endsAt,stars:[{id,x,y}],scores:{[userId]:integer}}`, `id`는 현재 정산 기간 match_id, `endsAt`은 다음 정산 시각. persistence는 `{status:'pending'|'saved',pending,lastError}`이며 전체 outbox 상태이므로 특정 매치만의 상태는 아니다.
 
 서버는 50ms마다 `moveActor(map,x,y,dx,dy,3)`을 적용하며 입력이 300ms보다 오래되면 움직이지 않는다. 이동은 1.5도트 이하로 쪼개 축별로 미끄러지고, 한 축만 막히면 수직 방향 6도트 이내 빈틈으로 비켜 간다. 플레이어 발 상자 10×6이 막힌 타일·소품 footprint·맵 경계와 겹치면 막힌다. 별은 `spreadSpot`이 `starSpots`(시작점에서 닿고 sort 소품 그림에 가리지 않은 타일 중심) 후보 24개 중 기존 별·플레이어와 가장 먼 곳을 고른다. 이벤트는 첫 입장 때 시작해 계속된다. 최소 5개를 채우고, `STAR_SPAWN_INTERVAL_MS`(기본 6000, 1000..60000)마다 상한 12 미만이면 1개 생성한다. `GAME_DURATION_MS`(기본 180000, 1000..300000)마다 `settle`: 점수 1 이상인 사람만 outbox에 넣고 `gameEnded`를 보낸 뒤, 별을 유지한 채 새 match_id·0점으로 다음 기간을 시작한다. 기간 합계가 64(`MAX_MATCH_SCORE`)에 닿으면 즉시 정산하고, 정산 대기 중 64를 넘는 수집은 거부한다. 전원 이탈·dispose 때 정산하고 멈춘다. 진행 중 합류자를 scores에 등록하고 이탈자의 점수는 정산까지 유지한다. solo 연습도 최소5·6초·상한12와 충돌을 적용하며 DB 보상은 없다.
 
@@ -124,6 +124,7 @@ player는 `{id,name,x,y,color,look:{hat,top,pet}}`(look은 카탈로그 슬롯�
 | 경로 | 요청 | 처리 |
 |---|---|---|
 | `POST /api/pixeltown/shop/buy` | `{item}` | 트랜잭션: 이미 보유면 거부 → purchases 행 저장 → 지갑 재계산, 음수면 "별이 부족해요" 롤백. 응답 `{ok,item,balance}` |
+| `POST /api/pixeltown/profile` | `{name,color,avatar:{skin,hair,style}}` | 로그인 본인만(FR-014). 닉네임 2–12자·한글/영문/숫자/공백/_/-, color는 `avatar.shirts`, 색인은 카탈로그 범위, 운영진 사칭 단어(`avatar.reserved`) 400, 다른 사용자와 같은 닉네임(대소문자 무시, DB unique 위반) 400 `{message, data:{name:'taken'}}`. 응답 `{ok,profile}` |
 | `POST /api/pixeltown/shop/equip` | `{hat,top,pet}` 각 id 또는 null | 슬롯이 맞고 보유한 아이템만, profiles.outfit 저장. 응답 `{ok,outfit}` |
 | `POST /api/pixeltown/shop/room` | `{placements:[{item,c,r}]}` | 보유 가구·하나씩·최대 24·바닥 `floor` 안·`door` 칸 제외·flat(러그) 아닌 가구끼리 겹침 없음, profiles.room 저장 |
 
@@ -131,7 +132,7 @@ player는 `{id,name,x,y,color,look:{hat,top,pet}}`(look은 카탈로그 슬롯�
 
 ### API-004 건강 상태
 
-`GET http://127.0.0.1:12567/health` → 200 `{ok:true,service,persistence:{status,pending,lastError}}`. `/health/pocketbase`는 서버→PB 연결, `/me`는 Bearer 사용자 토큰 검증, `/monitor/`는 PB superuser Basic 인증 전용이다. HTTP·WebSocket 모두 `ALLOWED_ORIGINS`의 정확한 Origin만 허용한다(Origin 없는 요청은 통과, 인증은 별도). PB 장애에도 프로세스 health는 200일 수 있으므로 persistence를 함께 읽는다. PB health는 `GET http://127.0.0.1:18090/api/health`다.
+`GET http://127.0.0.1:12567/health` → 200 `{ok:true,service,persistence:{status,pending,lastError}}`. `/health/pocketbase`는 서버→PB 연결, `/me`는 Bearer 사용자 토큰 검증, `/monitor/`는 PB superuser Basic 인증 전용이며 outbox 서비스 계정(`PB_ADMIN_EMAIL`)은 거부한다. HTTP·WebSocket 모두 `ALLOWED_ORIGINS`의 정확한 Origin만 허용한다(Origin 없는 요청은 통과, 인증은 별도). PB 장애에도 프로세스 health는 200일 수 있으므로 persistence를 함께 읽는다. PB health는 `GET http://127.0.0.1:18090/api/health`다.
 
 ## 6. 상태·저장·동기화
 
@@ -191,3 +192,7 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 테스트 날짜·리비전·결과·미실행 공백은 PROJECT_STATUS와 verification.md에서 관리한다.
 
 20명 smoke는 약 3초 입력 workload·10Hz 목표·단일 로컬 머신 기능 점검이다. `PIXELTOWN_LOAD_100=1`이면 100명을 한 장소에 넣어 `filterBy(['zone'])`·`maxClients=32`에 의한 채널 방 자동 분할(32/32/32/4)과 방별 snapshot·채팅을 추가로 측정한다. 다른 채널 방의 사용자는 서로 보이지 않는다. 인터넷 지연·실제 모바일 FPS·운영 수용량은 보증하지 않는다. 이후 규모 확대는 schema delta/관심 영역, 방 분할, PB 저장량, 네트워크·CPU·모바일 렌더링 측정 후 결정한다. 공개 GitHub source push와 운영 배포를 구분한다.
+
+## 경로 탐색과 이동 보정 (2026-10-02 수정)
+
+`findPath`는 8도트 격자 BFS 후 직선 구간으로 당긴다. 시작 칸은 플레이어가 직진할 수 있는 가장 가까운 걷는 칸이다(2칸 이내, 없으면 가장 가까운 걷는 칸). 이전에는 소품 가장자리처럼 실제 위치는 비었지만 칸 중심이 막힌 곳에서 빈 경로를 돌려줘 클릭 이동이 반응하지 않거나 직진하다 끼었다. `moveActor`의 모서리 비켜가기(최대 6도트)는 거의 축 방향(다른 축 성분이 25% 미만)일 때도 동작한다. 반올림으로 생긴 0.03도트 어긋남이 비켜가기를 끄던 문제를 막는다. 단위 테스트가 세 장소의 막히지 않은 위치에서 입구까지 경로를 서버 이동으로 따라가 도착하는지 검사한다.
