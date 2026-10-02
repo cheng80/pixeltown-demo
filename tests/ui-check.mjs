@@ -303,4 +303,12 @@ report.status = Object.values(report.checks).every(c => c.ok) ? 'passed' : 'fail
 await writeFile(new URL('./ui-report.json', import.meta.url), JSON.stringify(report, null, 1) + '\n');
 console.log(report.status.toUpperCase());
 await browser.close();
+// Leave the development DB as we found it: remove the shopper and guest accounts this run created (cascade deletes their records).
+try {
+  process.env.PB_URL ||= `http://127.0.0.1:${process.env.PIXELTOWN_PB_PORT || 18090}`;
+  const { adminClient } = await import('../colyseus/config.js'), admin = await adminClient();
+  const made = await admin.collection('users').getFullList({ filter: admin.filter("(email ~ 'ui-%@pixeltown.local' || email ~ '@guest.pixeltown.local') && created >= {:t}", { t: report.startedAt.replace('T', ' ') }) });
+  for (const u of made) await admin.collection('users').delete(u.id);
+  console.log(`cleanup: removed ${made.length} test account(s)`);
+} catch (e) { console.log('cleanup skipped:', e.message); }
 if (report.status !== 'passed') process.exitCode = 1;

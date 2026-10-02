@@ -96,7 +96,8 @@ try {
 
   await check('two_users_move_chat', async () => {
     [a, b] = [await join(pa), await join(pb2)];
-    await until(() => a.snapshot.players.length === 2 && b.snapshot.players.length === 2, 'both visible');
+    // Real visitors may share the room: check that the two testers see each other, not an exact head count.
+    await until(() => a.snapshot.players.some(p => p.id === B) && b.snapshot.players.some(p => p.id === A), 'both visible');
     const before = me(a, pa), target = { x: before.x + 40, y: before.y };
     for (let i = 0; i < 12; i++) { a.room.send('input', { dx: 1, dy: 0 }); await sleep(50); }
     const seen = await until(() => { const p = b.snapshot.players.find(q => q.id === A); return p.x > before.x + 10 && p; }, 'movement seen by other');
@@ -109,14 +110,16 @@ try {
 
   await check('zone_separation', async () => {
     await b.room.leave(); b = await join(pb2, 'garden');
-    await until(() => a.snapshot.players.length === 1 && b.snapshot.players.length === 1, 'separate rooms');
+    await until(() => !a.snapshot.players.some(p => p.id === B) && !b.snapshot.players.some(p => p.id === A) && b.snapshot.zone === 'garden', 'separate rooms');
     const text = `lobby-only-${Date.now()}`; a.room.send('chat', { text }); await sleep(800);
     assert.ok(!b.messages.some(m => m.payload?.text === text));
-    return { lobbyPlayers: 1, gardenPlayers: 1, crossZoneChat: false };
+    return { testersSeparated: true, lobbyPlayers: a.snapshot.players.length, gardenPlayers: b.snapshot.players.length, crossZoneChat: false };
   });
 
   let collected = 0, matchId;
   await check('star_cap_collect_and_refill', async () => {
+    // Real visitors keep the room (and its 3-minute period) alive, so start on a fresh period with time to collect and settle.
+    if (a.snapshot.game.endsAt - Date.now() < 150000) { const old = a.snapshot.game.id; await until(() => a.snapshot.game.id !== old, 'next period', 200000); }
     matchId = a.snapshot.game.id;
     const counts = [];
     await until(() => (counts.push(a.snapshot.game.stars.length), a.snapshot.game.stars.length === 12), 'cap 12', 60000);
@@ -206,9 +209,18 @@ try {
   await check('monitor_admin_only', async () => {
     const basic = (u, p) => ({ Authorization: 'Basic ' + Buffer.from(`${u}:${p}`).toString('base64') });
     const none = await fetch(RT_URL + '/monitor/'), user = await fetch(RT_URL + '/monitor/', { headers: basic(accounts[0].email, accounts[0].password) });
-    const api = await fetch(RT_URL + '/monitor/api/', { headers: basic(accounts[1].email, 'wrong-password') });
+    const api = await fetch(RT_URL + '/monitor/api', { headers: basic(accounts[1].email, 'wrong-password') });
     assert.equal(none.status, 401); assert.equal(user.status, 401); assert.equal(api.status, 401);
-    return { anonymous: none.status, gameUser: user.status, wrongPassword: api.status };
+    // Verification superuser (pocketbase/.local/remote-admin.env, 0600, git-ignored): an administrator gets in.
+    const env = await readFile(root + 'pocketbase/.local/remote-admin.env', 'utf8').catch(() => null);
+    if (!env) return { anonymous: none.status, gameUser: user.status, wrongPassword: api.status, admin: 'not checked (no remote-admin.env)' };
+    const get = k => env.match(new RegExp(`^${k}=(.*)$`, 'm'))?.[1];
+    const admin = basic(get('REMOTE_ADMIN_EMAIL'), get('REMOTE_ADMIN_PASSWORD'));
+    const page = await fetch(RT_URL + '/monitor/', { headers: admin }), rooms = await fetch(RT_URL + '/monitor/api', { headers: admin });
+    const crossSite = await fetch(RT_URL + '/monitor/api', { headers: { ...admin, Origin: 'https://unapproved.example' } });
+    const roomList = await rooms.json().catch(() => null);
+    assert.equal(page.status, 200); assert.equal(rooms.status, 200); assert.equal(crossSite.status, 403);
+    return { anonymous: none.status, gameUser: user.status, wrongPassword: api.status, adminPage: page.status, adminApi: rooms.status, adminApiReturnsRooms: Array.isArray(roomList?.rooms ?? roomList), crossOriginWithAdmin: crossSite.status };
   });
 }
 } finally {

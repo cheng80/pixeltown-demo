@@ -231,3 +231,12 @@ PocketBase는 `pb_hooks` 파일이 바뀌면 스스로 재시작하며, 그동�
 
 배포는 `main`에 push하면 Pages가 자동으로 빌드한다. 서버 코드(Colyseus·훅)는 계속 `scripts/deploy-macmini.sh`로 Mac mini에 배포한다. 게스트 캐릭터는 주소별로 브라우저에 저장되므로, 이전 주소(로컬 5173 등)에서 만든 캐릭터는 배포 주소에서 보이지 않는다.
 
+## 11. 백업 방침과 정리 (2026-10-02, 사용자 결정)
+
+- 개발 초기에는 **정기 백업을 하지 않는다.** 위험한 변경(스키마·설정·데이터 변경) 직전에 SQLite `.backup`으로 일관 백업을 만들고, 중간중간 정리할 때 최신 통합본 하나만 남긴다.
+- 현재 원격 백업은 `/Users/cheng80/Servers/backups/pixeltown-20261002-consolidated/`(0700, 1.4MB) 하나다. 내용: 현재 `data.db`·`auxiliary.db`(integrity ok), `pb_hooks/`, `app/`(node_modules 제외), `colyseus.env`, `launchd/` plist 2개, `lobby-era/`(이전 lobby 서버 파일·package·lock·`.env`, 이전 직전 DB `data.db.before-migration`). 기존 단계별 백업 7개는 삭제했다.
+- Colyseus 폴더 정리: 옛 lobby 서버 진입점 2개, `verify.mjs`, 옛 `monitor-auth.mjs`, 루트 `node_modules`(40MB)·`package.json`·`package-lock.json`, `staged-pb_hooks/`를 지웠다. `app/package.json`(`"type":"module"`)이 ESM 설정을 대신하며 배포 스크립트가 함께 올린다. 서버 폴더 `README.md`는 현재 구성 요약으로 바꿨다. 남은 항목: `.env`, `app/`, `outbox/`, Node 런타임, `server.mjs`, 로그.
+- 테스트 데이터: 검사가 만든 원격 게스트(`원격손님*`)를 지웠다. 남은 사용자는 Tester 1·2(자동 검사용)와 실제 사용자다. `tests/remote-ui.mjs`는 검증용 관리자 자격증명이 있으면 자기가 만든 게스트를 끝에 지운다. 로컬 `tests/ui-check.mjs`도 이번 실행에서 만든 `ui-*`·게스트 계정을 끝에 지운다.
+- 검증용 관리자 `verify-admin@pixeltown.local`: 자격증명은 이 컴퓨터 `pocketbase/.local/remote-admin.env`(0600, git 제외)에만 있다. `tests/remote-check.mjs`가 관리자 Monitor 화면·API 200, 다른 Origin 403을 확인한다. 기존 소유자 관리자는 그대로다. 폐기하려면 이 superuser를 지우고 로컬 파일도 지운다.
+- `msgpackr-extract`: 미리 빌드된 `@msgpackr-extract/msgpackr-extract-darwin-arm64`를 이미 네이티브로 쓰고 있다. npm 경고는 쓰지 않는 소스 빌드(`node-gyp rebuild`)가 막혔다는 뜻이라 조치하지 않는다.
+

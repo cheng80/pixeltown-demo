@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-02T06:47:11.202Z",
+ "startedAt": "2026-10-02T07:21:05.363Z",
  "url": "http://127.0.0.1:5273/",
  "checks": {
   "depth_and_collision_lobby": {
@@ -353,8 +353,8 @@
     "dy": -3
    },
    "besideBed": {
-    "id": "re1cbxgdtxny40w",
-    "name": "쇼핑왕uc2x",
+    "id": "36chg5o0hm8wv0t",
+    "name": "쇼핑왕wfq4",
     "color": "#9fd0ff",
     "look": {
      "hat": "hat_crown",
@@ -379,7 +379,7 @@
    "guestSaved": true,
    "reloadSameCharacter": true,
    "seenByOther": {
-    "name": "별돌이n8m",
+    "name": "별돌이qwn",
     "color": "#9be38c",
     "look": {
      "hat": null,
@@ -390,7 +390,7 @@
      "style": 2
     }
    },
-   "editedName": "별돌이n8m2",
+   "editedName": "별돌이qwn2",
    "pageErrors": []
   },
   "viewports_no_scroll_integer_scale": {
@@ -471,6 +471,6 @@
    }
   }
  },
- "finishedAt": "2026-10-02T06:51:55.353Z",
+ "finishedAt": "2026-10-02T07:21:22.736Z",
  "status": "passed"
 }

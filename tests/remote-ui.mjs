@@ -44,6 +44,18 @@ try {
   await a.waitForFunction(n => window.__pixeltown.state.current.players.some(q => q.name === n), nick, { timeout: 15000 });
   await g.reload(); await g.waitForFunction(n => window.__pixeltown?.state.current.players?.some(q => q.name === n), nick, { timeout: 15000 });
   out.guest = { created: true, seenByOther: true, reloadSameCharacter: true, pageErrors: g.errs };
+  // Remove the guest this check created when the verification superuser is available (pocketbase/.local/remote-admin.env).
+  const env = await readFile(root + 'pocketbase/.local/remote-admin.env', 'utf8').catch(() => null);
+  if (env) {
+    const get = k => env.match(new RegExp(`^${k}=(.*)$`, 'm'))?.[1], pbUrl = out.hosts.find(h => /^https:\/\/pixeltown-pb\./.test(h)) || 'https://pixeltown-pb.fastmake.net';
+    const guestEmail = JSON.parse(await g.evaluate(() => localStorage.getItem('pixeltown.guest'))).email;
+    try { // housekeeping only: never fails the check. Sign-ins share the PB rate limit (2 per 3 s per IP), so retry on 429.
+      let r; for (let i = 0; i < 4 && (!r || r.status === 429); i++) { if (r) await sleep(3500); r = await fetch(`${pbUrl}/api/collections/_superusers/auth-with-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identity: get('REMOTE_ADMIN_EMAIL'), password: get('REMOTE_ADMIN_PASSWORD') }) }); }
+      const token = (await r.json()).token;
+      const found = await (await fetch(`${pbUrl}/api/collections/users/records?filter=${encodeURIComponent(`email="${guestEmail}"`)}`, { headers: { Authorization: token } })).json();
+      for (const u of found.items || []) out.guest.removed = (await fetch(`${pbUrl}/api/collections/users/records/${u.id}`, { method: 'DELETE', headers: { Authorization: token } })).status;
+    } catch (e) { out.guest.removed = `cleanup failed: ${e.message}`; }
+  }
   if (g.errs.length) throw new Error(JSON.stringify(out));
   out.ok = true; console.log('PASS remote_ui_two_users', JSON.stringify(out));
 } finally { await browser.close(); }
