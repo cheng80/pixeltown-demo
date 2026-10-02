@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-02T10:27:23.918Z",
+ "startedAt": "2026-10-02T11:34:26.329Z",
  "url": "http://127.0.0.1:5273/",
  "checks": {
   "depth_and_collision_lobby": {
@@ -18,7 +18,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 77
+    "ack": 76
    },
    "inFront": {
     "id": "4l0ykfu34v14g2t",
@@ -34,7 +34,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 90
+    "ack": 89
    },
    "trunkStop": {
     "id": "4l0ykfu34v14g2t",
@@ -50,13 +50,13 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 101
+    "ack": 100
    },
    "behindHouse": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 121.21,
-    "y": 49.05,
+    "x": 121.02,
+    "y": 49,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -66,12 +66,12 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 171
+    "ack": 170
    },
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 122.52,
+    "x": 122.53,
     "y": 99.28,
     "color": "#ffb347",
     "look": {
@@ -101,13 +101,13 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 108
+    "ack": 109
    },
    "frontCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 107.77,
-    "y": 222.91,
+    "x": 107.66,
+    "y": 222.9,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -117,13 +117,13 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 162
+    "ack": 165
    },
    "behindPillar": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 200.54,
-    "y": 121.11,
+    "x": 200.34,
+    "y": 121.22,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -133,13 +133,13 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 225
+    "ack": 227
    },
    "behindCounter": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 540.29,
-    "y": 312.81,
+    "x": 539.56,
+    "y": 312.64,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -149,7 +149,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 361
+    "ack": 362
    },
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
@@ -165,7 +165,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 528
+    "ack": 529
    },
    "underPergola": {
     "id": "4l0ykfu34v14g2t",
@@ -181,7 +181,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 548
+    "ack": 549
    },
    "pondStop": {
     "id": "4l0ykfu34v14g2t",
@@ -197,7 +197,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 625
+    "ack": 627
    }
   },
   "two_users_move_chat_portal": {
@@ -205,8 +205,8 @@
    "seenByOther": {
     "id": "f87ubkhwf2u1c4p",
     "name": "Demo 2",
-    "x": 376.57,
-    "y": 271.2,
+    "x": 375.72,
+    "y": 271.64,
     "color": "#89cff0",
     "look": {
      "hat": null,
@@ -242,7 +242,7 @@
      "hair": 5,
      "style": 1
     },
-    "ack": 124
+    "ack": 126
    }
   },
   "click_move_shortest_marker_and_key_cancel": {
@@ -257,8 +257,8 @@
    "stoppedAt": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 123.91,
-    "y": 100.85,
+    "x": 123.93,
+    "y": 100.62,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -292,11 +292,11 @@
    "startButton": false,
    "activeOnJoin": true,
    "initial": 5,
-   "minimumSpacing": 158,
+   "minimumSpacing": 229,
    "secondsToNextSettlement": 167,
    "myScore": 3,
    "stillActiveAfterSettlement": true,
-   "notebook": "Demo 1이 브라우저에 저장된 내 캐릭터별 보상 43개★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직"
+   "notebook": "Demo 1이 브라우저에 저장된 내 캐릭터별 보상 48개★ 별 조각×3★ 별 조각×1★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3산 물건 0개아직"
   },
   "shop_dress_pet_and_miniroom": {
    "ok": true,
@@ -339,8 +339,8 @@
     "dy": -3
    },
    "besideBed": {
-    "id": "2q883fnywzanyki",
-    "name": "쇼핑왕pioe",
+    "id": "jdes5pv4k9wbo2u",
+    "name": "쇼핑왕3rdn",
     "color": "#9fd0ff",
     "look": {
      "hat": "hat_crown",
@@ -365,7 +365,7 @@
    "guestSaved": true,
    "reloadSameCharacter": true,
    "seenByOther": {
-    "name": "별돌이tl9",
+    "name": "별돌이2nn",
     "color": "#9be38c",
     "look": {
      "hat": null,
@@ -376,7 +376,7 @@
      "style": 2
     }
    },
-   "editedName": "별돌이tl92",
+   "editedName": "별돌이2nn2",
    "pageErrors": []
   },
   "viewports_no_scroll_integer_scale": {
@@ -398,7 +398,7 @@
     "smoothing": false,
     "galmuri": true
    },
-   "mobileDpadMoved": 39,
+   "mobileDpadMoved": 36,
    "mobile": {
     "scroll": [
      390,
@@ -457,6 +457,6 @@
    }
   }
  },
- "finishedAt": "2026-10-02T10:32:07.090Z",
+ "finishedAt": "2026-10-02T11:39:11.444Z",
  "status": "passed"
 }

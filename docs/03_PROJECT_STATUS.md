@@ -110,7 +110,7 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 ## 8. 변경된 계약
 
-- 연결 끊김(2026-10-02): 서버 `onDrop`이 끊긴 플레이어를 15초(`RECONNECT_SECONDS`) 동안 남기고 SDK 재접속을 받는다. 그 사이 같은 사용자의 새 입장은 대기 세션을 정리하고 받는다. 입력 대기열 상한 6 → 20(`MAX_QUEUED_INPUTS`). 클라이언트는 끊기면 화면 전체를 막는 대화상자를 띄우고 입력을 막는다(재시도 6번, 15초 안전장치). 카메라는 원본과 같이 고정(데드존·댐핑은 시험 후 쓰지 않음). TECH_SPEC 마지막 절.
+- 연결 끊김(2026-10-02): 서버 `onDrop`이 끊긴 플레이어를 15초(`RECONNECT_SECONDS`) 동안 남기고 SDK 재접속을 받는다. 그 사이 같은 사용자의 새 입장은 대기 세션을 정리하고 받는다. 입력 대기열 상한 6 → 20(`MAX_QUEUED_INPUTS`). 클라이언트는 끊기면 화면 전체를 막는 대화상자를 띄우고 입력을 막는다. 같은 세션 재접속 → 거절·무응답이면 자동 새 입장 → 그것도 실패하면 버튼 순서로 복구한다. 카메라는 원본과 같이 고정(데드존·댐핑은 시험 후 쓰지 않음). TECH_SPEC 마지막 절.
 - 별 수집 히트박스(2026-10-02): `COLLECT_RADIUS` 제거, `BODY_BOX`·`STAR_BOX`·`touchesStar` 추가(shared/world.js). 서버가 매 틱 자동 수집하고 클라이언트는 `collect`를 보내지 않는다(서버는 구 버전용으로 계속 받는다). 화면은 닿는 순간 별을 숨기고 1초 안에 서버가 지우지 않으면 다시 보인다. TECH_SPEC 마지막 절.
 - PLAN-005: `profiles.avatar` json 필드, `POST /api/pixeltown/profile`, snapshot `look`에 `skin/hair/style`, `look` 메시지가 이름·옷 색도 갱신, `shared/catalog.json`에 `avatar` 선택지(렌더러의 피부·머리 색 상수 이동). 프로필에 외형이 없으면 클라이언트가 방 입장 전에 캐릭터 화면을 띄운다. `scripts/deploy-macmini.sh`가 원격 스키마 추가분도 반영한다.
 - PLAN-004: Colyseus 0.16 → 0.18.18, 클라이언트 `colyseus.js` → `@colyseus/sdk 0.18.4`. 토큰은 join 옵션의 `token`이 아니라 `client.auth.token`(서버 `context.token`). 서버에 express·`/health/pocketbase`·`/me`·`/monitor/`(PB superuser)·`ALLOWED_ORIGINS` 추가, `/health`에 `service`. 환경변수 `POCKETBASE_URL`·`PORT`·`PB_ADMIN_*`(프로세스 환경 우선)·`MONITOR_ORIGINS` 인식. `seed(_, {remote:true})`, `provision-accounts.mjs`, `deploy-macmini.sh`, `.env.remote`·`npm run dev:remote`, 훅 카탈로그 경로 `pb_hooks/catalog.json` 우선. `vendor/nanoid`와 그 단위 테스트 제거.
@@ -158,7 +158,7 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 | 운영 정리(원격 백업 통합·불필요 파일·테스트 데이터, 로컬 정리, 검사 자동 정리) | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | SERVER_OPERATIONS 11절, 재배포 후 health·원격 UI·원격 검사 8/8 |
 | 검증용 관리자로 Monitor 관리자 로그인 | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | `tests/remote-check.mjs` monitor_admin_only |
 | 별 수집 히트박스·서버 자동 수집·화면 즉시 숨김 | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | verification 17절: 단위24·통합17·UI8·원격8/8·원격 수집 5/5(서버 확인 160–297ms)·배포 주소 수집 5/5 |
-| 연결 끊김 차단·자동 재접속·불안정 연결 떨림(입력 대기열 20) | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | verification 18절: 단위26·통합17·UI8·원격8/8, `offline-check` PASS, `JITTER=0/300/600 motion-check` 보정 0 |
+| 연결 끊김 차단·자동 재접속·불안정 연결 떨림(입력 대기열 20) | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | verification 18절: 단위26·통합17·UI8·원격8/8, `offline-check` 4경우 PASS(로컬·배포 주소), `JITTER=0/300/600 motion-check` 보정 0 |
 | 디자인 승인 | PASS | USER | 2026-10-02 | `b69fbcb` | CURRENT | 사용자 승인(배포 주소 화면 기준) |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
 | 공개 경로 부하·인터넷 지연·한 화면 100명·관리자 Monitor 로그인 | NOT_RUN | NONE | - | - | UNKNOWN | 정책상 금지 또는 관리자 암호 미사용 |

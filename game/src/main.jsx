@@ -69,6 +69,7 @@ function App() {
   const pred = useRef(null), pending = useRef([]), seq = useRef(0), glide = useRef(null), serverClock = useRef({ samples: [], offset: 0 });
   const stall = useRef({ x: 0, y: 0, n: 0 }), route = useRef([]), marker = useRef(null), state = useRef({ players: [], game: {} }), bubbles = useRef({}), emotes = useRef({});
   const trails = useRef({}), selfId = useRef("me"), soloPos = useRef(null), entry = useRef("default"), portalArmed = useRef(false), chatVisible = useRef(chatOpen);
+  const [joinTry, setJoinTry] = useState(0), rejoining = useRef(false), lastAutoJoin = useRef(0);
   const picked = useRef({}), corrections = useRef([]), persistStatus = useRef(null), chatInput = useRef(null), lastSent = useRef("");
   const profile = records.profiles[0], outfit = profile?.outfit || {};
   // First entry (FR-014): a signed-in user whose profile has no chosen look makes a character before joining a room.
@@ -142,8 +143,8 @@ function App() {
   // room connection (or local practice)
   useEffect(() => {
     if (!entered) return;
-    let cancelled = false, giveUp = null;
-    setStatus(local ? "home" : "connecting");
+    let cancelled = false, giveUp = null, joined = null;
+    setStatus(local ? "home" : rejoining.current ? "reconnecting" : "connecting");
     state.current = { players: [], game: {}, zone }; setSnap(state.current);
     persistStatus.current = null; setMessages([]); setUnread(0);
     picked.current = {}; bubbles.current = {}; emotes.current = {}; keys.current.clear(); touch.current = { dx: 0, dy: 0 };
@@ -156,7 +157,7 @@ function App() {
       .catch(e => (e.code === 409 && n < 6 && !cancelled ? new Promise(r => setTimeout(r, 700)).then(() => join(n + 1)) : Promise.reject(e)));
     join().then(r => {
       if (cancelled) { r.leave(); return; }
-      room.current = r; selfId.current = user.id; setStatus("online");
+      joined = r; room.current = r; selfId.current = user.id; rejoining.current = false; setStatus("online");
       r.onMessage("snapshot", data => {
         if (data.zone !== zone) return;
         const c = serverClock.current; c.samples.push(Date.now() - data.t); if (c.samples.length > 60) c.samples.shift(); c.offset = Math.min(...c.samples);
@@ -177,21 +178,34 @@ function App() {
       r.onMessage("chat", d => append({ id: d.id, name: d.name || "이웃", text: d.text, mine: d.id === user.id }));
       r.onMessage("emote", d => { emotes.current[d.id] = Date.now() + 2500; });
       r.onMessage("gameEnded", m => { const n = m.scores?.[user.id]; if (n) { persistStatus.current = "pending"; notify(`별 ${n}개 정산! 기록을 저장하는 중이에요.`); } });
-      // While the socket is down nothing moves or predicts on its own and a dialog blocks the page. The SDK retries 6 times
-      // (~11 s) into the same server session (kept 15 s); after that, or if a retry hangs, the dialog offers a fresh join.
+      // While the socket is down nothing moves or predicts on its own and a dialog blocks the page.
+      // 1. Drop: the SDK reconnects into the same server session (kept 15 s), so nothing is lost.
+      // 2. That fails (session gone, socket refused) or hangs: join again automatically; the login is still valid.
+      // 3. Only if that join fails too (server unreachable) does the dialog show a button.
       const halt = next => { keys.current.clear(); touch.current = { dx: 0, dy: 0 }; route.current = []; marker.current = null; pending.current = []; setStatus(next); };
+      let lost = false;
+      const joinAgain = () => {
+        if (cancelled || lost) return; lost = true; clearTimeout(giveUp); room.current = null;
+        // ponytail: one automatic join per 10 s, so a server that keeps closing us cannot loop; then the button
+        if (Date.now() - lastAutoJoin.current < 10000) { halt("disconnected"); return; }
+        lastAutoJoin.current = Date.now(); rejoining.current = true; halt("reconnecting"); setJoinTry(n => n + 1);
+      };
       r.reconnection.maxRetries = 6;
       r.onDrop(() => {
         if (cancelled) return;
         room.current = null; halt("reconnecting");
-        clearTimeout(giveUp); giveUp = setTimeout(() => { if (!cancelled && !room.current) halt("disconnected"); }, 15000);
+        clearTimeout(giveUp); giveUp = setTimeout(joinAgain, 15000); // a retry that never opens or closes (network gone)
       });
       r.onReconnect(() => { if (!cancelled) { clearTimeout(giveUp); room.current = r; lastSent.current = ""; setStatus("online"); } });
-      r.onLeave(() => { if (!cancelled) { room.current = null; halt("disconnected"); } });
-      r.onError((code, message) => { if (!cancelled) { room.current = null; halt("disconnected"); notify(message || `연결 오류 (${code})`); } });
+      r.onLeave(joinAgain);
+      r.onError((code, message) => { if (!cancelled) console.warn(`room error ${code}: ${message}`); });
     }).catch(e => { if (!cancelled) { setStatus("disconnected"); notify(`마을 연결 실패: ${e.message}`); } });
-    return () => { cancelled = true; clearTimeout(giveUp); room.current?.leave(); room.current = null; };
-  }, [entered, user, zone]);
+    return () => {
+      cancelled = true; clearTimeout(giveUp);
+      if (joined && joined !== room.current) { joined.reconnection.maxRetries = 0; try { joined.connection?.close(); } catch {} } // stop a dropped room's retries
+      room.current?.leave(); room.current = null;
+    };
+  }, [entered, user, zone, joinTry]);
 
   // input: keyboard / d-pad / click route, sent to the server every tick
   useEffect(() => {
@@ -450,7 +464,7 @@ function App() {
         <div className="notebook paper" role="alertdialog" aria-modal="true" aria-labelledby="offline-title">
           <div className="notebook-head"><b id="offline-title">{status === "reconnecting" ? "서버에 다시 연결하는 중…" : "서버 연결이 끊겼어요"}</b></div>
           <p className="notebook-body">연결될 때까지 이동·채팅·장소 이동을 할 수 없어요.</p>
-          {status === "disconnected" && <div className="notebook-foot"><button className="btn wide" autoFocus onClick={() => setUser({ ...user })}>다시 연결</button></div>}
+          {status === "disconnected" && <div className="notebook-foot"><button className="btn wide" autoFocus onClick={() => { rejoining.current = true; setJoinTry(n => n + 1); }}>다시 연결</button></div>}
         </div>
       </div>}
       {shop && <Shop {...{ wallet, owned, outfit, buy, wear, me, close: () => setShop(false) }} />}
