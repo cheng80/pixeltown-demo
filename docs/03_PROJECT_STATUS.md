@@ -67,7 +67,9 @@
 - 해결: Colyseus 0.18 전환으로 패치된 `nanoid 3.3.19`를 쓰고, 0.16용 대체 모듈은 제거했다. `npm audit` 0건.
 - 결정(2026-10-02 사용자): 원격 공개 가입 차단. `users.createRule`을 `''` → `null`로 바꿨다(다른 규칙·계정 유지, 직전 백업 `/Users/cheng80/Servers/backups/pixeltown-signup-close-20261002/data.db`). 새 사용자는 superuser 권한의 `scripts/provision-accounts.mjs`로만 만든다(계정+프로필). 실제 공개 가입을 열 때는 가입 UI·이메일 인증·가입 속도 제한·프로필 자동 생성 훅을 함께 도입한다. Mac mini의 옛 `verify.mjs`(lobby 검증)는 공개 가입에 의존하므로 더 이상 쓰지 않는다.
 - 원격 outbox 저장은 전용 superuser(`colyseus-outbox@pixeltown.local`)를 쓴다. Monitor 보호가 이 계정을 거부한다.
-- 해결: 닉네임은 DB unique 인덱스(대소문자 무시)와 사칭 단어 거부로 막고, 화면이 입력칸 아래에 안내한다. 일반 욕설 필터는 없다.
+- 해결: 닉네임은 DB unique 식 인덱스(띄어쓰기·_·-·영문 대소문자 무시)와 사칭 단어 거부로 막고, 화면이 입력칸 아래에 안내한다. 일반 욕설 필터는 없다.
+- 해결: 통합 테스트 셋업의 1회성 "Something went wrong."은 PocketBase가 훅 파일 변경을 감지해 재시작하는 동안(약 2–3초) 요청이 status 0으로 실패하는 현상으로 재현됐다. 통합 테스트는 이제 훅 사본을 쓰고, 실패 보고에 상태 코드·URL을 남긴다. 원격 배포에서 훅이 바뀌면 같은 짧은 중단이 생긴다.
+- 해결: 원격 클릭 이동이 지연(왕복 약 100–200ms) 때문에 목표를 6–7도트 지나쳐 멈추거나 왕복했다. 마지막 구간에 목표점 `to`를 보내 서버가 실제 위치 기준으로 정확히 멈춘다. 원격 실제 브라우저 클릭 20/20 도착.
 - 해결: 원격 별 회수 검사 실패의 원인은 경로 탐색 버그였다. 소품 가장자리(칸 중심이 막힌 빈 위치)에서 `findPath`가 빈 경로를 돌려주고, 반올림 0.03도트 어긋남이 모서리 비켜가기를 꺼서 멈췄다. 실제 플레이어의 클릭 이동도 같은 위치에서 반응하지 않았다. 원격 지연(약 100–200ms) 때문에 이런 위치에 멈출 일이 많아 원격에서 드러났다. 수정과 회귀 테스트는 TECH_SPEC 마지막 절.
 - 해결: 프런트 번들은 vendor(221KB)와 앱(283KB)으로 나눠 Vite 500KB 경고가 없다.
 - 실제 iPhone/Android 가상 키보드·성능, 외부 배포·TLS·지속 운영은 미검증이다. 100명은 로컬 단일 머신에서 채널 방 자동 분할(32/32/32/4)까지만 측정했다(통합 opt-in). 한 화면 100명 동시 표시는 지원하지 않는다.
@@ -133,6 +135,7 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 | 캐릭터 만들기·닉네임 유일성(로컬 단위·통합·UI) | PASS | RECHECKED | 2026-10-02 | PLAN-005 커밋 | CURRENT | verification 11절: 단위 20, 통합 17(+PB 0.39.7 16), UI 8 |
 | **원격** 캐릭터·닉네임·기능 전체 | PASS 8/8 | RECHECKED | 2026-10-02 | PLAN-005 커밋 | CURRENT | `tests/remote-report.json`, `tests/remote-ui.mjs` |
 | 원격 별 회수 실패(경로 탐색 버그) 수정 | PASS | RECHECKED | 2026-10-02 | PLAN-005 커밋 | CURRENT | 원격 걷기 진단 10/10, 단위 회귀 테스트 |
+| 남은 문제 1·2·3(셋업 실패 원인, 원격 클릭 지연, 닉네임 띄어쓰기) | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | verification 12절, 원격 클릭 20/20 |
 | 디자인 승인 | PENDING | NONE | - | - | UNKNOWN | 사용자 판단 |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
 | 공개 경로 부하·인터넷 지연·한 화면 100명·관리자 Monitor 로그인 | NOT_RUN | NONE | - | - | UNKNOWN | 정책상 금지 또는 관리자 암호 미사용 |
@@ -152,6 +155,7 @@ PIXELTOWN_TEST_PB_PORT=18191 PIXELTOWN_TEST_GAME_PORT=12668 npm run test:integra
 CHROME_PATH=/path/to/chromium PIXELTOWN_WEB_PORT=5273 PIXELTOWN_PB_PORT=18190 node tests/ui-check.mjs   # UI_ONLY=shop 처럼 일부만
 npm run build
 node tests/remote-check.mjs                              # 원격 2유저 기능(약 4분, 기본 3분 정산)
+CHROME_PATH=/path/to/chromium node tests/remote-click.mjs  # dev:remote 실행 중 실제 브라우저 클릭 이동 도착·반전 측정
 PIXELTOWN_REMOTE_OUTAGE=1 node tests/remote-check.mjs    # 원격 outbox 장애 복구(SSH, PB를 잠시 중단)
 CHROME_PATH=/path/to/chromium node tests/remote-ui.mjs  # dev:remote 실행 중 브라우저 2유저
 scripts/deploy-macmini.sh                                # 원격 코드 갱신(Colyseus만 재시작)

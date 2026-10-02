@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-02T03:55:09.052Z",
+ "startedAt": "2026-10-02T04:22:05.913Z",
  "url": "http://127.0.0.1:5273/",
  "checks": {
   "depth_and_collision_lobby": {
@@ -7,8 +7,8 @@
    "underCanopy": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 148.64,
-    "y": 171.37,
+    "x": 148.8,
+    "y": 171.42,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -22,8 +22,8 @@
    "inFront": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 147.31,
-    "y": 194.76,
+    "x": 147.16,
+    "y": 194.88,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -37,8 +37,8 @@
    "trunkStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 147.31,
-    "y": 187.26,
+    "x": 147.16,
+    "y": 187.38,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -52,8 +52,8 @@
    "behindHouse": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 121.56,
-    "y": 49.13,
+    "x": 121.21,
+    "y": 49.05,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -67,8 +67,8 @@
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 119.63,
-    "y": 99.06,
+    "x": 121,
+    "y": 99.5,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -85,8 +85,8 @@
    "behindCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 108.06,
-    "y": 190.96,
+    "x": 107,
+    "y": 191,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -115,8 +115,8 @@
    "behindPillar": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 200.26,
-    "y": 121.24,
+    "x": 200.34,
+    "y": 121.22,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -130,8 +130,8 @@
    "behindCounter": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 540.45,
-    "y": 312.87,
+    "x": 539.56,
+    "y": 312.64,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -145,8 +145,8 @@
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 320.52,
-    "y": 51.55,
+    "x": 321,
+    "y": 52,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -175,8 +175,8 @@
    "pondStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 273.97,
-    "y": 195.89,
+    "x": 273,
+    "y": 196,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -193,8 +193,8 @@
    "seenByOther": {
     "id": "f87ubkhwf2u1c4p",
     "name": "Demo 2",
-    "x": 376.57,
-    "y": 271.2,
+    "x": 375.72,
+    "y": 271.64,
     "color": "#89cff0",
     "look": {
      "hat": null,
@@ -214,6 +214,21 @@
    "chatTextOpacity": "1",
    "opacityMax": "95",
    "opacityAfterReload": "75",
+   "portalArrival": {
+    "id": "f87ubkhwf2u1c4p",
+    "name": "Demo 2",
+    "x": 44,
+    "y": 218,
+    "color": "#89cff0",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null,
+     "skin": 1,
+     "hair": 5,
+     "style": 1
+    }
+   },
    "otherZoneHidden": true,
    "portalBack": {
     "id": "f87ubkhwf2u1c4p",
@@ -243,8 +258,8 @@
    "stoppedAt": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 123.95,
-    "y": 100.39,
+    "x": 123.91,
+    "y": 100.85,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -277,11 +292,11 @@
    "startButton": false,
    "activeOnJoin": true,
    "initial": 5,
-   "minimumSpacing": 143,
-   "secondsToNextSettlement": 167,
+   "minimumSpacing": 226,
+   "secondsToNextSettlement": 166,
    "myScore": 3,
    "stillActiveAfterSettlement": true,
-   "notebook": "Demo 1demo1@pixeltown.local별 보상 18개★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오후 12:593점오락실26. 10. 2. 오후 12:333점오락실26. 10. 2. 오전 11:"
+   "notebook": "Demo 1demo1@pixeltown.local별 보상 21개★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오후 1:263점오락실26. 10. 2. 오후 12:593점오락실26. 10. 2."
   },
   "shop_dress_pet_and_miniroom": {
    "ok": true,
@@ -324,8 +339,8 @@
     "dy": -3
    },
    "besideBed": {
-    "id": "gsozegr8j47quc1",
-    "name": "쇼핑왕p3xy",
+    "id": "l826r0gr9s87h8g",
+    "name": "쇼핑왕nrms",
     "color": "#9fd0ff",
     "look": {
      "hat": "hat_crown",
@@ -347,7 +362,7 @@
    "takenMessage": "이미 쓰는 닉네임이에요. 다른 이름을 지어 주세요.",
    "takenFieldInvalid": "true",
    "seenByOther": {
-    "name": "별돌이fiv",
+    "name": "별돌이30s",
     "color": "#9be38c",
     "look": {
      "hat": null,
@@ -358,7 +373,7 @@
      "style": 2
     }
    },
-   "editedName": "별돌이fiv2",
+   "editedName": "별돌이30s2",
    "pageErrors": []
   },
   "viewports_no_scroll_integer_scale": {
@@ -418,7 +433,7 @@
     "galmuri": true,
     "sendButtonVisible": true
    },
-   "shortDpadMoved": 33,
+   "shortDpadMoved": 36,
    "short": {
     "scroll": [
      390,
@@ -439,6 +454,6 @@
    }
   }
  },
- "finishedAt": "2026-10-02T03:59:54.218Z",
+ "finishedAt": "2026-10-02T04:26:50.858Z",
  "status": "passed"
 }

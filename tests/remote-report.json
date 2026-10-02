@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-02T03:59:58.447Z",
+  "startedAt": "2026-10-02T04:18:38.225Z",
   "pocketbase": "https://pixeltown.fastmake.net",
   "realtime": "wss://pixeltown-rt.fastmake.net",
   "checks": {
@@ -15,21 +15,21 @@
       "forgedPurchase": 403,
       "commitAsUser": 403,
       "publicSignup": 403,
-      "ms": 2604
+      "ms": 2636
     },
     "two_users_move_chat": {
       "ok": true,
-      "movedBy": 27,
+      "movedBy": 30,
       "target": 360,
       "chatSenderIsServerId": true,
-      "ms": 1930
+      "ms": 1722
     },
     "zone_separation": {
       "ok": true,
       "lobbyPlayers": 1,
       "gardenPlayers": 1,
       "crossZoneChat": false,
-      "ms": 1631
+      "ms": 1442
     },
     "star_cap_collect_and_refill": {
       "ok": true,
@@ -39,31 +39,31 @@
       "collected": 10,
       "refillId": true,
       "serverScore": 10,
-      "ms": 75610
+      "ms": 74457
     },
     "default_3min_settlement_saved": {
       "ok": true,
-      "matchId": "901ab954-c265-4757-b686-504deaa0c244",
+      "matchId": "b7b81550-98a4-4d11-bb71-c288324f4d2a",
       "scoreSaved": 10,
       "inventoryQuantity": 10,
       "serverScores": {
         "bfibz83fzdylm8m": 10
       },
-      "measuredPeriodMs": 179928,
+      "measuredPeriodMs": 179937,
       "starsKeptIntoNextPeriod": true,
       "otherUserCanRead": false,
-      "ms": 102065
+      "ms": 103434
     },
     "shop_equip_room_and_relogin": {
       "ok": true,
       "bought": [
-        "top_heart",
-        "f_lamp"
+        "top_stripe",
+        "f_rug"
       ],
-      "wear": "top_heart",
-      "furniture": "f_lamp",
-      "walletBefore": 21,
-      "walletAfter": 9,
+      "wear": "top_stripe",
+      "furniture": "f_rug",
+      "walletBefore": 20,
+      "walletAfter": 4,
       "duplicateBuy": 400,
       "unaffordable": 400,
       "notOwnedEquip": 400,
@@ -71,12 +71,12 @@
       "savedRoom": [
         {
           "c": 11,
-          "item": "f_lamp",
+          "item": "f_rug",
           "r": 10
         }
       ],
       "otherSeesOutfit": true,
-      "ms": 4042
+      "ms": 3528
     },
     "character_setup_profile": {
       "ok": true,
@@ -90,14 +90,14 @@
         "style": 1,
         "color": "#ffb347"
       },
-      "ms": 522
+      "ms": 422
     },
     "monitor_admin_only": {
       "ok": true,
       "anonymous": 401,
       "gameUser": 401,
       "wrongPassword": 401,
-      "ms": 723
+      "ms": 770
     },
     "outbox_outage_restart_recovery": {
       "ok": true,
@@ -116,8 +116,8 @@
     "user1": "bfibz83fzdylm8m",
     "user2": "p2srnojs4omvb9g"
   },
-  "matchId": "901ab954-c265-4757-b686-504deaa0c244",
-  "finishedAt": "2026-10-02T04:03:08.183Z",
+  "matchId": "b7b81550-98a4-4d11-bb71-c288324f4d2a",
+  "finishedAt": "2026-10-02T04:21:47.297Z",
   "summary": {
     "passed": 9,
     "failed": 0
@@ -136,8 +136,10 @@
       "runner": "tests/remote-persistence.mjs on the Mac mini"
     }
   },
-  "walkDiagnostic": {
-    "before": "remote: 2 of 5 and 1 of 5 star walks stuck (empty route next to props)",
-    "after": "remote: 10/10 star walks reached, latency 82–91 ms"
+  "clickMovement": {
+    "at": "2026-10-02T04:15:41.236Z",
+    "arrived": "10/10",
+    "beforeFix": "4 of 10 overshot 6-7 dots or oscillated (lag)",
+    "maxEndOffDots": 1.8
   }
 }

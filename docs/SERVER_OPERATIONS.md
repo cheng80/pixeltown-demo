@@ -150,11 +150,13 @@ launchctl kickstart -k gui/501/com.fastmake.pixeltown.pocketbase
 ssh … 'cd /Users/cheng80/Servers/pixeltown-colyseus/app && ../runtime/bin/node --env-file=../.env scripts/provision-accounts.mjs' < accounts.json
 ```
 
+PocketBase는 `pb_hooks` 파일이 바뀌면 스스로 재시작하며, 그동안 약 2–3초 API 요청이 실패한다("Something went wrong.", status 0). 훅이 바뀌는 배포는 사용자가 적을 때 한다.
+
 코드 갱신 배포: 저장소 루트에서 `scripts/deploy-macmini.sh`(app·게임 훅 복사, `npm ci`, 게임 스키마 추가분 반영(`seed` remote 모드, 추가만), Colyseus만 재시작, 내부 health 출력). 스키마 변경이 있으면 Mac mini에서 `cd …/pixeltown-colyseus/app && ../runtime/bin/node --env-file=../.env --input-type=module -e 'const m=await import("./scripts/init-pocketbase.mjs");await m.seed(undefined,{remote:true})'`.
 
 ### 6.2 백업과 롤백(실제 위치)
 
-추가 백업: 가입 차단 직전 `…/backups/pixeltown-signup-close-20261002/data.db`, 캐릭터 기능(PLAN-005) 반영 직전 `…/backups/pixeltown-character-20261002/`(DB·`pb_hooks`·`app`), 닉네임 유니크 인덱스 직전 `…/backups/pixeltown-nickname-20261002/data.db`.
+추가 백업: 가입 차단 직전 `…/backups/pixeltown-signup-close-20261002/data.db`, 캐릭터 기능(PLAN-005) 반영 직전 `…/backups/pixeltown-character-20261002/`(DB·`pb_hooks`·`app`), 닉네임 유니크 인덱스 직전 `…/backups/pixeltown-nickname-20261002/data.db`, 닉네임 비교 키 확장 직전 `…/backups/pixeltown-nickname-key-20261002/data.db`.
 
 백업 `/Users/cheng80/Servers/backups/pixeltown-migration-20261002/`(0700): `data.db`·`auxiliary.db`(실행 중 DB의 SQLite online `.backup`, integrity_check ok, sha256 `c2294748…523b` / `2c5d66e3…d717`), `pb_hooks/`, `types.d.ts`, `colyseus/`(server·server.before-monitor·monitor-auth·verify·package·lock·README·.env), `launchd/`(plist 2개). 롤백 명령은 [PLAN-004](plans/PLAN-004.md) 5절.
 

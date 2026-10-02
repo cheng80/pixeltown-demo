@@ -34,6 +34,7 @@
 | S3 | UI SCREEN-008(첫 입장·게임 안), 입장 게이트 | 브라우저: 새 계정이 방 입장 전 화면, 짧은 이름 비활성, 저장 후 입장, 상대 화면 반영, 수정 반영, 캡처 |
 | S4 | Mac mini 반영(`scripts/deploy-macmini.sh`가 훅 복사·스키마 추가·Colyseus 재시작), 원격 검증 | `tests/remote-ui.mjs`(Tester 2명 첫 입장 화면), `tests/remote-check.mjs` `character_setup_profile` |
 | S5 | 문서 | PRODUCT_SPEC·TECH_SPEC·STATUS·verification·SERVER_OPERATIONS |
+| S7 | 닉네임 비교 키 확장(띄어쓰기·_·-도 무시, 식 인덱스 `idx_profiles_name_key`, 직전 백업 `…/backups/pixeltown-nickname-key-20261002/data.db`) | 통합: `S tar…`·`Star_…`·`st-ar…` 400 |
 | S6 | 닉네임 DB 유일성·예약어·중복 안내 UI, 원격 반영(직전 백업 `…/backups/pixeltown-nickname-20261002/data.db`) | 통합: 중복·대소문자 변형 400과 안내 문구, 단위: 예약어, 브라우저: 입력칸 안내 캡처 |
 
 원격 반영 전 백업: `/Users/cheng80/Servers/backups/pixeltown-character-20261002/`(DB SQLite online backup, `pb_hooks`, `app`). 되돌리기: `pb_hooks/profile.pb.js`를 지우고 이전 커밋으로 `scripts/deploy-macmini.sh`. 추가된 `profiles.avatar` 필드는 남겨도 기존 기능에 영향이 없다.

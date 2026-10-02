@@ -57,7 +57,7 @@ seed는 users/profiles/rooms/results/inventory/purchases를 준비한다. rooms�
 | 엔터티 | 필드·제약 |
 |---|---|
 | users | PB auth collection, email/password 등 PB 인증 필드, name text max40; 사용자 ID 15자리 |
-| profiles | user relation(users, required, cascadeDelete), name required text max40, color required text, outfit json(max 2000, `{hat,top,pet}`), room json(max 8000, `[{item,c,r}]`), avatar json(max 200, `{skin,hair,style}` 카탈로그 색인); unique(user). outfit/room은 shop 훅, name/color/avatar는 profile 훅만 쓴다. unique(name COLLATE NOCASE) |
+| profiles | user relation(users, required, cascadeDelete), name required text max40, color required text, outfit json(max 2000, `{hat,top,pet}`), room json(max 8000, `[{item,c,r}]`), avatar json(max 200, `{skin,hair,style}` 카탈로그 색인); unique(user). outfit/room은 shop 훅, name/color/avatar는 profile 훅만 쓴다. unique `lower(replace(replace(replace(name,' ',''),'_',''),'-',''))`(+ 이전 DB에는 `name COLLATE NOCASE`도 남아 있음) |
 | purchases | user relation, item required text max40, price required number min0; unique(user,item). 일반 사용자 읽기는 본인만, 쓰기는 shop 훅만 |
 | rooms | zone required text unique(zone), title required text max80, max_players required number 1..32; 3개 장소 seed |
 | results | user relation, match_id required text, zone required text, score number min0, ended_at required date; unique(match_id,user) |
@@ -82,7 +82,7 @@ DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체
 
 | 방향 | 메시지 | payload / 서버 규칙 |
 |---|---|---|
-| C→S | input | `{dx,dy}` finite number, 각각 -1..1 clamp, 길이>1 정규화; 좌표·user ID는 받지 않음 |
+| C→S | input | `{dx,dy,to?}` finite number, 각각 -1..1 clamp, 길이>1 정규화; user ID는 받지 않음. `to:{x,y}`(맵 범위로 clamp)는 클릭 경로의 마지막 구간에서만 보낸다. 서버는 실제 위치에서 `to` 쪽으로 같은 속도·충돌 규칙으로 움직이고 도착하면 멈춘다(지연으로 지나치지 않음). 위치를 지정하는 텔레포트가 아니다 |
 | C→S | chat | `{text}` 문자열, 제어문자 제거·trim·240자 제한, 사용자별 700ms cooldown; 프런트 입력 제한 200자 |
 | C→S | emote | `{}`; 서버 wave 이벤트, 1000ms cooldown |
 | C→S | look | `{}`(내용 무시); 500ms cooldown. 서버가 사용자 토큰으로 자기 프로필을 다시 읽어 `look` 갱신 |
@@ -124,7 +124,7 @@ player는 `{id,name,x,y,color,look:{hat,top,pet,skin,hair,style}}`(look은 카�
 | 경로 | 요청 | 처리 |
 |---|---|---|
 | `POST /api/pixeltown/shop/buy` | `{item}` | 트랜잭션: 이미 보유면 거부 → purchases 행 저장 → 지갑 재계산, 음수면 "별이 부족해요" 롤백. 응답 `{ok,item,balance}` |
-| `POST /api/pixeltown/profile` | `{name,color,avatar:{skin,hair,style}}` | 로그인 본인만(FR-014). 닉네임 2–12자·한글/영문/숫자/공백/_/-, color는 `avatar.shirts`, 색인은 카탈로그 범위, 운영진 사칭 단어(`avatar.reserved`) 400, 다른 사용자와 같은 닉네임(대소문자 무시, DB unique 위반) 400 `{message, data:{name:'taken'}}`. 응답 `{ok,profile}` |
+| `POST /api/pixeltown/profile` | `{name,color,avatar:{skin,hair,style}}` | 로그인 본인만(FR-014). 닉네임 2–12자·한글/영문/숫자/공백/_/-, color는 `avatar.shirts`, 색인은 카탈로그 범위, 운영진 사칭 단어(`avatar.reserved`) 400, 다른 사용자와 같은 닉네임(공백·_·-·영문 대소문자 무시, DB unique 식 인덱스 `idx_profiles_name_key` 위반) 400 `{message, data:{name:'taken'}}`. 응답 `{ok,profile}` |
 | `POST /api/pixeltown/shop/equip` | `{hat,top,pet}` 각 id 또는 null | 슬롯이 맞고 보유한 아이템만, profiles.outfit 저장. 응답 `{ok,outfit}` |
 | `POST /api/pixeltown/shop/room` | `{placements:[{item,c,r}]}` | 보유 가구·하나씩·최대 24·바닥 `floor` 안·`door` 칸 제외·flat(러그) 아닌 가구끼리 겹침 없음, profiles.room 저장 |
 
@@ -196,3 +196,5 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 ## 경로 탐색과 이동 보정 (2026-10-02 수정)
 
 `findPath`는 8도트 격자 BFS 후 직선 구간으로 당긴다. 시작 칸은 플레이어가 직진할 수 있는 가장 가까운 걷는 칸이다(2칸 이내, 없으면 가장 가까운 걷는 칸). 이전에는 소품 가장자리처럼 실제 위치는 비었지만 칸 중심이 막힌 곳에서 빈 경로를 돌려줘 클릭 이동이 반응하지 않거나 직진하다 끼었다. `moveActor`의 모서리 비켜가기(최대 6도트)는 거의 축 방향(다른 축 성분이 25% 미만)일 때도 동작한다. 반올림으로 생긴 0.03도트 어긋남이 비켜가기를 끄던 문제를 막는다. 단위 테스트가 세 장소의 막히지 않은 위치에서 입구까지 경로를 서버 이동으로 따라가 도착하는지 검사한다.
+
+원격 지연 보정: 클라이언트는 늦은 snapshot으로 도착을 판정하므로 원격(왕복 약 100–200ms)에서 목표를 6–7도트 지나쳐 멈추거나 왕복했다. 마지막 구간에 `to`를 보내 서버가 실제 위치 기준으로 목표에 정확히 멈춘다. 클릭 이동 중 0.5초 동안 움직이지 않으면 클라이언트가 경로를 다시 찾는다. `tests/remote-click.mjs`가 실제 브라우저 클릭의 도착·반전·끝 오차를 측정한다.
