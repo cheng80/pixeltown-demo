@@ -17,8 +17,11 @@
 | 구조 / 인증 / DB / API / 환경변수 | [02_TECH_SPEC.md](02_TECH_SPEC.md) |
 | 현재 작업 / 검증 근거 / 알려진 문제 / 인수인계 | [03_PROJECT_STATUS.md](03_PROJECT_STATUS.md) — 메인 담당 관리 |
 | 개발 / 문서 갱신 / Git 게시 절차 | [04_WORKFLOW.md](04_WORKFLOW.md) |
-| 여러 계층에 걸친 구현과 확인 계획 | [plans/PLAN-001.md](plans/PLAN-001.md) |
+| 여러 계층에 걸친 구현과 확인 계획 | [plans/PLAN-003.md](plans/PLAN-003.md) 별 상점·상시 이벤트, [plans/PLAN-002.md](plans/PLAN-002.md) 재제작 (이전: [PLAN-001](plans/PLAN-001.md)) |
 | 서버 권한·결과 원자성·재시도 결정 | [decisions/ADR-001.md](decisions/ADR-001.md) |
+| 맵·충돌 공용 모듈과 깊이 렌더링 | [decisions/ADR-002.md](decisions/ADR-002.md) |
+| 미니홈피 UI와 정수배 도트 스케일 | [decisions/ADR-003.md](decisions/ADR-003.md) |
+| 별 지갑·상점 원장과 상시 이벤트 정산 | [decisions/ADR-004.md](decisions/ADR-004.md) |
 | 기존 원본 조사와 관찰 한계 | [analysis.md](analysis.md) — 원문 보존 |
 | 실행 / 설치 / 공개 저장소 사용 안내 | [프로젝트 README](../README.md) — 메인 담당 관리 |
 

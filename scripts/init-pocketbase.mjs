@@ -24,18 +24,18 @@ export async function download() {
   return binary;
 }
 export async function startPocketBase() {
-  if (!['http://127.0.0.1:18090','http://localhost:18090'].includes(PB_URL)) throw new Error('Development initializer rejects external PB_URL');
+  const pbURL = new URL(PB_URL);
+  if (pbURL.protocol !== 'http:' || !['127.0.0.1','localhost'].includes(pbURL.hostname) || !pbURL.port) throw new Error('Development initializer rejects external PB_URL');
   if (process.env.SERVER_HOST && !['127.0.0.1','localhost'].includes(process.env.SERVER_HOST)) throw new Error('Development launcher requires loopback SERVER_HOST');
-  if (process.env.SERVER_PORT && process.env.SERVER_PORT !== '12567') throw new Error('Development launcher requires port 12567');
   // Refuse any already running instance: initializer must only touch its own child.
-  try { await fetch(PB_URL+'/api/health',{signal:AbortSignal.timeout(1000)}); throw new Error('Port 18090 is already occupied; stop that local service first'); }
+  try { await fetch(PB_URL+'/api/health',{signal:AbortSignal.timeout(1000)}); throw new Error(`Port ${pbURL.port} is already occupied; stop that local service first`); }
   catch(e) { if (e.message.includes('occupied')) throw e; }
   const binary = await download();
   if (!existsSync(envFile)) writeFileSync(envFile,`PB_ADMIN_EMAIL=local-${randomBytes(8).toString('hex')}@pixeltown.local\nPB_ADMIN_PASSWORD=${randomBytes(32).toString('hex')}\n`,{mode:0o600});
   chmodSync(envFile,0o600);
   const env = credentials();
   execFileSync(binary,['superuser','upsert',env.PB_ADMIN_EMAIL,env.PB_ADMIN_PASSWORD,'--dir',pbDataDir],{stdio:'pipe'});
-  const child = spawn(binary,['serve','--http=127.0.0.1:18090','--dir',pbDataDir,'--automigrate=0','--hooksDir',pocketbaseDir+'pb_hooks'],{stdio:'inherit'});
+  const child = spawn(binary,['serve',`--http=127.0.0.1:${pbURL.port}`,'--dir',pbDataDir,'--automigrate=0','--hooksDir',pocketbaseDir+'pb_hooks'],{stdio:'inherit'});
   try {
     for(let n=0;n<100;n++) {
       if(child.exitCode!==null) throw new Error('PocketBase exited');
@@ -62,14 +62,17 @@ export async function seed(client) {
   ];
   const schemas = [
     {name:'rooms',listRule:"@request.auth.id != ''",viewRule:"@request.auth.id != ''",fields:[...timestamps,{name:'zone',type:'text',required:true},{name:'title',type:'text',required:true,max:80},{name:'max_players',type:'number',required:true,min:1,max:32}],indexes:['CREATE UNIQUE INDEX idx_rooms_zone ON rooms (zone)']},
-    {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)']},
+    {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true},{name:'outfit',type:'json',maxSize:2000},{name:'room',type:'json',maxSize:8000}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)']},
     {name:'results',fields:[...timestamps,relation,{name:'match_id',type:'text',required:true},{name:'zone',type:'text',required:true},{name:'score',type:'number',min:0},{name:'ended_at',type:'date',required:true}],indexes:['CREATE UNIQUE INDEX idx_results_match_user ON results (match_id, user)']},
+    // Star shop ledger (ADR-004): written only by the shop hook, one row per owned item.
+    {name:'purchases',fields:[...timestamps,relation,{name:'item',type:'text',required:true,max:40},{name:'price',type:'number',required:true,min:0}],indexes:['CREATE UNIQUE INDEX idx_purchases_user_item ON purchases (user, item)']},
     {name:'inventory',fields:[...timestamps,relation,{name:'match_id',type:'text',required:true},{name:'item',type:'text',required:true},{name:'quantity',type:'number',min:0}],indexes:['CREATE UNIQUE INDEX idx_inventory_match_user ON inventory (match_id, user)']}
   ];
   for(const schema of schemas) {
     try {
       const existing = await pb.collections.getOne(schema.name);
-      const missing = timestamps.filter(field=>!existing.fields.some(current=>current.name===field.name));
+      // Older databases: add fields introduced later (timestamps, profile outfit/room) without touching existing data.
+      const missing = schema.fields.filter(field=>!existing.fields.some(current=>current.name===field.name));
       if(missing.length) await pb.collections.update(existing.id,{fields:[...existing.fields,...missing]});
     }
     catch(e) { if(e.status!==404)throw e; await pb.collections.create({...schema,type:'base',listRule:schema.listRule??ownerRule,viewRule:schema.viewRule??ownerRule,createRule:null,updateRule:null,deleteRule:null}); }

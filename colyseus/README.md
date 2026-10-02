@@ -7,10 +7,9 @@ npm install --prefix colyseus
 npm run init --prefix colyseus   # 다운로드, DB/schema/계정 초기화 후 PB 종료
 npm run dev --prefix colyseus    # PB + Colyseus 함께 실행 (초기화도 자동 실행)
 npm run test --prefix colyseus   # outbox 재시작/실패 복구와 지형 검사
-npm run verify --prefix colyseus # 실행 중 개발 서버를 실제 WebSocket으로 검증
 ```
 
-`dev` 종료 시 자신이 생성한 프로세스만 종료한다. PB `127.0.0.1:18090`, Colyseus `127.0.0.1:12567`. 이미 PB 포트가 사용 중이면 기존 인스턴스를 수정하지 않고 실패한다. 운영 PB URL을 `init`/`dev`에 전달하면 거부한다. `verify`는 데모 계정으로 실제 경기를 실행하고 개발 DB에 검증 결과를 남긴다.
+`dev` 종료 시 자신이 생성한 프로세스만 종료한다. PB `127.0.0.1:18090`, Colyseus `127.0.0.1:12567`. 이미 PB 포트가 사용 중이면 기존 인스턴스를 수정하지 않고 실패한다. 운영 PB URL을 `init`/`dev`에 전달하면 거부한다.
 
 ## 초기화와 설정
 
@@ -100,7 +99,7 @@ world `960×640`, spawn `(480,400)`, 속도 `180px/s`, 경계 여백 16px, 충�
 
 `GET http://127.0.0.1:12567/health` → `{ok:true,persistence:{status:'saved'|'pending',pending,lastError}}`.
 
-추가 생성 검증: `node scripts/verify-stars.mjs`는 별도 PB 18091/Colyseus 12568와 임시 DB를 생성해 실제 5→12 증가, 두 주기 cap 유지, collect 11→12 보충, 고유 ID, 13점 저장/65점 거부, rooms 조회·쓰기 규칙을 검증한다. 메인 프로세스와 DB를 사용하지 않는다. 결과는 `colyseus/verification-stars.json`에 저장한다.
+별 생성·상한·정산은 루트 `npm run test:integration`이 별도 포트와 임시 DB로 검증한다.
 
 ## 확인 결과와 제한
 

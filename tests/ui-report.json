@@ -1,0 +1,379 @@
+{
+ "startedAt": "2026-10-02T01:29:51.057Z",
+ "url": "http://127.0.0.1:5273/",
+ "checks": {
+  "depth_and_collision_lobby": {
+   "ok": true,
+   "underCanopy": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 148.49,
+    "y": 171.33,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "inFront": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 148.35,
+    "y": 193.59,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "trunkStop": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 148.35,
+    "y": 186.09,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "behindHouse": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 121.16,
+    "y": 49.04,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "wallStop": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 120.96,
+    "y": 99.5,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   }
+  },
+  "depth_and_collision_arcade_garden": {
+   "ok": true,
+   "behindCabinets": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 108.02,
+    "y": 190.96,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "frontCabinets": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 107.77,
+    "y": 222.91,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "behindPillar": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 200.3,
+    "y": 121.23,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "behindCounter": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 539.75,
+    "y": 312.69,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "wallStop": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 322.23,
+    "y": 51.79,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "underPergola": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 98,
+    "y": 217.02,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "pondStop": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 273.97,
+    "y": 195.89,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   }
+  },
+  "two_users_move_chat_portal": {
+   "ok": true,
+   "seenByOther": {
+    "id": "f0ti7oepxcftf2u",
+    "name": "Demo 2",
+    "x": 379.17,
+    "y": 269.93,
+    "color": "#89cff0",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "unreadWhileCollapsed": "1",
+   "badgeAfterExpand": false,
+   "log": "Demo 2 안녕! 일촌 신청해요 ♥",
+   "typingDidNotMove": true,
+   "opacityMin": "20",
+   "chatBackground": "rgba(255, 250, 252, 0.2)",
+   "chatTextOpacity": "1",
+   "opacityMax": "95",
+   "opacityAfterReload": "75",
+   "portalArrival": {
+    "id": "f0ti7oepxcftf2u",
+    "name": "Demo 2",
+    "x": 44,
+    "y": 218,
+    "color": "#89cff0",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "otherZoneHidden": true,
+   "portalBack": {
+    "id": "f0ti7oepxcftf2u",
+    "name": "Demo 2",
+    "x": 596,
+    "y": 226,
+    "color": "#89cff0",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   }
+  },
+  "click_move_shortest_marker_and_key_cancel": {
+   "ok": true,
+   "chatClickStartedRoute": true,
+   "routeSegmentsClear": true,
+   "keyCancelled": true,
+   "blockedClickMarker": {
+    "x": 124,
+    "y": 100
+   },
+   "stoppedAt": {
+    "id": "vbo6b48h0d5qot1",
+    "name": "Demo 1",
+    "x": 123.95,
+    "y": 100.39,
+    "color": "#ffb347",
+    "look": {
+     "hat": null,
+     "top": null,
+     "pet": null
+    }
+   },
+   "starCount": 6
+  },
+  "star_event_always_on": {
+   "ok": true,
+   "counts": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    7
+   ],
+   "startButton": false,
+   "activeOnJoin": true,
+   "initial": 5,
+   "minimumSpacing": 195,
+   "secondsToNextSettlement": 167,
+   "myScore": 3,
+   "stillActiveAfterSettlement": true,
+   "notebook": "Demo 1demo1@pixeltown.local별 보상 63개★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×12★ 별 조각×10★ 별 조각×8★ 별 조각×4★ 별 조각×6★ 별 조각×6★ 별 조각×9산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오전 10:293점오락실26. 10. 2. 오전 10:251점오락"
+  },
+  "shop_dress_pet_and_miniroom": {
+   "ok": true,
+   "walletBefore": "지갑 ★ 120",
+   "walletAfter": "지갑 ★ 16",
+   "seenByOther": {
+    "hat": "hat_crown",
+    "top": "top_sailor",
+    "pet": "pet_puppy"
+   },
+   "doorBlockedToast": "문 앞은 비워 두어야 해요.",
+   "savedRoom": [
+    {
+     "c": 11,
+     "item": "f_bed",
+     "r": 9
+    },
+    {
+     "c": 19,
+     "item": "f_rug",
+     "r": 13
+    },
+    {
+     "c": 25,
+     "item": "f_sofa",
+     "r": 11
+    },
+    {
+     "c": 28,
+     "item": "f_plant",
+     "r": 18
+    }
+   ],
+   "besideBed": {
+    "id": "7bxtyovu0bx9slb",
+    "name": "쇼핑왕",
+    "color": "#9fd0ff",
+    "look": {
+     "hat": "hat_crown",
+     "pet": "pet_puppy",
+     "top": "top_sailor"
+    },
+    "x": 241.33,
+    "y": 201.29
+   },
+   "pageErrors": []
+  },
+  "viewports_no_scroll_integer_scale": {
+   "ok": true,
+   "desktop": {
+    "scroll": [
+     1280,
+     720
+    ],
+    "zoomDevicePx": 3,
+    "low": [
+     292,
+     182
+    ],
+    "canvas": [
+     874,
+     546
+    ],
+    "smoothing": false,
+    "galmuri": true
+   },
+   "mobileDpadMoved": 36,
+   "mobile": {
+    "scroll": [
+     390,
+     844
+    ],
+    "zoomDevicePx": 6,
+    "low": [
+     166,
+     332
+    ],
+    "canvas": [
+     996,
+     1989
+    ],
+    "smoothing": false,
+    "galmuri": true,
+    "sendButtonVisible": true
+   },
+   "landscapeDpadMoved": 36,
+   "landscape": {
+    "scroll": [
+     844,
+     390
+    ],
+    "zoomDevicePx": 6,
+    "low": [
+     352,
+     127
+    ],
+    "canvas": [
+     2112,
+     759
+    ],
+    "smoothing": false,
+    "galmuri": true,
+    "sendButtonVisible": true
+   },
+   "shortDpadMoved": 33,
+   "short": {
+    "scroll": [
+     390,
+     430
+    ],
+    "zoomDevicePx": 6,
+    "low": [
+     166,
+     125
+    ],
+    "canvas": [
+     996,
+     747
+    ],
+    "smoothing": false,
+    "galmuri": true,
+    "sendButtonVisible": true
+   }
+  }
+ },
+ "finishedAt": "2026-10-02T01:30:04.645Z",
+ "status": "passed"
+}

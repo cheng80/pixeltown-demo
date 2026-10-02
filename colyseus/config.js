@@ -8,9 +8,8 @@ export const localDir = resolve(process.env.PIXELTOWN_LOCAL_DIR || pocketbaseDir
 export const envFile = resolve(process.env.PIXELTOWN_ENV_FILE || pocketbaseDir + '.env.local');
 export const pbDataDir = resolve(process.env.PB_DATA_DIR || localDir + 'pb_data');
 export const outboxDir = resolve(process.env.OUTBOX_PATH || backendDir + '.local/outbox') + '/';
-export const PB_URL = process.env.PB_URL || 'http://127.0.0.1:18090';
-export const WORLD = {width:960,height:640};
-export const ZONES = ['lobby','garden','arcade'];
+export const PB_URL = process.env.PB_URL || `http://127.0.0.1:${process.env.PIXELTOWN_PB_PORT || 18090}`;
+export { ZONE_IDS as ZONES } from '../shared/world.js';
 function requestTimeout(pb) {
   pb.beforeSend=(url,options)=>({url,options:{...options,signal:AbortSignal.timeout(5000)}});
   return pb;
