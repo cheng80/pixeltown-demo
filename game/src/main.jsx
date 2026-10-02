@@ -72,6 +72,7 @@ function App() {
   const [joinTry, setJoinTry] = useState(0), rejoining = useRef(false), lastAutoJoin = useRef(0), [ping, setPing] = useState(null);
   // Stars I collected that are not in my inventory yet (settled every 3 minutes): period id -> my score in it.
   const ledger = useRef({});
+  const lastAck = useRef({ ack: -1, at: 0 }); // the latest of my inputs the server has applied, and when that snapshot came
   const picked = useRef({}), corrections = useRef([]), persistStatus = useRef(null), chatInput = useRef(null), lastSent = useRef("");
   const profile = records.profiles[0], outfit = profile?.outfit || {};
   // First entry (FR-014): a signed-in user whose profile has no chosen look makes a character before joining a room.
@@ -158,7 +159,7 @@ function App() {
     setStatus(local ? "home" : rejoining.current ? "reconnecting" : "connecting");
     state.current = { players: [], game: {}, zone }; setSnap(state.current);
     persistStatus.current = null; setMessages([]); setUnread(0);
-    picked.current = {}; bubbles.current = {}; emotes.current = {}; keys.current.clear(); touch.current = { dx: 0, dy: 0 };
+    picked.current = {}; lastAck.current = { ack: -1, at: 0 }; bubbles.current = {}; emotes.current = {}; keys.current.clear(); touch.current = { dx: 0, dy: 0 };
     route.current = []; portalArmed.current = false; lastSent.current = ""; pred.current = null; pending.current = []; glide.current = null; trails.current = {};
     const via = entry.current; entry.current = "default";
     if (zone === "home") { selfId.current = user.id; soloPos.current = entryPoint(mapRef.current, via); return; }
@@ -182,11 +183,13 @@ function App() {
         const c = serverClock.current; c.samples.push(Date.now() - data.t); if (c.samples.length > 60) c.samples.shift(); c.offset = Math.min(...c.samples);
         const mine = data.players.find(p => p.id === user.id);
         if (mine) { // server position + my inputs it has not applied yet = where I am now
-          pending.current = pending.current.filter(i => i.seq > (mine.ack ?? -1));
+          pending.current = pending.current.filter(i => i.seq > (mine.ack ?? -1)); lastAck.current = { ack: mine.ack ?? -1, at: Date.now() };
           let p = { x: mine.x, y: mine.y };
           for (const i of pending.current) p = stepInput(roomMap, p, i);
           if (pred.current) { const err = Math.hypot(p.x - pred.current.x, p.y - pred.current.y); if (err > 0.5) { corrections.current.push({ at: Date.now(), err: +err.toFixed(1), ack: mine.ack, pending: pending.current.length, zone, from: [Math.round(pred.current.x), Math.round(pred.current.y)], to: [Math.round(p.x), Math.round(p.y)] }); if (corrections.current.length > 100) corrections.current.shift(); } }
-          setPred(p, !pred.current || Math.hypot(p.x - pred.current.x, p.y - pred.current.y) > 40);
+          // Only when the server disagrees: restarting the glide on every snapshot made the per-frame step uneven, and
+          // the camera, locked to the avatar, shook (worst on diagonals, both axes at once).
+          if (!pred.current || Math.hypot(p.x - pred.current.x, p.y - pred.current.y) > 0.01) setPred(p, !pred.current || Math.hypot(p.x - pred.current.x, p.y - pred.current.y) > 40);
         }
         for (const p of data.players) if (p.id !== user.id) { const b = (trails.current[p.id] ||= []); b.push({ t: data.t, x: p.x, y: p.y }); if (b.length > 40) b.shift(); }
         const my = data.game?.scores?.[user.id];
@@ -332,9 +335,12 @@ function App() {
       // The server picks stars up from its own positions; the screen hides a star the moment the drawn avatar touches it
       // and shows it again if the server still has it a second later.
       const stars = s.game?.active ? (s.game.stars || []).filter(star => {
+        // Hidden from the touch until the server has applied my steps up to that moment; only if the star is still there
+        // half a second after that (someone else was first, or the server saw me miss it) does it show again. A fixed
+        // timer showed it again on a slow connection, where the server reaches the star seconds after the screen does.
         const p = picked.current[star.id];
-        if (p) return now > p.until;
-        if (me && touchesStar(me, star)) { picked.current[star.id] = { until: now + 1000, at: now, x: star.x, y: star.y }; return false; }
+        if (p) { const a = lastAck.current; if (p.ackAt === undefined && a.at > p.at && a.ack >= p.seq) p.ackAt = now; return p.ackAt !== undefined && now - p.ackAt > 500; }
+        if (me && touchesStar(me, star)) { picked.current[star.id] = { seq: seq.current, at: now, x: star.x, y: star.y }; return false; }
         return true;
       }) : [];
       const pops = Object.values(picked.current).filter(p => now - p.at < 800);
