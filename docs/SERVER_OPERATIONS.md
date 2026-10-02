@@ -143,7 +143,7 @@ launchctl kickstart -k gui/501/com.fastmake.pixeltown.pocketbase
 - 스키마: `rooms`, `profiles`(outfit·room 포함), `results`, `inventory`, `purchases` 컬렉션과 unique 인덱스, `rooms` 행 3개(lobby/garden/arcade). `users`는 기존 필드와 본인 조회·수정·삭제 규칙을 그대로 두었다. 공개 가입은 이후 사용자 결정으로 차단했다(`createRule = null`, [PLAN-004](plans/PLAN-004.md) 10절).
 - 사용자 데이터: 로컬 `pb_data`·로컬 데모 계정(`demo1/2`, 공개 암호)은 옮기지 않았다. 원격 사용자는 이전 시점에 0명이었다.
 - 테스트 계정: `pixeltown-test1-…@fastmake.net`, `pixeltown-test2-…@fastmake.net`(이름 Tester 1/2). 24바이트 무작위 암호. 자격증명은 이 컴퓨터의 `pocketbase/.local/remote-accounts.json`(0600, git 무시)에만 있다. 계정은 다음 테스트를 위해 남겨 두었다. 검증으로 생긴 결과·별 보상·구매(리본 모자·의자)·미니룸 배치 행도 남아 있다.
-- 게스트 자동 가입(PLAN-006): 첫 화면에서 캐릭터를 만들면 `POST /api/pixeltown/guest`가 `guest-…@guest.pixeltown.local` 사용자와 프로필을 만든다. 속도 제한·정리가 없으므로 게스트 수를 가끔 확인한다(`sqlite3 pb_data/data.db "select count(*) from users where email like '%@guest.pixeltown.local'"`). `users` 컬렉션 직접 가입은 여전히 막혀 있다(일반 요청 403).
+- 게스트 자동 가입(PLAN-006): 첫 화면에서 캐릭터를 만들면 `POST /api/pixeltown/guest`가 `guest-…@guest.pixeltown.local` 사용자와 프로필을 만든다. 남용 방지(PLAN-006 5절): 방문자 IP당 게스트 발급 시간당 5회, PB 기본 rate limit 활성, `trustedProxy.headers=["CF-Connecting-IP"]`, `excludedIPs=127.0.0.1, ::1`(Colyseus·outbox 제외), 30일 미접속 게스트는 매일 04:17 자동 삭제. 카운터는 PB 메모리에만 있어 `launchctl kickstart -k gui/501/com.fastmake.pixeltown.pocketbase`로 초기화된다. 즉시 정리: superuser로 `POST /api/pixeltown/guest-cleanup {"days":30}`. 게스트 수 확인(`sqlite3 pb_data/data.db "select count(*) from users where email like '%@guest.pixeltown.local'"`). `users` 컬렉션 직접 가입은 여전히 막혀 있다(일반 요청 403).
 - 이전 설명: 공개 가입은 막혀 있다(일반 요청 403). 새 사용자는 superuser 권한으로만 만들며, 게임 입장에 필요한 `profiles`까지 한 번에 만드는 `provision-accounts.mjs`를 쓴다. 관리 화면(`/_/`)에서 만들면 `profiles`도 직접 추가해야 한다. 서버 폴더의 옛 `verify.mjs`(lobby 검증)는 공개 가입에 의존하므로 더 이상 쓰지 않는다:
 
 ```sh
@@ -157,7 +157,7 @@ PocketBase는 `pb_hooks` 파일이 바뀌면 스스로 재시작하며, 그동�
 
 ### 6.2 백업과 롤백(실제 위치)
 
-추가 백업: 가입 차단 직전 `…/backups/pixeltown-signup-close-20261002/data.db`, 캐릭터 기능(PLAN-005) 반영 직전 `…/backups/pixeltown-character-20261002/`(DB·`pb_hooks`·`app`), 닉네임 유니크 인덱스 직전 `…/backups/pixeltown-nickname-20261002/data.db`, 닉네임 비교 키 확장 직전 `…/backups/pixeltown-nickname-key-20261002/data.db`, 게스트 가입 직전 `…/backups/pixeltown-guest-20261002/`(DB·`pb_hooks`).
+추가 백업: 가입 차단 직전 `…/backups/pixeltown-signup-close-20261002/data.db`, 캐릭터 기능(PLAN-005) 반영 직전 `…/backups/pixeltown-character-20261002/`(DB·`pb_hooks`·`app`), 닉네임 유니크 인덱스 직전 `…/backups/pixeltown-nickname-20261002/data.db`, 닉네임 비교 키 확장 직전 `…/backups/pixeltown-nickname-key-20261002/data.db`, 게스트 가입 직전 `…/backups/pixeltown-guest-20261002/`(DB·`pb_hooks`), 남용 방지 적용 직전 `…/backups/pixeltown-abuse-limits-20261002/`(DB·`pb_hooks`).
 
 백업 `/Users/cheng80/Servers/backups/pixeltown-migration-20261002/`(0700): `data.db`·`auxiliary.db`(실행 중 DB의 SQLite online `.backup`, integrity_check ok, sha256 `c2294748…523b` / `2c5d66e3…d717`), `pb_hooks/`, `types.d.ts`, `colyseus/`(server·server.before-monitor·monitor-auth·verify·package·lock·README·.env), `launchd/`(plist 2개). 롤백 명령은 [PLAN-004](plans/PLAN-004.md) 5절.
 

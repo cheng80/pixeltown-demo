@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-02T05:08:28.230Z",
+  "startedAt": "2026-10-02T05:22:57.847Z",
   "pocketbase": "https://pixeltown.fastmake.net",
   "realtime": "wss://pixeltown-rt.fastmake.net",
   "checks": {
@@ -15,21 +15,21 @@
       "forgedPurchase": 403,
       "commitAsUser": 403,
       "publicSignup": 403,
-      "ms": 2601
+      "ms": 2284
     },
     "two_users_move_chat": {
       "ok": true,
       "movedBy": 30,
       "target": 360,
       "chatSenderIsServerId": true,
-      "ms": 1589
+      "ms": 1857
     },
     "zone_separation": {
       "ok": true,
       "lobbyPlayers": 1,
       "gardenPlayers": 1,
       "crossZoneChat": false,
-      "ms": 1695
+      "ms": 1697
     },
     "star_cap_collect_and_refill": {
       "ok": true,
@@ -39,30 +39,30 @@
       "collected": 10,
       "refillId": true,
       "serverScore": 10,
-      "ms": 76240
+      "ms": 72552
     },
     "default_3min_settlement_saved": {
       "ok": true,
-      "matchId": "262c19bf-c444-4281-8882-ca65ec9cc551",
+      "matchId": "acd382e0-9dcd-4113-b65a-ffdebdc1bc94",
       "scoreSaved": 10,
       "inventoryQuantity": 10,
       "serverScores": {
         "bfibz83fzdylm8m": 10
       },
-      "measuredPeriodMs": 180069,
+      "measuredPeriodMs": 180061,
       "starsKeptIntoNextPeriod": true,
       "otherUserCanRead": false,
-      "ms": 101523
+      "ms": 104793
     },
     "shop_equip_room_and_relogin": {
       "ok": true,
       "bought": [
-        "top_overall"
+        "pet_chick"
       ],
-      "wear": "top_overall",
+      "wear": "pet_chick",
       "furniture": "f_chair",
-      "walletBefore": 14,
-      "walletAfter": 2,
+      "walletBefore": 12,
+      "walletAfter": 0,
       "duplicateBuy": 400,
       "unaffordable": 400,
       "notOwnedEquip": 400,
@@ -75,7 +75,7 @@
         }
       ],
       "otherSeesOutfit": true,
-      "ms": 3346
+      "ms": 3375
     },
     "character_setup_profile": {
       "ok": true,
@@ -89,14 +89,14 @@
         "style": 1,
         "color": "#ffb347"
       },
-      "ms": 402
+      "ms": 422
     },
     "monitor_admin_only": {
       "ok": true,
       "anonymous": 401,
       "gameUser": 401,
       "wrongPassword": 401,
-      "ms": 1179
+      "ms": 886
     },
     "outbox_outage_restart_recovery": {
       "ok": true,
@@ -115,8 +115,8 @@
     "user1": "bfibz83fzdylm8m",
     "user2": "p2srnojs4omvb9g"
   },
-  "matchId": "262c19bf-c444-4281-8882-ca65ec9cc551",
-  "finishedAt": "2026-10-02T05:11:37.500Z",
+  "matchId": "acd382e0-9dcd-4113-b65a-ffdebdc1bc94",
+  "finishedAt": "2026-10-02T05:26:06.258Z",
   "summary": {
     "passed": 9,
     "failed": 0
@@ -136,9 +136,16 @@
     }
   },
   "clickMovement": {
-    "at": "2026-10-02T05:05:47.055Z",
+    "at": "2026-10-02T05:22:57.699Z",
     "arrived": "10/10",
-    "maxEndOffDots": 1.5
+    "maxEndOffDots": 1.1
   },
-  "guestUi": "tests/remote-ui.mjs: first-time visitor → character screen → guest account → seen by Tester 1 → reload same character (PLAN-006)"
+  "abuseLimits": {
+    "settings": "rateLimits enabled; guest POST 5/h per CF-Connecting-IP; excluded 127.0.0.1, ::1; PB default rules on",
+    "realVisitorIpLogged": true,
+    "testerLastSeenRecorded": true,
+    "cleanup30dDeleted": 0,
+    "probeFromThisIp": "400,400,400,400 then 429 (5th request incl. one remote-ui guest); other API 200",
+    "countersResetByPbRestart": true
+  }
 }

@@ -1,96 +1,96 @@
 {
-  "at": "2026-10-02T05:05:47.055Z",
+  "at": "2026-10-02T05:22:57.699Z",
   "url": "http://127.0.0.1:5173/",
   "clicks": [
     {
       "zone": "lobby",
       "pathDots": 107,
       "idealMs": 1788,
-      "arrivedMs": 2025,
-      "extraMs": 237,
+      "arrivedMs": 2068,
+      "extraMs": 280,
       "reversals": 0,
       "endOff": 0
     },
     {
       "zone": "lobby",
-      "pathDots": 116,
-      "idealMs": 1941,
-      "arrivedMs": 2779,
-      "extraMs": 838,
-      "reversals": 2,
-      "endOff": 0
+      "pathDots": 115,
+      "idealMs": 1912,
+      "arrivedMs": 2010,
+      "extraMs": 98,
+      "reversals": 0,
+      "endOff": 1.1
     },
     {
       "zone": "lobby",
       "pathDots": 79,
-      "idealMs": 1314,
-      "arrivedMs": 1507,
-      "extraMs": 193,
+      "idealMs": 1321,
+      "arrivedMs": 1456,
+      "extraMs": 135,
       "reversals": 0,
-      "endOff": 0.8
+      "endOff": 0
     },
     {
       "zone": "lobby",
       "pathDots": 102,
-      "idealMs": 1698,
-      "arrivedMs": 1968,
-      "extraMs": 270,
+      "idealMs": 1697,
+      "arrivedMs": 1888,
+      "extraMs": 191,
       "reversals": 0,
       "endOff": 0
     },
     {
       "zone": "lobby",
-      "pathDots": 108,
-      "idealMs": 1799,
-      "arrivedMs": 2074,
-      "extraMs": 275,
+      "pathDots": 112,
+      "idealMs": 1863,
+      "arrivedMs": 2045,
+      "extraMs": 182,
       "reversals": 0,
       "endOff": 0
     },
     {
       "zone": "arcade",
-      "pathDots": 139,
-      "idealMs": 2317,
-      "arrivedMs": 2454,
-      "extraMs": 137,
-      "reversals": 0,
-      "endOff": 1
-    },
-    {
-      "zone": "arcade",
-      "pathDots": 119,
-      "idealMs": 1979,
-      "arrivedMs": 2192,
-      "extraMs": 213,
+      "pathDots": 114,
+      "idealMs": 1903,
+      "arrivedMs": 2038,
+      "extraMs": 135,
       "reversals": 0,
       "endOff": 0
     },
     {
       "zone": "arcade",
-      "pathDots": 78,
-      "idealMs": 1294,
-      "arrivedMs": 1479,
-      "extraMs": 185,
+      "pathDots": 120,
+      "idealMs": 1996,
+      "arrivedMs": 2210,
+      "extraMs": 214,
       "reversals": 0,
       "endOff": 0
-    },
-    {
-      "zone": "arcade",
-      "pathDots": 101,
-      "idealMs": 1677,
-      "arrivedMs": 1815,
-      "extraMs": 138,
-      "reversals": 0,
-      "endOff": 1.5
     },
     {
       "zone": "arcade",
       "pathDots": 112,
-      "idealMs": 1872,
-      "arrivedMs": 2121,
-      "extraMs": 249,
+      "idealMs": 1861,
+      "arrivedMs": 2044,
+      "extraMs": 183,
       "reversals": 0,
       "endOff": 0
+    },
+    {
+      "zone": "arcade",
+      "pathDots": 102,
+      "idealMs": 1693,
+      "arrivedMs": 1842,
+      "extraMs": 149,
+      "reversals": 0,
+      "endOff": 0
+    },
+    {
+      "zone": "arcade",
+      "pathDots": 112,
+      "idealMs": 1860,
+      "arrivedMs": 2020,
+      "extraMs": 160,
+      "reversals": 0,
+      "endOff": 0.4
     }
   ],
   "ok": true

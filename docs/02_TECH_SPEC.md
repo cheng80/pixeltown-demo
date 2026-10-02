@@ -57,7 +57,7 @@ seed는 users/profiles/rooms/results/inventory/purchases를 준비한다. rooms�
 | 엔터티 | 필드·제약 |
 |---|---|
 | users | PB auth collection, email/password 등 PB 인증 필드, name text max40; 사용자 ID 15자리 |
-| profiles | user relation(users, required, cascadeDelete), name required text max40, color required text, outfit json(max 2000, `{hat,top,pet}`), room json(max 8000, `[{item,c,r}]`), avatar json(max 200, `{skin,hair,style}` 카탈로그 색인); unique(user). outfit/room은 shop 훅, name/color/avatar는 profile 훅만 쓴다. unique `lower(replace(replace(replace(name,' ',''),'_',''),'-',''))`(+ 이전 DB에는 `name COLLATE NOCASE`도 남아 있음) |
+| profiles | user relation(users, required, cascadeDelete), name required text max40, color required text, outfit json(max 2000, `{hat,top,pet}`), room json(max 8000, `[{item,c,r}]`), avatar json(max 200, `{skin,hair,style}` 카탈로그 색인), last_seen date(로그인·토큰 갱신 때 1시간에 한 번 갱신); unique(user). outfit/room은 shop 훅, name/color/avatar는 profile 훅만 쓴다. unique `lower(replace(replace(replace(name,' ',''),'_',''),'-',''))`(+ 이전 DB에는 `name COLLATE NOCASE`도 남아 있음) |
 | purchases | user relation, item required text max40, price required number min0; unique(user,item). 일반 사용자 읽기는 본인만, 쓰기는 shop 훅만 |
 | rooms | zone required text unique(zone), title required text max80, max_players required number 1..32; 3개 장소 seed |
 | results | user relation, match_id required text, zone required text, score number min0, ended_at required date; unique(match_id,user) |
@@ -124,7 +124,8 @@ player는 `{id,name,x,y,color,look:{hat,top,pet,skin,hair,style}}`(look은 카�
 | 경로 | 요청 | 처리 |
 |---|---|---|
 | `POST /api/pixeltown/shop/buy` | `{item}` | 트랜잭션: 이미 보유면 거부 → purchases 행 저장 → 지갑 재계산, 음수면 "별이 부족해요" 롤백. 응답 `{ok,item,balance}` |
-| `POST /api/pixeltown/guest` | `{name,color,avatar,password}` | 인증 없음(PLAN-006). profile과 같은 닉네임·외형 검사, password 32–128자(브라우저 생성). users(`guest-<무작위>@guest.pixeltown.local`, verified)와 profile을 한 트랜잭션으로 만들고 PB 인증 응답 `{token, record}`. 닉네임 중복이면 400 `{data:{name:'taken'}}`이고 사용자도 만들지 않는다. 속도 제한 없음 |
+| `POST /api/pixeltown/guest` | `{name,color,avatar,password}` | 인증 없음(PLAN-006). profile과 같은 닉네임·외형 검사, password 32–128자(브라우저 생성). users(`guest-<무작위>@guest.pixeltown.local`, verified)와 profile을 한 트랜잭션으로 만들고 PB 인증 응답 `{token, record}`. 닉네임 중복이면 400 `{data:{name:'taken'}}`이고 사용자도 만들지 않는다. 원격은 방문자 IP당 시간당 5회(초과 429, PB rate limiter) |
+| `POST /api/pixeltown/guest-cleanup` | `{days?}`(기본 30) | superuser 전용. `last_seen`(없으면 created)이 days일 넘은 `@guest.pixeltown.local` 계정과 그 기록 삭제, `{deleted}`. 같은 작업을 cron `pixeltown_guest_cleanup`이 매일 04:17 실행 |
 | `POST /api/pixeltown/profile` | `{name,color,avatar:{skin,hair,style}}` | 로그인 본인만(FR-014). 닉네임 2–12자·한글/영문/숫자/공백/_/-, color는 `avatar.shirts`, 색인은 카탈로그 범위, 운영진 사칭 단어(`avatar.reserved`) 400, 다른 사용자와 같은 닉네임(공백·_·-·영문 대소문자 무시, DB unique 식 인덱스 `idx_profiles_name_key` 위반) 400 `{message, data:{name:'taken'}}`. 응답 `{ok,profile}` |
 | `POST /api/pixeltown/shop/equip` | `{hat,top,pet}` 각 id 또는 null | 슬롯이 맞고 보유한 아이템만, profiles.outfit 저장. 응답 `{ok,outfit}` |
 | `POST /api/pixeltown/shop/room` | `{placements:[{item,c,r}]}` | 보유 가구·하나씩·최대 24·바닥 `floor` 안·`door` 칸 제외·flat(러그) 아닌 가구끼리 겹침 없음, profiles.room 저장 |
