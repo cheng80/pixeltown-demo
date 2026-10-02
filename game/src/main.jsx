@@ -4,7 +4,7 @@ import PocketBase from "pocketbase";
 import { Client } from "@colyseus/sdk";
 import g11 from "galmuri/dist/Galmuri11.woff2";
 import g11b from "galmuri/dist/Galmuri11-Bold.woff2";
-import { getMap, moveActor, stepInput, facing, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, COLLECT_RADIUS, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
+import { getMap, moveActor, stepInput, facing, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, touchesStar, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
 import { scene, createView } from "./render.js";
 import { avatarSprite, lookFor, petSprite, propSprite } from "./sprites.js";
 import "./style.css";
@@ -69,7 +69,7 @@ function App() {
   const pred = useRef(null), pending = useRef([]), seq = useRef(0), glide = useRef(null), serverClock = useRef({ samples: [], offset: 0 });
   const stall = useRef({ x: 0, y: 0, n: 0 }), route = useRef([]), marker = useRef(null), state = useRef({ players: [], game: {} }), bubbles = useRef({}), emotes = useRef({});
   const trails = useRef({}), selfId = useRef("me"), soloPos = useRef(null), entry = useRef("default"), portalArmed = useRef(false), chatVisible = useRef(chatOpen);
-  const collectTimes = useRef({}), persistStatus = useRef(null), chatInput = useRef(null), lastSent = useRef("");
+  const picked = useRef({}), persistStatus = useRef(null), chatInput = useRef(null), lastSent = useRef("");
   const profile = records.profiles[0], outfit = profile?.outfit || {};
   // First entry (FR-014): a signed-in user whose profile has no chosen look makes a character before joining a room.
   const needsSetup = Boolean(user && loaded && profile && !profile.avatar);
@@ -146,7 +146,7 @@ function App() {
     setStatus(local ? "home" : "connecting");
     state.current = { players: [], game: {}, zone }; setSnap(state.current);
     persistStatus.current = null; setMessages([]); setUnread(0);
-    collectTimes.current = {}; bubbles.current = {}; emotes.current = {}; keys.current.clear(); touch.current = { dx: 0, dy: 0 };
+    picked.current = {}; bubbles.current = {}; emotes.current = {}; keys.current.clear(); touch.current = { dx: 0, dy: 0 };
     route.current = []; portalArmed.current = false; lastSent.current = ""; pred.current = null; pending.current = []; glide.current = null; trails.current = {};
     const via = entry.current; entry.current = "default";
     if (zone === "home") { selfId.current = user.id; soloPos.current = entryPoint(mapRef.current, via); return; }
@@ -227,10 +227,6 @@ function App() {
           setPred(stepInput(m, me, input)); // show the step now; the server confirms it with `ack`
         }
         lastSent.current = msg;
-        if (s.game?.active) for (const star of s.game.stars || [])
-          if (Math.hypot(star.x - me.x, star.y - me.y) <= COLLECT_RADIUS - 1 && Date.now() - (collectTimes.current[star.id] || 0) > 600) {
-            collectTimes.current[star.id] = Date.now(); room.current.send("collect", { id: star.id });
-          }
       }
       // doorway mats: only after stepping off the arrival mat once
       const portal = portalAt(m, me.x, me.y);
@@ -245,7 +241,7 @@ function App() {
     if (!entered || !canvasRef.current) return;
     const view = (viewRef.current = createView(canvasRef.current)), sc = scene(map), anim = new Map();
     let raf, last = performance.now();
-    window.__pixeltown = { view, zone, anim, state, route, marker, self: selfId }; // read-only hooks for UI verification scripts
+    window.__pixeltown = { view, zone, anim, state, route, marker, picked, self: selfId }; // read-only hooks for UI verification scripts
     const frame = t => {
       const dt = Math.min(0.05, (t - last) / 1000); last = t;
       const s = state.current, now = Date.now(), avatars = [], renderT = now - serverClock.current.offset - 100;
@@ -276,7 +272,16 @@ function App() {
           bubble: bubbles.current[p.id]?.until > now ? bubbles.current[p.id].text : null, emote: emotes.current[p.id] > now });
       }
       const me = avatars.find(a => a.self);
-      view.draw(sc, { focus: me, avatars, stars: s.game?.active ? s.game.stars : [], time: t, dt, marker: marker.current });
+      // The server picks stars up from its own positions; the screen hides a star the moment the drawn avatar touches it
+      // and shows it again if the server still has it a second later.
+      const stars = s.game?.active ? (s.game.stars || []).filter(star => {
+        const p = picked.current[star.id];
+        if (p) return now > p.until;
+        if (me && touchesStar(me, star)) { picked.current[star.id] = { until: now + 1000, at: now, x: star.x, y: star.y }; return false; }
+        return true;
+      }) : [];
+      const pops = Object.values(picked.current).filter(p => now - p.at < 400);
+      view.draw(sc, { focus: me, avatars, stars, pops, time: t, dt, marker: marker.current });
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);

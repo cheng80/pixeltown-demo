@@ -5,7 +5,7 @@ const T=STAR_SPAWN_INTERVAL_MS;
 import { outbox } from '../outbox.js';
 // Never touch the real outbox directory from unit tests.
 const queued=[];outbox.enqueue=m=>queued.push(m);outbox.flush=async()=>{};
-import { getMap, blocked, starSpots } from '../../shared/world.js';
+import { getMap, blocked, starSpots, touchesStar } from '../../shared/world.js';
 function room() {
   const r=Object.create(Town.prototype);r.map=getMap('lobby');
   r.players=new Map([['session',{id:'player',...r.map.spawn}]]);
@@ -20,10 +20,10 @@ test('ticks cap uncollected stars, collection frees one slot, IDs never repeat',
   assert.equal(r.game.stars.length,MAX_STARS);
   const counter=r.starCounter;
   const late=1000+13*T;r.tick(late);assert.equal(r.starCounter,counter);
-  const target=r.game.stars[0];Object.assign(r.players.get('session'),{x:target.x+15,y:target.y});
-  assert.equal(r.collectStar({sessionId:'session'},{id:target.id},late),true,'within 16px');
-  r.game.stars.unshift(target);r.game.scores.player=0;Object.assign(r.players.get('session'),{x:target.x+17,y:target.y});
-  assert.equal(r.collectStar({sessionId:'session'},{id:target.id},late),false,'beyond 16px');
+  const target=r.game.stars[0];Object.assign(r.players.get('session'),{x:target.x+12,y:target.y});
+  assert.equal(r.collectStar({sessionId:'session'},{id:target.id},late),true,'body box touches the star side');
+  r.game.stars.unshift(target);r.game.scores.player=0;Object.assign(r.players.get('session'),{x:target.x+13,y:target.y});
+  assert.equal(r.collectStar({sessionId:'session'},{id:target.id},late),false,'one dot past the star side');
   Object.assign(r.players.get('session'),{x:target.x,y:target.y});
   assert.equal(r.collectStar({sessionId:'session'},{id:target.id},late+1),true);
   assert.equal(r.game.stars.length,11);assert.equal(r.game.scores.player,1);
@@ -34,6 +34,16 @@ test('ticks cap uncollected stars, collection frees one slot, IDs never repeat',
   assert.equal(new Set(r.game.stars.map(s=>s.id)).size,12);
   assert(r.game.stars.every(s=>!blocked(r.map,s.x,s.y)));
   const spots=starSpots(r.map);assert(r.game.stars.every(s=>spots.some(p=>p.x===s.x&&p.y===s.y)));
+});
+test('hitbox: the body touching the drawn star counts, the tick picks it up without a client request',()=>{
+  const r=room(),p=r.players.get('session'),star=r.game.stars[0],touch=(dx,dy)=>touchesStar({x:star.x+dx,y:star.y+dy},star);
+  assert.equal(touch(0,21),true,'head under the star');assert.equal(touch(0,22),false);
+  assert.equal(touch(0,-15),true,'feet just behind the star');assert.equal(touch(0,-16),false);
+  assert.equal(touch(-13,0),true);assert.equal(touch(-14,0),false);
+  Object.assign(p,{x:star.x+10,y:star.y+18});r.tick(1001);
+  assert(!r.game.stars.some(s=>s.id===star.id),'picked up on tick');assert.equal(r.game.scores.player,1);
+  const far=r.game.stars[0];Object.assign(p,{x:far.x+40,y:far.y});r.tick(1002);
+  assert(r.game.stars.some(s=>s.id===far.id),'out of reach stays');
 });
 test('empty field stays active, other zone is independent, settlement keeps the event running',()=>{
   const r=room(),other=room();

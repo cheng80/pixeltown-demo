@@ -2,7 +2,7 @@ import { Room, ServerError } from '@colyseus/core';
 import { randomUUID } from 'node:crypto';
 import { userClient, ZONES } from './config.js';
 import { outbox } from './outbox.js';
-import { getMap, blocked, stepInput, entryPoint, spreadSpot, COLLECT_RADIUS, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS, WORLD } from '../shared/world.js';
+import { getMap, blocked, stepInput, entryPoint, spreadSpot, touchesStar, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS, WORLD } from '../shared/world.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Outfit shown to everyone comes from the PocketBase profile (written only by the shop hook), never from the client.
 // Outfit and character look (FR-014 avatar indexes) both come from the profile; invalid values fall back to null.
@@ -88,16 +88,23 @@ export class Town extends Room {
     this.nextStarAt=now+STAR_SPAWN_INTERVAL_MS;
     this.spawnStar();
   }
+  // The server picks stars up itself every tick from its own positions (no client request, no lag mismatch).
+  // A `collect` message runs the same check; it stays for older clients and never scores out of reach.
   collectStar(client,data,now=Date.now()) {
-    if(!this.game.active || now>=this.game.endsAt || typeof data?.id!=='string')return false;
-    const p=this.players.get(client.sessionId),index=this.game.stars.findIndex(s=>s.id===data.id);
-    if(!p || index<0 || !(p.id in this.game.scores))return false;
+    if(typeof data?.id!=='string' || !this.takeStar(this.players.get(client.sessionId),this.game.stars.findIndex(s=>s.id===data.id),now))return false;
+    this.snapshot();return true;
+  }
+  takeStar(p,index,now) {
+    if(!this.game.active || now>=this.game.endsAt || !p || !this.game.stars[index] || !(p.id in this.game.scores))return false;
     if(Object.values(this.game.scores).reduce((a,b)=>a+b,0)>=MAX_MATCH_SCORE)return false; // settlement write pending
-    const star=this.game.stars[index];
-    if(Math.hypot(p.x-star.x,p.y-star.y)>COLLECT_RADIUS)return false;
+    if(!touchesStar(p,this.game.stars[index]))return false;
     this.game.stars.splice(index,1);this.game.scores[p.id]=(this.game.scores[p.id]||0)+1;
     if(Object.values(this.game.scores).reduce((a,b)=>a+b,0)>=MAX_MATCH_SCORE)this.settle(now);
-    this.snapshot();return true;
+    return true;
+  }
+  pickUpStars(now) {
+    for(const p of this.players.values())
+      for(let i=this.game.stars.length-1;i>=0;i--)this.takeStar(p,i,now);
   }
   // Colyseus 0.18: the SDK sends `client.auth.token` as context.token; it never travels in join options.
   async onAuth(client,options,context) {
@@ -141,7 +148,7 @@ export class Town extends Room {
       }
     }
     if(this.game.active && now>=this.game.endsAt)this.settle(now);
-    else this.generateStars(now);
+    else {this.pickUpStars(now);this.generateStars(now);}
     this.snapshot();
   }
   // Save this period and start the next one, keeping the stars on the map.

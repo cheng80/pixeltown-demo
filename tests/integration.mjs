@@ -339,7 +339,10 @@ async function playMatch(state, account, { verifyGeneration = false } = {}) {
   const collectOffset = state.snapshots.length;
   const collectedAt = performance.now();
   state.room.send('collect', { id: nearest.id, score: 999999 });
-  const scored = await waitUntil(() => state.snapshots.slice(collectOffset).find(s => s.game.scores[account.id] === 1), 'server-authoritative collection score');
+  // The server picks the star up from its own position (hitbox) as the avatar arrives; a forged score is ignored.
+  const scored = await waitUntil(() => state.snapshots.slice(collectOffset).find(s => s.game.scores[account.id] >= 1 && !s.game.stars.some(star => star.id === nearest.id)), 'server-authoritative collection score');
+  const scoreAfterPickup = scored.game.scores[account.id];
+  assert.ok(scoreAfterPickup < 5, `Forged collection score accepted: ${scoreAfterPickup}`);
   const matchId = scored.game.id;
   if (verifyGeneration) {
     await waitUntil(() => state.snapshots.slice(collectOffset).some(s => s.game.stars.length === 11 && !s.game.stars.some(star => star.id === nearest.id)), 'collection frees one star slot');
@@ -351,7 +354,7 @@ async function playMatch(state, account, { verifyGeneration = false } = {}) {
   }
   state.room.send('collect', { id: nearest.id });
   await sleep(180);
-  if (state.snapshot.game.id === matchId) assert.equal(state.snapshot.game.scores[account.id], 1, 'Duplicate collection scored twice');
+  if (state.snapshot.game.id === matchId) assert.equal(state.snapshot.game.scores[account.id], scoreAfterPickup, 'Duplicate collection scored twice');
   const ended = (await waitUntil(() => state.messages.slice(offset).find(m => m.type === 'gameEnded' && m.payload.match_id === matchId), 'period settlement', runtime.gameDurationMs + 2000)).payload;
   await waitUntil(() => state.snapshot.game.active && state.snapshot.game.id !== matchId, 'next period starts right after settlement', 1000);
   if (verifyGeneration) {

@@ -9,7 +9,12 @@ export const ZONE_IDS = ['lobby', 'garden', 'arcade'];
 export const FOOT = { hw: 5, hh: 3 }; // player ground box half extents
 export const STEP_PER_TICK = 3; // px per 50ms server tick (60 px/s)
 export const TICK_MS = 50;
-export const COLLECT_RADIUS = 16;
+// Star pickup = the avatar body box overlaps the drawn star box. Boxes are [x, y, w, h] from the foot point and
+// match the sprites (render.js draws the avatar body ~25 dots tall, the 13x13 star 3-16 dots above its foot point).
+export const BODY_BOX = [-7, -25, 14, 25];
+export const STAR_BOX = [-7, -16, 13, 13];
+export const touchesStar = (p, s) => p.x + BODY_BOX[0] < s.x + STAR_BOX[0] + STAR_BOX[2] && s.x + STAR_BOX[0] < p.x + BODY_BOX[0] + BODY_BOX[2]
+  && p.y + BODY_BOX[1] < s.y + STAR_BOX[1] + STAR_BOX[3] && s.y + STAR_BOX[1] < p.y + BODY_BOX[1] + BODY_BOX[3];
 export const STAR_SPAWN_MS = 6000; // one new star per period, until the zone holds 12
 
 // Tiles that block movement. Everything else (grass, path, plaza, bridge, floor, rug, portal) is walkable.

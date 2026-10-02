@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-02T07:46:49.276Z",
+  "url": "http://127.0.0.1:5173/",
+  "pickups": [
+    {
+      "hideMs": 3678,
+      "serverLagMs": 229,
+      "touchAt": {
+        "dx": 12,
+        "dy": 18
+      },
+      "reappeared": false
+    },
+    {
+      "hideMs": 4146,
+      "serverLagMs": 297,
+      "touchAt": {
+        "dx": -1,
+        "dy": 21
+      },
+      "reappeared": false
+    },
+    {
+      "hideMs": 4978,
+      "serverLagMs": 276,
+      "touchAt": {
+        "dx": -14,
+        "dy": 11
+      },
+      "reappeared": false
+    },
+    {
+      "hideMs": 3427,
+      "serverLagMs": 209,
+      "touchAt": {
+        "dx": 1,
+        "dy": -14
+      },
+      "reappeared": false
+    },
+    {
+      "hideMs": 2866,
+      "serverLagMs": 160,
+      "touchAt": {
+        "dx": 0,
+        "dy": -16
+      },
+      "reappeared": false
+    }
+  ],
+  "ok": true
+}

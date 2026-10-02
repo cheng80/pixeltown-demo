@@ -11,7 +11,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import PocketBase from 'pocketbase';
-import { getMap, findPath, COLLECT_RADIUS, ITEMS } from '../shared/world.js';
+import { getMap, findPath, touchesStar, ITEMS } from '../shared/world.js';
 
 const root = new URL('..', import.meta.url).pathname;
 const PB_URL = process.env.PIXELTOWN_REMOTE_PB || 'https://pixeltown-pb.fastmake.net';
@@ -54,7 +54,7 @@ async function walk(s, pb, target, timeout = 25000) {
   while (Date.now() < end) {
     const p = me(s, pb);
     while (path.length > 1 && Math.hypot(path[0].x - p.x, path[0].y - p.y) < 3) path.shift();
-    if (Math.hypot(target.x - p.x, target.y - p.y) < COLLECT_RADIUS - 4) return p;
+    if (touchesStar(p, target)) return p; // the server picks the star up on its own tick
     const dx = path[0].x - p.x, dy = path[0].y - p.y, l = Math.hypot(dx, dy) || 1;
     s.room.send('input', { dx: dx / l, dy: dy / l }); await sleep(50);
   }

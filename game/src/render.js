@@ -95,6 +95,12 @@ function draw(view, sc, f, lc, dc, display) {
     }
   }
   for (const p of sc.fg) lc.drawImage(propSprite(p), p.visual.x - 1 - cx, p.visual.y - 1 - cy);
+  for (const p of f.pops || []) { // star pickup sparkle: four dots fly out from the star for 0.4s
+    const k = Math.min(1, (Date.now() - p.at) / 400), r = 3 + Math.round(k * 9), x = p.x - cx, y = p.y - 10 - cy;
+    lc.globalAlpha = 1 - k; lc.fillStyle = '#ffd23f';
+    for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r]]) lc.fillRect(x + dx - 1, y + dy - 1, 2, 2);
+    lc.globalAlpha = 1;
+  }
 
   if (view.debug) { // collision overlay for verification screenshots
     lc.globalAlpha = 0.45;
