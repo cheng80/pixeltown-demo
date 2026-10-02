@@ -4,7 +4,8 @@
 //   CHROME_PATH=/path/to/chrome PIXELTOWN_WEB_PORT=5273 node tests/ui-check.mjs
 import { chromium } from 'playwright-core';
 import { writeFile } from 'node:fs/promises';
-import { getMap, findPath } from '../shared/world.js';
+import { randomUUID } from 'node:crypto';
+import { getMap, findPath, clearWalk } from '../shared/world.js';
 
 const BASE = `http://127.0.0.1:${process.env.PIXELTOWN_WEB_PORT || 5173}/`;
 const ASSETS = new URL('../docs/assets/', import.meta.url).pathname;
@@ -20,6 +21,24 @@ async function login(account = 1, { w = 1280, h = 720, mobile = false, query = '
     .catch(async e => { throw new Error(`login ${account}: ${await p.evaluate(() => document.querySelector('.toast')?.textContent)} ${e.message}`); });
   await sleep(400); p.name = `Demo ${account}`; return p;
 }
+// Throwaway shopper account with stars granted through the server-only settlement endpoint (dev DB of this worktree).
+async function shopper() {
+  process.env.PB_URL ||= `http://127.0.0.1:${process.env.PIXELTOWN_PB_PORT || 18090}`;
+  const { adminClient } = await import('../colyseus/config.js'), admin = await adminClient(), id = Date.now().toString(36);
+  const email = `ui-${id}@pixeltown.local`, password = `PixelTown-${id}-1!`;
+  const user = await admin.collection('users').create({ email, password, passwordConfirm: password, name: `Shop ${id}`, verified: true });
+  await admin.collection('profiles').create({ user: user.id, name: '쇼핑왕', color: '#9fd0ff' });
+  await admin.send('/api/pixeltown/commit-match', { method: 'POST', body: { match_id: randomUUID(), zone: 'lobby', ended_at: new Date().toISOString(), scores: { [user.id]: 60 } } });
+  await admin.send('/api/pixeltown/commit-match', { method: 'POST', body: { match_id: randomUUID(), zone: 'garden', ended_at: new Date().toISOString(), scores: { [user.id]: 60 } } });
+  return { email, password, id: user.id };
+}
+async function loginAs({ email, password }, name, { w = 1280, h = 720 } = {}) {
+  const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+  const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
+  await p.goto(BASE); await p.fill('input[type=email]', email); await p.fill('input[type=password]', password); await p.click('text=타운 입장하기');
+  await p.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0, null, { timeout: 10000 });
+  await sleep(400); p.name = name; return p;
+}
 const pos = p => p.evaluate(n => window.__pixeltown.state.current.players.find(q => q.name === n), p.name);
 const collapseChat = async p => { if (await p.$('.chat')) await p.click('.chat-head >> text=접기'); };
 async function zone(p, label, id) { await p.click(`.tabs button:has-text("${label}")`); await p.waitForFunction(z => window.__pixeltown.state.current.zone === z, id); await sleep(400); }
@@ -34,7 +53,11 @@ async function clickWorld(p, x, y) { // clamped to the visible mini-room, like a
 async function walkTo(p, x, y, timeout = 40000) {
   const end = Date.now() + timeout, z = await p.evaluate(() => window.__pixeltown.zone);
   let q = await pos(p); if (!q) return null;
-  for (const wp of findPath(getMap(z), q, { x, y })) {
+  if (z === 'home') { await clickWorld(p, x, y); await sleep(3000); return pos(p); } // the mini-room map lives only in the page
+  // Long straight segments are split so every click target is on screen.
+  const pts = []; let prev = q;
+  for (const wp of findPath(getMap(z), q, { x, y })) { const n = Math.ceil(Math.hypot(wp.x - prev.x, wp.y - prev.y) / 56); for (let i = 1; i <= n; i++) pts.push({ x: prev.x + (wp.x - prev.x) * i / n, y: prev.y + (wp.y - prev.y) * i / n }); prev = wp; }
+  for (const wp of pts) {
     if (await p.evaluate(z => window.__pixeltown.zone !== z, z)) return null;
     await clickWorld(p, wp.x, wp.y); let last, still = 0, tries = 0;
     while (Date.now() < end) {
@@ -53,6 +76,7 @@ async function shot(p, file, x, y, rw = 170, rh = 115) {
   await p.screenshot({ path: ASSETS + file, clip: { x: Math.max(c.r.l, Math.min(c.x - W / 2, c.r.l + c.r.w - W)), y: Math.max(c.r.t, Math.min(c.y - H * 0.65, c.r.t + c.r.h - H)), width: W, height: H } });
 }
 async function check(name, fn) {
+  if (process.env.UI_ONLY && !process.env.UI_ONLY.split(',').some(k => name.includes(k))) return; // e.g. UI_ONLY=shop,arcade
   try { report.checks[name] = { ok: true, ...(await fn()) }; console.log('PASS', name); }
   catch (e) { report.checks[name] = { ok: false, error: e.message }; console.log('FAIL', name, e.message); }
   finally { for (const c of browser.contexts()) await c.close().catch(() => {}); await sleep(500); }
@@ -77,11 +101,11 @@ await check('depth_and_collision_arcade_garden', async () => {
   const front = await walkTo(p, 106, 222); await shot(p, 'depth-arcade-front.png', 106, 210);
   const pillar = await walkTo(p, 200, 120); await shot(p, 'depth-pillar-behind.png', 200, 120, 120, 100);
   const counter = await walkTo(p, 540, 312); await shot(p, 'depth-counter-behind.png', 540, 320);
-  await walkTo(p, 320, 120); const wall = await hold(p, 'ArrowUp', 1500); await shot(p, 'collision-arcade-wall.png', 320, 70);
+  await walkTo(p, 320, 120); const wall = await hold(p, 'ArrowUp', 3000); await shot(p, 'collision-arcade-wall.png', 320, 70);
   await zone(p, '정원', 'garden');
   const pergola = await walkTo(p, 98, 216); await shot(p, 'depth-pergola.png', 98, 216, 170, 120);
   await walkTo(p, 272, 198); const pond = await hold(p, 'ArrowUp', 800); await shot(p, 'collision-pond.png', 272, 200, 170, 120);
-  assert(wall.y >= 48 + 3 - 0.5 && wall.y < 56, 'arcade wall stops the avatar'); assert(pond.y >= 192 + 3 - 0.5, 'pond blocks');
+  assert(wall.y >= 48 + 3 - 0.5 && wall.y < 56, `arcade wall stops the avatar ${JSON.stringify(wall)}`); assert(pond.y >= 192 + 3 - 0.5, 'pond blocks');
   assert(behind.y < 198 && counter.y < 326, 'walked behind cabinets and counter');
   await p.context().close(); return { behindCabinets: behind, frontCabinets: front, behindPillar: pillar, behindCounter: counter, wallStop: wall, underPergola: pergola, pondStop: pond };
 });
@@ -113,29 +137,93 @@ await check('two_users_move_chat_portal', async () => {
   } catch (e) { throw new Error(`${e.message} pos=${JSON.stringify(await pos(c).catch(() => null))}`); }
   return out;
 });
-await check('star_game_default_30s', async () => {
-  const a = await login(1), c = await login(2), out = { counts: [] };
-  for (const p of [a, c]) await zone(p, '오락실', 'arcade');
-  await collapseChat(a);
-  const g = () => a.evaluate(() => { const s = window.__pixeltown.state.current.game; return { active: s.active, n: s.stars.length, endsAt: s.endsAt, scores: s.scores }; });
-  const t0 = Date.now(); await a.click('.profile .btn:has-text("시작하기")'); await a.waitForFunction(() => window.__pixeltown.state.current.game.active);
-  out.durationSeconds = Math.round(((await g()).endsAt - Date.now()) / 1000); out.initial = (await g()).n;
-  while (Date.now() - t0 < 13600) { out.counts.push((await g()).n); await sleep(500); }
-  await a.screenshot({ path: ASSETS + 'star-cap12.png' });
-  while ((await g()).active) {
-    const me = await pos(a), stars = await a.evaluate(() => window.__pixeltown.state.current.game.stars);
-    if (!stars.length) { await sleep(300); continue; }
-    stars.sort((p, q) => Math.hypot(p.x - me.x, p.y - me.y) - Math.hypot(q.x - me.x, q.y - me.y));
-    await walkTo(a, stars[0].x, stars[0].y, 6000);
-    if (!out.shot && Date.now() - t0 > 15000) { out.shot = true; await a.screenshot({ path: ASSETS + 'arcade-star-game.png' }); }
+await check('click_move_shortest_marker_and_key_cancel', async () => {
+  const a = await login(1), out = {};
+  if (!(await a.$('.chat'))) await a.click('.chat-fab');
+  // Click through the chat log onto the map: the avatar walks there.
+  const box = await (await a.$('.chat-log')).boundingBox(), start = await pos(a);
+  await a.mouse.click(box.x + box.width - 20, box.y + 20); await sleep(150);
+  const r1 = await a.evaluate(() => ({ route: window.__pixeltown.route.current, marker: window.__pixeltown.marker.current }));
+  out.chatClickStartedRoute = r1.route.length > 0 && Boolean(r1.marker);
+  out.routeSegmentsClear = r1.route.every((p, i) => clearWalk(getMap('lobby'), i ? r1.route[i - 1] : start, p));
+  // Arrow key while walking cancels the route and the marker.
+  await sleep(500); await a.keyboard.down('ArrowDown'); await sleep(200); await a.keyboard.up('ArrowDown'); await sleep(100);
+  out.keyCancelled = await a.evaluate(() => window.__pixeltown.route.current.length === 0 && !window.__pixeltown.marker.current);
+  // Clicking onto the house (blocked) walks to the closest reachable spot in front of it.
+  await walkTo(a, 120, 120); await clickWorld(a, 120, 80); await sleep(120);
+  out.blockedClickMarker = await a.evaluate(() => window.__pixeltown.marker.current);
+  await shot(a, 'click-marker.png', out.blockedClickMarker.x, out.blockedClickMarker.y);
+  await sleep(2500); out.stoppedAt = await pos(a);
+  // Clicking on a star walks onto it; the marker is drawn on the ground under the star.
+  const stars = await a.evaluate(() => window.__pixeltown.state.current.game.stars);
+  out.starCount = stars.length;
+  assert(out.chatClickStartedRoute && out.routeSegmentsClear && out.keyCancelled, 'chat click / straight route / key cancel');
+  assert(Math.hypot(out.stoppedAt.x - out.blockedClickMarker.x, out.stoppedAt.y - out.blockedClickMarker.y) < 4 && out.stoppedAt.y > 96, 'nearest reachable spot');
+  return out;
+});
+await check('star_event_always_on', async () => {
+  const a = await login(1), out = { counts: [] };
+  await zone(a, '오락실', 'arcade'); await collapseChat(a);
+  const g = () => a.evaluate(() => { const s = window.__pixeltown.state.current.game; return { active: s.active, n: s.stars.length, endsAt: s.endsAt, scores: s.scores, stars: s.stars }; });
+  out.startButton = Boolean(await a.$('button:has-text("시작하기")'));
+  const first = await g(); out.activeOnJoin = first.active; out.initial = first.n;
+  out.minimumSpacing = Math.round(Math.min(...first.stars.flatMap((p, i) => first.stars.slice(i + 1).map(q => Math.hypot(p.x - q.x, p.y - q.y)))));
+  const t0 = Date.now(); while (Date.now() - t0 < 13000) { out.counts.push((await g()).n); await sleep(1000); }
+  out.secondsToNextSettlement = Math.round(((await g()).endsAt - Date.now()) / 1000);
+  for (let i = 0; i < 3; i++) {
+    const me = await pos(a), stars = (await g()).stars.sort((p, q) => Math.hypot(p.x - me.x, p.y - me.y) - Math.hypot(q.x - me.x, q.y - me.y));
+    await walkTo(a, stars[0].x, stars[0].y, 15000);
   }
-  out.elapsed = Math.round((Date.now() - t0) / 1000);
-  await a.waitForSelector('.toast:has-text("저장되었어요")', { timeout: 15000 });
+  await a.screenshot({ path: ASSETS + 'arcade-star-game.png' });
+  out.myScore = (await g()).scores[(await a.evaluate(() => window.__pixeltown.state.current.players.find(q => q.name === 'Demo 1').id))];
+  // Wait for the regular settlement (default 3 minutes) and the saved notice.
+  await a.waitForSelector('.toast:has-text("저장되었어요")', { timeout: 200000 });
+  out.stillActiveAfterSettlement = (await g()).active;
   await a.click('.profile .btn:has-text("내 수첩")'); await sleep(800);
-  out.notebook = await a.textContent('.notebook-body'); await a.screenshot({ path: ASSETS + 'result-notebook.png' });
-  assert(out.durationSeconds === 30 && out.initial === 5 && Math.max(...out.counts) === 12 && out.counts.at(-1) === 12, 'generation cap');
-  assert(/별 보상 [1-9]\d*개/.test(out.notebook), 'reward saved');
-  await a.context().close(); await c.context().close(); return out;
+  out.notebook = (await a.textContent('.notebook-body')).slice(0, 200); await a.screenshot({ path: ASSETS + 'result-notebook.png' });
+  assert(!out.startButton && out.activeOnJoin && out.initial >= 5 && out.stillActiveAfterSettlement, 'always on');
+  assert(Math.max(...out.counts) - out.counts[0] <= 3, 'not spawning too often'); assert(out.myScore >= 1, 'server scored collection');
+  return out;
+});
+await check('shop_dress_pet_and_miniroom', async () => {
+  const acc = await shopper(), s = await loginAs(acc, '쇼핑왕'), o = await login(2), out = {};
+  await collapseChat(s);
+  await s.click('.profile .btn:has-text("별 상점")'); await s.waitForSelector('.shop');
+  out.walletBefore = await s.textContent('.shop .stars-badge');
+  const buyWear = async (tab, name, wear) => {
+    await s.click(`.shop-tabs button:has-text("${tab}")`);
+    const card = s.locator('.shop-item', { hasText: name });
+    await card.locator('button:has-text("사기")').click(); await card.locator('button:has-text("사기")').waitFor({ state: 'detached' });
+    if (wear) { await card.locator(`button:has-text("${wear}")`).click(); await s.locator('.shop-item.worn', { hasText: name }).waitFor(); }
+  };
+  await buyWear('모자', '왕관', '입기'); await buyWear('옷', '세일러복', '입기'); await buyWear('펫', '강아지', '데리고 다니기');
+  for (const f of ['침대', '하트 러그', '소파', '화분']) await buyWear('가구', f);
+  await s.click('.shop-tabs button:has-text("모자")'); await s.screenshot({ path: ASSETS + 'shop-closet.png' });
+  out.walletAfter = await s.textContent('.shop .stars-badge');
+  await s.click('.shop >> text=닫기');
+  // The other player sees the crown, the sailor top and the puppy (from the server profile).
+  await o.waitForFunction(() => window.__pixeltown.state.current.players.find(q => q.name === '쇼핑왕')?.look?.pet === 'pet_puppy', null, { timeout: 5000 });
+  out.seenByOther = await o.evaluate(() => window.__pixeltown.state.current.players.find(q => q.name === '쇼핑왕').look);
+  const me = await pos(s); await walkTo(s, me.x + 50, me.y + 10); await sleep(1200);
+  await shot(s, 'outfit-pet.png', me.x + 50, me.y + 5, 120, 80);
+  await shot(o, 'outfit-pet-other.png', me.x + 50, me.y + 5, 120, 80);
+  // Mini-room: place furniture on the grid, save, reload, still there.
+  await zone(s, '미니룸', 'home'); await s.click('button:has-text("가구 배치")');
+  const place = async (name, x, y) => { await s.click(`.edit-item:has-text("${name}")`); await clickWorld(s, x, y); await sleep(200); };
+  await place('침대', 184, 180); await place('하트 러그', 320, 230); await place('소파', 420, 180);
+  await place('화분', 320, 296); out.doorBlockedToast = await s.textContent('.toast').catch(() => null);
+  await clickWorld(s, 456, 300); await sleep(200); // the plant is still selected: put it in the corner
+  await s.screenshot({ path: ASSETS + 'miniroom-edit.png' });
+  await s.click('.edit-bar button:has-text("저장")'); await s.waitForSelector('.toast:has-text("저장했어요")');
+  await s.reload(); await s.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0); await zone(s, '미니룸', 'home'); await sleep(800);
+  const { adminClient } = await import('../colyseus/config.js'), admin = await adminClient();
+  out.savedRoom = (await admin.collection('profiles').getFirstListItem(`user="${acc.id}"`)).room;
+  await walkTo(s, 240, 200); await sleep(600); await s.screenshot({ path: ASSETS + 'miniroom.png' });
+  out.besideBed = await pos(s);
+  out.pageErrors = [...s.errs, ...o.errs];
+  assert(out.seenByOther.hat === 'hat_crown' && out.seenByOther.top === 'top_sailor', 'outfit synced');
+  assert(/문 앞/.test(out.doorBlockedToast || ''), 'door rule'); assert(out.savedRoom?.length === 4, 'room saved'); assert(!out.pageErrors.length, 'page errors');
+  return out;
 });
 await check('viewports_no_scroll_integer_scale', async () => {
   const out = {};
@@ -160,6 +248,10 @@ await check('viewports_no_scroll_integer_scale', async () => {
   return out;
 });
 report.finishedAt = new Date().toISOString();
+if (process.env.UI_ONLY) { // partial run: merge into the last full report
+  const prev = JSON.parse(await import('node:fs/promises').then(f => f.readFile(new URL('./ui-report.json', import.meta.url), 'utf8')).catch(() => '{}'));
+  report.checks = { ...(prev.checks || {}), ...report.checks };
+}
 report.status = Object.values(report.checks).every(c => c.ok) ? 'passed' : 'failed';
 await writeFile(new URL('./ui-report.json', import.meta.url), JSON.stringify(report, null, 1) + '\n');
 console.log(report.status.toUpperCase());

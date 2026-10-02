@@ -310,8 +310,7 @@ async function playMatch(state, account, { verifyGeneration = false } = {}) {
   await sleep(180);
   if (state.snapshot.game.id === matchId) assert.equal(state.snapshot.game.scores[account.id], 1, 'Duplicate collection scored twice');
   const ended = (await waitUntil(() => state.messages.slice(offset).find(m => m.type === 'gameEnded' && m.payload.match_id === matchId), 'period settlement', runtime.gameDurationMs + 2000)).payload;
-  assert.ok(state.snapshot.game.active, 'Event stopped after settlement');
-  assert.ok(state.snapshot.game.id !== matchId, 'Next period did not start');
+  await waitUntil(() => state.snapshot.game.active && state.snapshot.game.id !== matchId, 'next period starts right after settlement', 1000);
   if (verifyGeneration) {
     const snapshots = state.messages.slice(offset).filter(m => m.type === 'snapshot' && m.payload.game.active).map(m => m.payload);
     for (const snapshot of snapshots) {
@@ -360,6 +359,7 @@ try {
   if (report.tests[0].status === 'passed') {
     await functionalChecks();
     await gameChecks();
+    await shopChecks();
     await loadChecks();
   }
 } catch (error) {
@@ -376,6 +376,76 @@ try {
   console.log(`${report.status.toUpperCase()}: ${report.summary.passed} passed, ${report.summary.failed} failed. tests/report.json`);
   if (report.status !== 'passed') process.exitCode = 1;
 }
+// Star shop (ADR-004): wallet = settled star rewards - purchases, all writes through the PB hook.
+async function shopChecks() {
+  let c, d;
+  const buy = (who, item) => request('/api/pixeltown/shop/buy', { token: who?.token, method: 'POST', body: { item } });
+  const wallet = async who => (await records('inventory', who)).reduce((n, r) => n + r.quantity, 0) - (await records('purchases', who)).reduce((n, r) => n + r.price, 0);
+  await test('shop_purchase_wallet_and_forgery_denied', async () => {
+    [c, d] = await Promise.all([createAccount(3), createAccount(4)]);
+    // Grant c 40 stars through the authoritative settlement path only the game server (superuser) may use.
+    const granted = await request('/api/pixeltown/commit-match', { token: runtime.admin.authStore.token, method: 'POST', body: { match_id: randomUUID(), zone: 'lobby', ended_at: new Date().toISOString(), scores: { [c.id]: 40 } } });
+    assert.equal(granted.status, 200);
+    assert.equal(await wallet(c), 40);
+    assert.equal((await buy(undefined, 'hat_ribbon')).status, 401, 'Anonymous purchase accepted');
+    const poor = await buy(d, 'hat_ribbon');
+    assert.equal(poor.status, 400); assert.equal((await records('purchases', d)).length, 0, 'Failed purchase left a ledger row');
+    assert.equal((await buy(c, 'no_such_item')).status, 400);
+    const crown = await buy(c, 'hat_crown');
+    assert.equal(crown.status, 200); assert.equal(crown.data.balance, 10);
+    assert.equal((await buy(c, 'hat_crown')).status, 400, 'Duplicate purchase accepted');
+    // Concurrent buys worth 6+8+10 against a balance of 10: never overspend.
+    const burst = await Promise.all(['top_heart', 'top_stripe', 'hat_straw'].map(item => buy(c, item)));
+    const after = await wallet(c);
+    assert.ok(after >= 0, `Wallet went negative: ${after}`);
+    assert.equal(burst.filter(r => r.status === 200).length, (await records('purchases', c)).length - 1);
+    const forged = [];
+    forged.push((await request('/api/collections/purchases/records', { token: c.token, method: 'POST', body: { user: c.id, item: 'pet_bunny', price: 0 } })).status);
+    const own = (await records('purchases', c))[0];
+    forged.push((await request(`/api/collections/purchases/records/${own.id}`, { token: c.token, method: 'DELETE' })).status);
+    forged.push((await request(`/api/collections/purchases/records/${own.id}`, { token: d.token })).status);
+    assert.ok(forged.every(code => [400, 403, 404].includes(code)), `Direct ledger access allowed: ${forged}`);
+    assert.equal((await records('purchases', d)).length, 0);
+    return { grantedStars: 40, crownPrice: 30, burstAccepted: burst.filter(r => r.status === 200).length, walletAfterBurst: after, poorRejected: poor.status, forgedStatuses: forged };
+  });
+  if (!c) return;
+  await test('shop_equip_look_sync_and_room_rules', async () => {
+    const equip = (who, body) => request('/api/pixeltown/shop/equip', { token: who.token, method: 'POST', body });
+    assert.equal((await equip(c, { hat: 'pet_puppy' })).status, 400, 'Wrong slot accepted');
+    assert.equal((await equip(c, { pet: 'pet_puppy' })).status, 400, 'Unowned pet accepted');
+    assert.equal((await equip(c, { hat: 'hat_crown' })).status, 200);
+    const profile = await runtime.admin.collection('profiles').getFirstListItem(`user="${c.id}"`);
+    assert.deepEqual(profile.outfit, { hat: 'hat_crown', top: null, pet: null });
+    const patch = await request(`/api/collections/profiles/records/${profile.id}`, { token: c.token, method: 'PATCH', body: { outfit: { pet: 'pet_bunny' }, room: [] } });
+    assert.ok([400, 403, 404].includes(patch.status), 'Profile written directly');
+    // The room server reads the outfit from PocketBase, not from the client.
+    const rc = await join(c, 'arcade'), rd = await join(d, 'arcade');
+    await waitUntil(() => rd.snapshot.players.find(p => p.id === c.id)?.look?.hat === 'hat_crown', 'other player sees the crown');
+    assert.equal((await equip(c, { hat: null })).status, 200);
+    rc.room.send('look', { hat: 'hat_crown', pet: 'pet_bunny' });
+    await waitUntil(() => rd.snapshot.players.find(p => p.id === c.id)?.look?.hat === null, 'look refresh after unequip');
+    assert.equal(rd.snapshot.players.find(p => p.id === c.id).look.pet, null, 'Client-sent look trusted');
+    await leave(rc); await leave(rd);
+    const room = body => request('/api/pixeltown/shop/room', { token: c.token, method: 'POST', body });
+    const grant2 = await request('/api/pixeltown/commit-match', { token: runtime.admin.authStore.token, method: 'POST', body: { match_id: randomUUID(), zone: 'garden', ended_at: new Date().toISOString(), scores: { [c.id]: 40 } } });
+    assert.equal(grant2.status, 200);
+    for (const item of ['f_rug', 'f_bed', 'f_chair']) assert.equal((await buy(c, item)).status, 200, `buy ${item}`);
+    const cases = {
+      unowned: [{ item: 'f_piano', c: 12, r: 10 }],
+      outside: [{ item: 'f_bed', c: 29, r: 10 }],
+      door: [{ item: 'f_chair', c: 19, r: 18 }],
+      overlap: [{ item: 'f_bed', c: 12, r: 10 }, { item: 'f_chair', c: 13, r: 11 }],
+      duplicate: [{ item: 'f_chair', c: 12, r: 10 }, { item: 'f_chair', c: 14, r: 10 }],
+    };
+    const statuses = {};
+    for (const [name, placements] of Object.entries(cases)) { statuses[name] = (await room({ placements })).status; assert.equal(statuses[name], 400, `${name} placement accepted`); }
+    const good = [{ item: 'f_bed', c: 10, r: 9 }, { item: 'f_rug', c: 14, r: 12 }, { item: 'f_chair', c: 15, r: 12 }];
+    assert.equal((await room({ placements: good })).status, 200);
+    assert.deepEqual((await runtime.admin.collection('profiles').getFirstListItem(`user="${c.id}"`)).room, good);
+    return { wrongSlotOrUnownedRejected: true, directProfileWrite: patch.status, lookFromServerProfile: true, rejectedPlacements: statuses, savedPlacements: good.length };
+  });
+}
+
 async function gameChecks() {
   if (!runtime.active) return;
   const { a, b, ra, rb } = runtime.active;

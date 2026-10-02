@@ -52,20 +52,21 @@ users는 자신의 record만 list/view, profiles/results/inventory는 `user = @r
 
 ## 4. 데이터 모델
 
-seed는 users/profiles/rooms/results/inventory를 준비한다. rooms는 영구 장소 메타데이터이며 Colyseus의 실시간 방 인스턴스와 분리한다. 인증 후 rooms 조회로 장소 등록을 확인한다. rooms는 로그인 사용자만 읽고 일반 사용자 쓰기는 금지한다.
+seed는 users/profiles/rooms/results/inventory/purchases를 준비한다. rooms는 영구 장소 메타데이터이며 Colyseus의 실시간 방 인스턴스와 분리한다. 인증 후 rooms 조회로 장소 등록을 확인한다. rooms는 로그인 사용자만 읽고 일반 사용자 쓰기는 금지한다.
 
 | 엔터티 | 필드·제약 |
 |---|---|
 | users | PB auth collection, email/password 등 PB 인증 필드, name text max40; 사용자 ID 15자리 |
-| profiles | user relation(users, required, cascadeDelete), name required text max40, color required text; unique(user) |
+| profiles | user relation(users, required, cascadeDelete), name required text max40, color required text, outfit json(max 2000, `{hat,top,pet}`), room json(max 8000, `[{item,c,r}]`); unique(user). outfit/room은 shop 훅만 쓴다 |
+| purchases | user relation, item required text max40, price required number min0; unique(user,item). 일반 사용자 읽기는 본인만, 쓰기는 shop 훅만 |
 | rooms | zone required text unique(zone), title required text max80, max_players required number 1..32; 3개 장소 seed |
 | results | user relation, match_id required text, zone required text, score number min0, ended_at required date; unique(match_id,user) |
 | inventory | user relation, match_id required text, item required text, quantity number min0; unique(match_id,user) |
-| 공통 | profiles/rooms/results/inventory에 created autodate(onCreate), updated autodate(onCreate/onUpdate) |
+| 공통 | profiles/rooms/results/inventory/purchases에 created autodate(onCreate), updated autodate(onCreate/onUpdate) |
 
-현재 초기화 스크립트는 기존 collection에 누락된 created/updated 필드를 추가한다. 신규 schema 정의만 바꾸는 것으로 기존 데이터베이스의 `sort:'-created'` 오류가 해결되었다고 판단하지 않는다. 실제 초기화 재실행과 UI 조회 400 해소를 별도로 확인한다. 기존 collection의 모든 rule/index를 강제 재구성하는 일반 마이그레이션 도구는 아니다.
+현재 초기화 스크립트는 기존 collection에 schema에 새로 생긴 필드(created/updated, profiles.outfit/room)를 추가한다. 신규 schema 정의만 바꾸는 것으로 기존 데이터베이스의 `sort:'-created'` 오류가 해결되었다고 판단하지 않는다. 실제 초기화 재실행과 UI 조회 400 해소를 별도로 확인한다. 기존 collection의 모든 rule/index를 강제 재구성하는 일반 마이그레이션 도구는 아니다.
 
-DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체 점수 합계 0–64를 검증한다. 매치당 0점도 결과와 quantity=0 인벤토리 원장을 저장한다. 인벤토리는 매치별 원장이며 사용자의 전체 별 수는 quantity 합계다. 프로필 색은 서버에서 조회하고 프런트가 보낸 외형 주장으로 덮어쓰지 않는다.
+DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체 점수 합계 0–64를 검증한다. 게임 서버는 점수가 1 이상인 참가자만 정산에 넣는다(0점 행 없음). 훅 자체는 0점도 받는다. 인벤토리는 정산 기간별 원장이며 사용자가 모은 별은 quantity 합계, 지갑은 그 합계 − purchases.price 합계다(ADR-004). 프로필 색은 서버에서 조회하고 프런트가 보낸 외형 주장으로 덮어쓰지 않는다.
 
 ## 5. API·실시간 계약
 
@@ -84,16 +85,20 @@ DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체
 | C→S | input | `{dx,dy}` finite number, 각각 -1..1 clamp, 길이>1 정규화; 좌표·user ID는 받지 않음 |
 | C→S | chat | `{text}` 문자열, 제어문자 제거·trim·240자 제한, 사용자별 700ms cooldown; 프런트 입력 제한 200자 |
 | C→S | emote | `{}`; 서버 wave 이벤트, 1000ms cooldown |
-| C→S | startGame | `{}`; 진행 중 무시, 2000ms cooldown; 클라이언트 score/endsAt 무시 |
+| C→S | look | `{}`(내용 무시); 500ms cooldown. 서버가 사용자 토큰으로 자기 프로필을 다시 읽어 `look` 갱신 |
 | C→S | collect | `{id}` 별 ID; 진행·시간·존재·인증 발밑 위치 거리≤16(`COLLECT_RADIUS`) 검증 |
 | S→C | snapshot | `{players,zone,game,persistence}` 전체 snapshot |
 | S→C | chat | `{id,name,text,at}` 서버 확정 발신자 |
 | S→C | emote | `{id,emote:'wave',at}` |
-| S→C | gameEnded | `{match_id,zone,ended_at,scores}`; 디스크 outbox 커밋 뒤 알림, PB 저장 완료 신호는 아님 |
+| S→C | gameEnded | `{match_id,zone,ended_at,scores}` 정산 알림(점수 있는 사람만); 디스크 outbox 커밋 뒤 알림, PB 저장 완료 신호는 아님. 직후 다음 기간이 시작된다 |
 
-player는 `{id,name,x,y,color}`. game은 `{active,endsAt,stars:[{id,x,y}],scores:{[userId]:integer}}`. persistence는 `{status:'pending'|'saved',pending,lastError}`이며 전체 outbox 상태이므로 특정 매치만의 상태는 아니다.
+`startGame` 메시지는 제거했다. Colyseus는 등록되지 않은 메시지를 보낸 클라이언트의 연결을 끊는다.
 
-서버는 50ms마다 `moveActor(map,x,y,dx,dy,3)`을 적용하며 입력이 300ms보다 오래되면 움직이지 않는다. 이동은 1.5도트 이하로 쪼개 축별로 미끄러지고, 한 축만 막히면 수직 방향 6도트 이내 빈틈으로 비켜 간다. 플레이어 발 상자 10×6이 막힌 타일·소품 footprint·맵 경계와 겹치면 막힌다. 별은 `starSpots`(시작점에서 닿고 sort 소품 그림에 가리지 않은 타일 중심)에서 다른 별과 24도트 이상 떨어진 곳을 고른다. 현재 소스는 초기 5개, 미회수 상한 12개, 1500ms마다 상한 미만이면 1개 생성이다. 회수 후 후속 주기에만 1개를 보충하고 별 0개 조기 종료를 제거한다. 마지막 소스 재대조에서 주기 생성·상한·별 0개 진행을 확인했다. 방의 전원 이탈·dispose에서는 저장을 위한 종료 처리가 별도로 있다. solo도 초기5·상한12·1500ms·30초와 충돌을 적용하며 DB 보상은 없다. default 30000ms, GAME_DURATION_MS override는 1000..60000 clamp다. 현재 참가자와 진행 중 합류자를 scores에 등록하고 이탈자의 점수는 유지한다.
+player는 `{id,name,x,y,color,look:{hat,top,pet}}`(look은 카탈로그 슬롯이 맞는 값만, 나머지 null). game은 `{id,active,endsAt,stars:[{id,x,y}],scores:{[userId]:integer}}`, `id`는 현재 정산 기간 match_id, `endsAt`은 다음 정산 시각. persistence는 `{status:'pending'|'saved',pending,lastError}`이며 전체 outbox 상태이므로 특정 매치만의 상태는 아니다.
+
+서버는 50ms마다 `moveActor(map,x,y,dx,dy,3)`을 적용하며 입력이 300ms보다 오래되면 움직이지 않는다. 이동은 1.5도트 이하로 쪼개 축별로 미끄러지고, 한 축만 막히면 수직 방향 6도트 이내 빈틈으로 비켜 간다. 플레이어 발 상자 10×6이 막힌 타일·소품 footprint·맵 경계와 겹치면 막힌다. 별은 `spreadSpot`이 `starSpots`(시작점에서 닿고 sort 소품 그림에 가리지 않은 타일 중심) 후보 24개 중 기존 별·플레이어와 가장 먼 곳을 고른다. 이벤트는 첫 입장 때 시작해 계속된다. 최소 5개를 채우고, `STAR_SPAWN_INTERVAL_MS`(기본 6000, 1000..60000)마다 상한 12 미만이면 1개 생성한다. `GAME_DURATION_MS`(기본 180000, 1000..300000)마다 `settle`: 점수 1 이상인 사람만 outbox에 넣고 `gameEnded`를 보낸 뒤, 별을 유지한 채 새 match_id·0점으로 다음 기간을 시작한다. 기간 합계가 64(`MAX_MATCH_SCORE`)에 닿으면 즉시 정산하고, 정산 대기 중 64를 넘는 수집은 거부한다. 전원 이탈·dispose 때 정산하고 멈춘다. 진행 중 합류자를 scores에 등록하고 이탈자의 점수는 정산까지 유지한다. solo 연습도 최소5·6초·상한12와 충돌을 적용하며 DB 보상은 없다.
+
+클릭 이동: `findPath`는 8도트 걷기 격자 BFS(모서리 자르기 없음) 뒤 `clearWalk`(2도트 간격 발 상자 검사)로 막히지 않는 가장 먼 점까지 직선을 이어 붙인다. 막힌 곳을 누르면 목표와 가장 가까운 도달 가능 칸이 끝점이다.
 
 ### API-003 원자적 결과 커밋
 
@@ -111,6 +116,18 @@ player는 `{id,name,x,y,color}`. game은 `{active,endsAt,stars:[{id,x,y}],scores
 성공: 200 `{ok:true,match_id}`. 훅은 match_id 36자리 소문자 hex/하이픈 패턴, 장소 allowlist, ended_at 문자열, scores object와 참가자 1–64명, 사용자 ID 15자리 소문자 영숫자·사용자 존재, score 정수 0–64와 전체 점수 합계 0–64를 검증한다. ended_at의 날짜 유효성은 PB date 필드 저장에서 추가 검증된다. UUID 정규형 전체를 검증하는 패턴은 아니므로 서버 randomUUID 생성값을 사용한다.
 
 `$app.runInTransaction` 내에서 모든 사용자에 results(score,zone,ended_at)와 inventory(item='star',quantity=score)를 기록한다. 이미 존재하면 results의 score/zone, inventory의 quantity/item 일치를 확인하고 동일 데이터는 건너뛴다. 현재 ended_at 일치 자체는 재전달 비교 항목이 아니다. 다른 점수·장소·보상은 400, 없는 사용자는 404 가능, 일반 사용자·미인증은 401/403이다. 참가자 중 오류면 전체 transaction을 rollback한다.
+
+### API-005 별 상점·옷장·미니룸 (PB 훅, ADR-004)
+
+모두 `$apis.requireAuth("users")`, 본인 `e.auth.id`만 대상. 가격·슬롯·가구 크기·미니룸 범위는 `shared/catalog.json`(`pocketbase/pb_hooks/shop_lib.js`가 `$os.readFile`로 읽음)에서만 가져온다. 실패는 400과 한국어 메시지.
+
+| 경로 | 요청 | 처리 |
+|---|---|---|
+| `POST /api/pixeltown/shop/buy` | `{item}` | 트랜잭션: 이미 보유면 거부 → purchases 행 저장 → 지갑 재계산, 음수면 "별이 부족해요" 롤백. 응답 `{ok,item,balance}` |
+| `POST /api/pixeltown/shop/equip` | `{hat,top,pet}` 각 id 또는 null | 슬롯이 맞고 보유한 아이템만, profiles.outfit 저장. 응답 `{ok,outfit}` |
+| `POST /api/pixeltown/shop/room` | `{placements:[{item,c,r}]}` | 보유 가구·하나씩·최대 24·바닥 `floor` 안·`door` 칸 제외·flat(러그) 아닌 가구끼리 겹침 없음, profiles.room 저장 |
+
+미니룸 맵은 `homeMap(placements)`(shared/world.js)이 만든다. 가구 앵커 = 칸 묶음의 아래 가운데, footprint는 칸 안에 들어간다. 맵에 `frame`이 있어 화면은 방 전체가 들어가는 가장 큰 정수배로 확대한다. 미니룸은 Colyseus 방 없이 브라우저에서 같은 `moveActor`로 걷는다. 화면용 `roomProblem`과 훅 `validateRoom`은 같은 규칙이며 단위 테스트가 같은 사례로 대조한다.
 
 ### API-004 건강 상태
 
@@ -135,8 +152,8 @@ UI는 인증 실패 alert, 방 연결 실패·재연결, 저장 pending/재시�
 | 분류 | 요구와 현재 소스 | 처리 |
 |---|---|---|
 | 해결 완료 | 브라우저와 `.env.example`은 모두 `VITE_GAME_URL` 사용 | 설정 예제와 실제 소스 대조 |
-| 해결·검증 완료 | 상위3 scoreboard·동점 순위·남은 별/상한 | 기본30초 플레이·순위·저장 완료·수첩 재조회 확인 |
-| 해결·검증 완료 | 초기5·1500ms 주기·상한12·별0개 진행·개인/전체 score64 | 실제 WebSocket lifecycle, 단위 tick/점수 상한, 통합 재검증 |
+| 해결·검증 완료 | 상시 이벤트·6초 주기·상한12·3분 정산·0점 미기록·score64 | 단위 tick/정산, 통합(1.5초·30초 단축), 브라우저 기본값 3분 정산 |
+| 해결·검증 완료 | 별 상점 지갑·구매·장착·미니룸 배치 | 통합(위조·잔액 부족·동시 구매·배치 규칙), 브라우저 2유저 |
 | 해결·검증 완료 | UI records 400 대응으로 created/updated 추가·기존 collection 보완 | 재seed 후 브라우저 프로필·결과 조회 성공, 오류0 |
 
 ## 8. 실행·검증·확장
@@ -163,7 +180,8 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 | PIXELTOWN_ENV_FILE | 비공개 관리자 파일, pocketbase/.env.local |
 | PB_DATA_DIR | 로컬 PB 데이터, pocketbase/.local/pb_data |
 | OUTBOX_PATH | 영구 outbox 디렉터리, colyseus/.local/outbox |
-| GAME_DURATION_MS | 게임 기본 30000; 통합 검증은 24000으로 단축 |
+| GAME_DURATION_MS | 별 이벤트 정산 주기, 기본 180000; 통합 검증은 30000 |
+| STAR_SPAWN_INTERVAL_MS | 별 생성 주기, 기본 6000; 통합 검증은 1500 |
 | PIXELTOWN_PB_PORT / PIXELTOWN_GAME_PORT / PIXELTOWN_WEB_PORT | dev:all 포트, 기본 18090 / 12567 / 5173 |
 | CHROME_PATH | ui-check용 Chromium 실행 파일, 없으면 시스템 Chrome |
 

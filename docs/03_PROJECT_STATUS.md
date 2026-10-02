@@ -1,6 +1,6 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `dc2e191`(거절판). 재제작 브랜치 `cheng80/cyworld-remake`.
+갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `dc2e191`(거절판). 재제작 브랜치 `cheng80/cyworld-remake`. 최신 작업 PLAN-003.
 
 ## 1. 로드맵
 
@@ -11,13 +11,21 @@
 | M3 | 1차 보안·복구·20명 로컬·모바일 검증 | 백엔드 증거만 유효. 화면 증거는 거절판 기준 |
 | M4 | 공개 GitHub 단계별 게시 | 완료 (`dc2e191`) |
 | M5 | 싸이월드 도트 감성 재제작 (PLAN-002) | 구현·검증 완료, **사용자 디자인 승인 대기** — 브랜치 `cheng80/cyworld-remake` |
+| M6 | 상시 별 이벤트·별 상점·옷장·펫·미니룸·클릭 이동·큰 채팅 (PLAN-003) | 구현·검증 완료, 사용자 확인 대기 |
 
 ## 2. 계획
 
 - `plans/PLAN-001.md` — DONE. 1차 로컬 멀티플레이 데모. 백엔드 계약은 유지, 화면·맵·충돌은 PLAN-002로 대체.
 - `plans/PLAN-002.md` — DONE(구현·검증). 디자인 최종 승인은 사용자 판단.
+- `plans/PLAN-003.md` — DONE(구현·검증). 2026-10-02 추가 피드백(별 얼굴, 상시 이벤트, 상점·꾸미기·미니룸, 채팅·마우스 이동).
 
-## 3. 현재 작업 (PLAN-002)
+## 3. 현재 작업 (PLAN-003)
+
+- [x] S1 별 그림(다리 사이 막대 제거) · S2 상시 이벤트·6초·넓은 배치·3분 정산 · S3 최단 경로·채팅 클릭 통과·큰 채팅 (`a01afab`)
+- [x] S4 카탈로그·purchases·shop 훅 · S5 모자·옷·펫 표시와 서버 look · S6 미니룸 배치·저장
+- [x] S7 단위18·통합15·UI7·build, 기본값 3분 정산 브라우저 확인, 스크린샷, 문서
+
+### 이전 작업 (PLAN-002)
 
 - [x] S1 원본 재관찰(무통신 stub)·PRODUCT_SPEC 재작성·PLAN-002·ADR-002/003
 - [x] S2 공용 맵·충돌 모듈 `shared/world.js`, 서버 연결, 포트 환경변수화 (`332ae9b`)
@@ -38,6 +46,8 @@
 - 실제 iPhone/Android 가상 키보드·성능, 외부 배포·TLS·지속 운영, 100명은 미검증이다.
 - 클라이언트 예측 없이 서버 50ms snapshot을 보간한다. localhost에서는 자연스러웠으나 인터넷 지연 조작감은 미측정이다.
 - 그래픽은 절차 도트다. 사용자 디자인 승인 전이며 피드백에 따라 팔레트·소품을 조정한다.
+- 이미 열려 있던 구 버전 탭이 제거된 `startGame`을 보내면 Colyseus가 연결을 끊는다. 새로고침하면 된다.
+- 미니룸은 본인만 본다. 다른 사람 방문·방명록·선물은 후속 범위다.
 - 진행 중 경기는 서버 프로세스 강제 종료 시 복원하지 않는다. 디스크 outbox에 완료 기록된 경기는 재시작 후 저장한다.
 
 ## 6. 다음 작업
@@ -51,12 +61,13 @@
 
 변경하면 안 되는 경계: 운영 PocketBase·Oracle 작업·외부 브로커·클라우드 인증에는 접근하지 않는다. 개발 launcher는 기본 18090/12567/5173(환경변수로 변경 가능)을 loopback으로만 사용하고 포트 점유 시 시작을 거부한다. 이 worktree 검증은 5273/18190/12667, 통합은 18191/12668을 썼다. `.env.local`, `.local`, DB, 다운로드 바이너리와 node_modules를 공개 저장소에 넣지 않는다.
 
-주요 파일은 `shared/world.js`(맵·충돌 정본), `game/src/main.jsx`, `game/src/render.js`, `game/src/sprites.js`, `colyseus/town.js`, `colyseus/outbox.js`, `pocketbase/pb_hooks/matches.pb.js`, `scripts/init-pocketbase.mjs`, `tests/integration.mjs`, `tests/ui-check.mjs`다. 실제 명령은 루트 README에 있다. 맵을 고치면 `npm --prefix colyseus test`가 연결성·footprint 규칙을 자동 검사한다. Colyseus는 `shared/`를 import하므로 맵 수정 후 서버를 재시작해야 프런트와 판정이 일치한다.
+주요 파일은 `shared/world.js`(맵·충돌·미니룸 정본), `shared/catalog.json`(상점 정본), `pocketbase/pb_hooks/shop.pb.js`·`shop_lib.js`, `game/src/main.jsx`, `game/src/render.js`, `game/src/sprites.js`, `colyseus/town.js`, `colyseus/outbox.js`, `pocketbase/pb_hooks/matches.pb.js`, `scripts/init-pocketbase.mjs`, `tests/integration.mjs`, `tests/ui-check.mjs`다. 실제 명령은 루트 README에 있다. 맵을 고치면 `npm --prefix colyseus test`가 연결성·footprint 규칙을 자동 검사한다. Colyseus는 `shared/`를 import하므로 맵 수정 후 서버를 재시작해야 프런트와 판정이 일치한다.
 
 UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketBase collection에 날짜 필드가 없었던 원인으로, seed가 기존/신규 schema의 created/updated autodate를 보완하도록 수정했다. 재seed 후 프로필 조회·기록 패널 오류 0을 확인했다. 이전 실패 증거는 최종 검증의 성공으로 덮어 쓰지 않고 이 원인과 수정을 보존한다.
 
 ## 8. 변경된 계약
 
+- PLAN-003: `startGame` 메시지 제거, 별 30초 라운드 → 상시 이벤트(6초 생성·3분 정산·0점 미기록·별 유지). 메시지 `look` 추가, player에 `look`, game에 `id`. PB `purchases` 컬렉션과 profiles `outfit`/`room` 필드, `/api/pixeltown/shop/{buy,equip,room}` 훅. `shared/catalog.json` 추가. 구 `scripts/verify-backend.mjs`·`verify-stars.mjs` 제거(통합 테스트로 대체).
 - 재제작(PLAN-002): 월드 960×640 단일 지형 → 장소별 640×416 타일맵. 수집 거리 32 → 16도트, 서버 틱 100 → 50ms, 이동 3도트/틱. `joinOrCreate` 옵션에 `entry` 추가(고정 입구 이름만 허용). 충돌 정본이 `colyseus/town.js`에서 `shared/world.js`로 이동.
 
 - 추가 요청에 따라 root/game, root/pocketbase, root/colyseus, root/docs 형제 구조로 재배치했다. 기존 개발 DB·바이너리·관리자 파일은 pocketbase로 보존했으며 outbox는 colyseus에 보존했다.
@@ -72,13 +83,15 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 | 항목 | 결과 | 근거 | 날짜 | 리비전 | 유효성 | 출처 / 공백 |
 |---|---|---|---|---|---|---|
-| 단위 14개(맵·깊이·충돌 9 포함) | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | `npm --prefix colyseus test` |
-| 통합 13개(별도 포트 18191/12668) | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | `tests/report.json` |
-| 브라우저 UI 5개 | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
-| 깊이·충돌·맵 AC-014/015 | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | 실제 클릭·방향키 이동 좌표와 앞/뒤 스크린샷 |
-| 도트 스케일·4 뷰포트 AC-011/016 | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | scroll=viewport, 정수 배율 3/6, smoothing false |
-| 기본 30초 라운드·상한·저장 | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | 두 사용자, 단축 없음 |
-| 빌드 | PASS | RECHECKED | 2026-10-02 | `12aefce` | CURRENT | `npm run build` |
+| 단위 18개(맵·깊이·충돌 9, 상점·미니룸 4 포함) | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | `npm --prefix colyseus test` |
+| 통합 15개(별도 포트 18191/12668, 상점 2) | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | `tests/report.json` |
+| 브라우저 UI 7개 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | `tests/ui-report.json`, `docs/assets/`, verification.md |
+| 깊이·충돌·맵 AC-014/015 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | 실제 클릭·방향키 이동 좌표와 앞/뒤 스크린샷 |
+| 도트 스케일·4 뷰포트 AC-011/016 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | scroll=viewport, 정수 배율 3/6, smoothing false |
+| 상시 별 이벤트·기본 3분 정산 AC-007/008/013 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | 브라우저 기본값, 통합 단축값 |
+| 상점·옷장·펫·미니룸 AC-017–019 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | 통합 위조·동시 구매, 브라우저 2유저 |
+| 클릭 이동·큰 채팅 AC-020 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | 채팅 위 클릭·키 취소·막힌 곳 |
+| 빌드 | PASS | RECHECKED | 2026-10-02 | PLAN-003 | CURRENT | `npm run build` |
 | 디자인 승인 | PENDING | NONE | - | - | UNKNOWN | 사용자 판단 |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
 | 인터넷 성능·100명·운영 배포 | NOT_RUN | NONE | - | - | UNKNOWN | 범위 밖 |
@@ -93,6 +106,6 @@ PIXELTOWN_PB_PORT=18190 npm --prefix colyseus run init   # 이 체크아웃 전�
 PIXELTOWN_PB_PORT=18190 PIXELTOWN_GAME_PORT=12667 PIXELTOWN_WEB_PORT=5273 npm run dev:all
 npm --prefix colyseus test
 PIXELTOWN_TEST_PB_PORT=18191 PIXELTOWN_TEST_GAME_PORT=12668 npm run test:integration
-CHROME_PATH=/path/to/chromium PIXELTOWN_WEB_PORT=5273 node tests/ui-check.mjs
+CHROME_PATH=/path/to/chromium PIXELTOWN_WEB_PORT=5273 PIXELTOWN_PB_PORT=18190 node tests/ui-check.mjs   # UI_ONLY=shop 처럼 일부만
 npm run build
 ```
