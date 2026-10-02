@@ -30,7 +30,7 @@
 3. **예약 필드:** 0.18 `Room.inputs`는 입력 API 예약 이름이므로 이동 입력 맵을 `moveInputs`로 바꾼다.
 4. **서버 진입점 하나:** `colyseus/server.js`가 로컬·원격 공용이다. express 위에 기존 원격 기능(`/health`, `/health/pocketbase`, `/me`, Origin allowlist, PocketBase `_superusers` Basic 인증 Monitor)을 그대로 옮기고 `town` 방(`filterBy(['zone'])`)과 outbox를 붙인다. `/health`에 outbox 상태를 추가한다.
 5. **outbox 저장 권한:** `commit-match`는 superuser 전용으로 유지한다. 기존 관리자 계정은 쓰지 않고 outbox 전용 superuser `colyseus-outbox@pixeltown.local`을 PocketBase CLI로 만든다. 암호는 원격 `.env`(0600)에만 둔다.
-6. **스키마:** `seed(client, { remote: true })`로 게임 컬렉션·필드·rooms 행만 멱등 추가한다. 원격 `users` 규칙(공개 가입·본인 수정)과 기존 계정·관리자·토큰 설정은 바꾸지 않는다. 로컬 `pb_data`를 복사하지 않는다.
+6. **스키마:** `seed(client, { remote: true })`로 게임 컬렉션·필드·rooms 행만 멱등 추가한다. 원격 `users` 규칙(공개 가입·본인 수정)과 기존 계정·관리자·토큰 설정은 바꾸지 않는다. 로컬 `pb_data`를 복사하지 않는다. 이후 사용자 결정으로 공개 가입만 차단했다(`users.createRule = null`, 10절).
 7. **훅:** PB 0.39.7에서 로컬 통합 15개를 같은 훅으로 통과시켜 호환을 확인한다. 원격 설치 위치에서는 `pb_hooks/catalog.json` 사본을 읽고, 저장소에서는 `shared/catalog.json`을 읽는다.
 8. **프런트:** `.env.remote`(공개 주소만)와 `npm run dev:remote`(5173, `--mode remote`). 원격 Origin allowlist에 이미 정확한 5173 주소가 있어 변경하지 않는다.
 9. **테스트 계정:** 공개 데모 암호를 쓰지 않는다. 무작위 암호 계정 2개를 서버 쪽 `scripts/provision-accounts.mjs`(stdin JSON)로 만들고, 자격증명은 로컬 `pocketbase/.local/remote-accounts.json`(0600, git 무시)에만 둔다.
@@ -78,3 +78,14 @@ rm /Users/cheng80/Servers/pixeltown/pb_hooks/{matches.pb.js,shop.pb.js,shop_lib.
 | S7 | STATUS·verification·SERVER_OPERATIONS·TECH_SPEC·README 갱신, 한국어 commit/push | 문서·코드 대조 |
 
 코드 갱신 배포는 `scripts/deploy-macmini.sh`(app·훅 복사, `npm ci`, Colyseus만 재시작)로 한다.
+
+## 10. 후속 결정: 공개 가입 차단 (2026-10-02)
+
+이전 직후 원격 `users`는 공개 가입이 열려 있었고(이전 `lobby` 검증 스크립트용), 가입만 한 사용자는 게임 프로필이 없어 입장이 거부됐다. 사용자 결정으로 가입을 차단했다. 기획(PRODUCT_SPEC: 회원가입 UI 제외)과 로컬 계약(`createRule = null`)에 맞추고, 이메일 인증·속도 제한 없이 공개 인터넷에 입장권을 주지 않기 위해서다.
+
+- 변경: `users.createRule` `''` → `null`. list/view/update/delete 규칙과 기존 계정은 그대로다.
+- 직전 백업: `/Users/cheng80/Servers/backups/pixeltown-signup-close-20261002/data.db`(SQLite online backup, integrity ok)
+- 되돌리기: superuser로 `users.createRule`을 `''`로 바꾼다(관리 화면 또는 SDK).
+- 새 사용자: `scripts/provision-accounts.mjs`(superuser, 계정+프로필 한 번에)
+- 검증: 공개 가입 요청 403("Only superusers can perform this action."), 서버 측 발급 임시 계정 로그인·프로필 확인 후 삭제(프로필 cascade 0), `tests/remote-check.mjs`에 공개 가입 403 단언 추가 후 원격 전체 재실행.
+

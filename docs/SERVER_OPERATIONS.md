@@ -140,10 +140,10 @@ launchctl kickstart -k gui/501/com.fastmake.pixeltown.pocketbase
 
 데이터 이전 내역:
 
-- 스키마: `rooms`, `profiles`(outfit·room 포함), `results`, `inventory`, `purchases` 컬렉션과 unique 인덱스, `rooms` 행 3개(lobby/garden/arcade). `users`는 기존 필드·규칙(공개 가입, 본인 조회·수정·삭제)을 그대로 두었다.
+- 스키마: `rooms`, `profiles`(outfit·room 포함), `results`, `inventory`, `purchases` 컬렉션과 unique 인덱스, `rooms` 행 3개(lobby/garden/arcade). `users`는 기존 필드와 본인 조회·수정·삭제 규칙을 그대로 두었다. 공개 가입은 이후 사용자 결정으로 차단했다(`createRule = null`, [PLAN-004](plans/PLAN-004.md) 10절).
 - 사용자 데이터: 로컬 `pb_data`·로컬 데모 계정(`demo1/2`, 공개 암호)은 옮기지 않았다. 원격 사용자는 이전 시점에 0명이었다.
 - 테스트 계정: `pixeltown-test1-…@fastmake.net`, `pixeltown-test2-…@fastmake.net`(이름 Tester 1/2). 24바이트 무작위 암호. 자격증명은 이 컴퓨터의 `pocketbase/.local/remote-accounts.json`(0600, git 무시)에만 있다. 계정은 다음 테스트를 위해 남겨 두었다. 검증으로 생긴 결과·별 보상·구매(리본 모자·의자)·미니룸 배치 행도 남아 있다.
-- 새 사용자는 공개 가입은 되지만 게임 `profiles` 행이 없으면 입장이 거부된다(프로필은 superuser만 생성). 서버 쪽에서 `provision-accounts.mjs`로 만든다:
+- 공개 가입은 막혀 있다(일반 요청 403). 새 사용자는 superuser 권한으로만 만들며, 게임 입장에 필요한 `profiles`까지 한 번에 만드는 `provision-accounts.mjs`를 쓴다. 관리 화면(`/_/`)에서 만들면 `profiles`도 직접 추가해야 한다. 서버 폴더의 옛 `verify.mjs`(lobby 검증)는 공개 가입에 의존하므로 더 이상 쓰지 않는다:
 
 ```sh
 # 이 컴퓨터에서. 입력 JSON: [{"email","password","name","color"}]. 암호는 stdin으로만 전달
@@ -195,6 +195,7 @@ ssh … 'cd /Users/cheng80/Servers/pixeltown-colyseus/app && ../runtime/bin/node
 |---|---|---|
 | 내부·공개 health, `/health/pocketbase` | 정상 | curl, outbox `pending 0` |
 | Monitor 보호 | 미로그인·게임 사용자·오답 모두 401 | `tests/remote-check.mjs` |
+| 공개 가입 차단(사용자 결정) | 가입 요청 403, 서버 측 발급 임시 계정 로그인·삭제 확인, 원격 검증 7/7 재통과 | `users.createRule = null` |
 | 미허용 Origin | 403 | curl `Origin: https://unapproved.example` |
 | 2유저 로그인·입장·이동·채팅(발신자 위조 무시)·장소 분리 | 통과 | 공개 HTTPS/WSS |
 | 미인증·위조·교차 사용자(잘못된/없는 토큰, 프로필 수정, 결과·구매 위조, 사용자 토큰 commit, 타인 기록) | 모두 거부 | 같은 스크립트 |

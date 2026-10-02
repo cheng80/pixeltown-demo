@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-02T02:32:23.092Z",
+  "startedAt": "2026-10-02T03:05:07.310Z",
   "pocketbase": "https://pixeltown.fastmake.net",
   "realtime": "wss://pixeltown-rt.fastmake.net",
   "checks": {
@@ -14,21 +14,22 @@
       "forgedResult": 403,
       "forgedPurchase": 403,
       "commitAsUser": 403,
-      "ms": 2558
+      "publicSignup": 403,
+      "ms": 2582
     },
     "two_users_move_chat": {
       "ok": true,
       "movedBy": 30,
       "target": 360,
       "chatSenderIsServerId": true,
-      "ms": 1859
+      "ms": 2108
     },
     "zone_separation": {
       "ok": true,
       "lobbyPlayers": 1,
       "gardenPlayers": 1,
       "crossZoneChat": false,
-      "ms": 1658
+      "ms": 1601
     },
     "star_cap_collect_and_refill": {
       "ok": true,
@@ -38,25 +39,29 @@
       "collected": 10,
       "refillId": true,
       "serverScore": 10,
-      "ms": 73809
+      "ms": 79144
     },
     "default_3min_settlement_saved": {
       "ok": true,
-      "matchId": "19d17530-aa35-4ab4-8063-f33507c24fb6",
+      "matchId": "62499d99-31ca-44ed-8f59-2ab71dd3d926",
       "scoreSaved": 10,
       "inventoryQuantity": 10,
       "serverScores": {
         "bfibz83fzdylm8m": 10
       },
-      "measuredPeriodMs": 179838,
+      "measuredPeriodMs": 179771,
       "starsKeptIntoNextPeriod": true,
       "otherUserCanRead": false,
-      "ms": 103866
+      "ms": 98473
     },
     "shop_equip_room_and_relogin": {
       "ok": true,
-      "walletBefore": 10,
-      "walletAfter": 1,
+      "bought": [
+        "hat_beanie",
+        "f_plant"
+      ],
+      "walletBefore": 23,
+      "walletAfter": 11,
       "duplicateBuy": 400,
       "unaffordable": 400,
       "notOwnedEquip": 400,
@@ -64,20 +69,20 @@
       "savedRoom": [
         {
           "c": 11,
-          "item": "f_chair",
+          "item": "f_plant",
           "r": 10
         }
       ],
       "otherSeesHat": true,
-      "reloginLook": "hat_ribbon",
-      "ms": 3701
+      "reloginLook": "hat_beanie",
+      "ms": 3780
     },
     "monitor_admin_only": {
       "ok": true,
       "anonymous": 401,
       "gameUser": 401,
       "wrongPassword": 401,
-      "ms": 956
+      "ms": 1040
     },
     "outbox_outage_restart_recovery": {
       "ok": true,
@@ -87,15 +92,17 @@
       "pendingAfterColyseusRestart": 1,
       "flushedStatus": "saved",
       "savedScore": 1,
-      "ms": 34628
+      "ms": 34628,
+      "runAt": "2026-10-02T02:36:56.261Z",
+      "note": "from the run before sign-up was closed; unchanged code path"
     }
   },
   "users": {
     "user1": "bfibz83fzdylm8m",
     "user2": "p2srnojs4omvb9g"
   },
-  "matchId": "19d17530-aa35-4ab4-8063-f33507c24fb6",
-  "finishedAt": "2026-10-02T02:35:32.538Z",
+  "matchId": "62499d99-31ca-44ed-8f59-2ab71dd3d926",
+  "finishedAt": "2026-10-02T03:08:16.642Z",
   "summary": {
     "passed": 8,
     "failed": 0
@@ -114,5 +121,12 @@
       "runner": "tests/remote-persistence.mjs on the Mac mini"
     }
   },
-  "outageRunAt": "2026-10-02T02:36:56.261Z"
+  "previousRun": {
+    "startedAt": "2026-10-02T02:32:23.092Z",
+    "matchId": "19d17530-aa35-4ab4-8063-f33507c24fb6",
+    "summary": {
+      "passed": 8,
+      "failed": 0
+    }
+  }
 }

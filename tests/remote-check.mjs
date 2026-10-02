@@ -11,7 +11,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import PocketBase from 'pocketbase';
-import { getMap, findPath, COLLECT_RADIUS } from '../shared/world.js';
+import { getMap, findPath, COLLECT_RADIUS, ITEMS } from '../shared/world.js';
 
 const root = new URL('..', import.meta.url).pathname;
 const PB_URL = process.env.PIXELTOWN_REMOTE_PB || 'https://pixeltown.fastmake.net';
@@ -86,9 +86,12 @@ try {
     const forgedPurchase = await pbFetch('/api/collections/purchases/records', { token: pa.authStore.token, method: 'POST', body: { user: A, item: 'pet_bunny', price: 0 } });
     const commitAsUser = await pbFetch('/api/pixeltown/commit-match', { token: pa.authStore.token, method: 'POST', body: { match_id: 'x', zone: 'lobby', ended_at: new Date().toISOString(), scores: { [A]: 64 } } });
     const anonymousRows = await pbFetch('/api/collections/results/records');
+    // Public sign-up is closed (users.createRule = null); accounts come only from provision-accounts.mjs.
+    const signupPassword = `Probe-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const signup = await pbFetch('/api/collections/users/records', { method: 'POST', body: { email: `signup-probe-${Date.now()}@example.com`, password: signupPassword, passwordConfirm: signupPassword } });
     assert.equal(profileB.data.items.length, 0); assert.ok(patch.status >= 400); assert.ok(forgedResult.status >= 400);
-    assert.ok(forgedPurchase.status >= 400); assert.ok([401, 403].includes(commitAsUser.status)); assert.equal(anonymousRows.data?.items?.length ?? 0, 0);
-    return { invalidToken: invalid, missingToken: missing, meWithToken: 200, meWithout: 401, otherProfileVisible: 0, profilePatch: patch.status, forgedResult: forgedResult.status, forgedPurchase: forgedPurchase.status, commitAsUser: commitAsUser.status };
+    assert.ok(forgedPurchase.status >= 400); assert.ok([401, 403].includes(commitAsUser.status)); assert.equal(anonymousRows.data?.items?.length ?? 0, 0); assert.equal(signup.status, 403);
+    return { invalidToken: invalid, missingToken: missing, meWithToken: 200, meWithout: 401, otherProfileVisible: 0, profilePatch: patch.status, forgedResult: forgedResult.status, forgedPurchase: forgedPurchase.status, commitAsUser: commitAsUser.status, publicSignup: signup.status };
   });
 
   await check('two_users_move_chat', async () => {
@@ -153,22 +156,27 @@ try {
       - (await pbFetch('/api/collections/purchases/records?perPage=200', { token: pb.authStore.token })).data.items.reduce((n, r) => n + r.price, 0);
     const buy = item => pbFetch('/api/pixeltown/shop/buy', { token: pa.authStore.token, method: 'POST', body: { item } });
     const before = await wallet(pa);
-    const hat = await buy('hat_ribbon'), chair = await buy('f_chair'), again = await buy('hat_ribbon'), tooDear = await buy('pet_bunny');
+    // Re-runnable: pick the cheapest hat and furniture this account does not own yet (earlier runs keep their purchases).
+    const owned = new Set((await pbFetch('/api/collections/purchases/records?perPage=200', { token: pa.authStore.token })).data.items.map(r => r.item));
+    const cheapest = slot => Object.values(ITEMS).filter(i => i.slot === slot && !owned.has(i.id)).sort((x, y) => x.price - y.price)[0];
+    const hatItem = cheapest('hat'), furniture = cheapest('furniture'), dear = Object.values(ITEMS).filter(i => !owned.has(i.id)).sort((x, y) => y.price - x.price)[0];
+    assert.ok(hatItem && furniture && before >= hatItem.price + furniture.price, `wallet ${before} too small for the next items`);
+    const hat = await buy(hatItem.id), chair = await buy(furniture.id), again = await buy(hatItem.id), tooDear = await buy(dear.id);
     assert.equal(hat.status, 200); assert.equal(chair.status, 200); assert.equal(again.status, 400); assert.equal(tooDear.status, 400);
-    const equip = await pbFetch('/api/pixeltown/shop/equip', { token: pa.authStore.token, method: 'POST', body: { hat: 'hat_ribbon', top: null, pet: null } });
+    const equip = await pbFetch('/api/pixeltown/shop/equip', { token: pa.authStore.token, method: 'POST', body: { hat: hatItem.id, top: null, pet: null } });
     const notOwned = await pbFetch('/api/pixeltown/shop/equip', { token: pa.authStore.token, method: 'POST', body: { hat: 'hat_crown' } });
-    const door = await pbFetch('/api/pixeltown/shop/room', { token: pa.authStore.token, method: 'POST', body: { placements: [{ item: 'f_chair', c: 19, r: 18 }] } });
-    const room = await pbFetch('/api/pixeltown/shop/room', { token: pa.authStore.token, method: 'POST', body: { placements: [{ item: 'f_chair', c: 11, r: 10 }] } });
+    const door = await pbFetch('/api/pixeltown/shop/room', { token: pa.authStore.token, method: 'POST', body: { placements: [{ item: furniture.id, c: 19, r: 18 }] } });
+    const room = await pbFetch('/api/pixeltown/shop/room', { token: pa.authStore.token, method: 'POST', body: { placements: [{ item: furniture.id, c: 11, r: 10 }] } });
     assert.equal(equip.status, 200); assert.equal(notOwned.status, 400); assert.equal(door.status, 400); assert.equal(room.status, 200);
     a.room.send('look');
     await b.room.leave(); b = await join(pb2, 'lobby');
-    await until(() => b.snapshot.players.find(p => p.id === A)?.look?.hat === 'hat_ribbon', 'other sees hat');
+    await until(() => b.snapshot.players.find(p => p.id === A)?.look?.hat === hatItem.id, 'other sees hat');
     // Fresh login: the outfit and the mini-room come back from PocketBase.
     await a.room.leave(); const fresh = await login(accounts[0]); a = await join(fresh, 'lobby');
     const profile = (await pbFetch('/api/collections/profiles/records', { token: fresh.authStore.token })).data.items[0];
-    assert.equal(profile.outfit.hat, 'hat_ribbon'); assert.deepEqual(profile.room, [{ item: 'f_chair', c: 11, r: 10 }]);
-    assert.equal(me(a, fresh).look.hat, 'hat_ribbon');
-    return { walletBefore: before, walletAfter: await wallet(fresh), duplicateBuy: again.status, unaffordable: tooDear.status, notOwnedEquip: notOwned.status, doorPlacement: door.status, savedRoom: profile.room, otherSeesHat: true, reloginLook: 'hat_ribbon' };
+    assert.equal(profile.outfit.hat, hatItem.id); assert.deepEqual(profile.room, [{ item: furniture.id, c: 11, r: 10 }]);
+    assert.equal(me(a, fresh).look.hat, hatItem.id);
+    return { bought: [hatItem.id, furniture.id], walletBefore: before, walletAfter: await wallet(fresh), duplicateBuy: again.status, unaffordable: tooDear.status, notOwnedEquip: notOwned.status, doorPlacement: door.status, savedRoom: profile.room, otherSeesHat: true, reloginLook: hatItem.id };
   });
 
   await check('monitor_admin_only', async () => {
