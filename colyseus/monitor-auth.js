@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import PocketBase from 'pocketbase';
 
 // Cache only a digest of the Basic header and the PocketBase token, never the password.
-export function pocketbaseAdminGuard(pbUrl, monitorOrigins) {
+// deniedEmails: superusers that must never open the monitor (the Colyseus outbox service account).
+export function pocketbaseAdminGuard(pbUrl, monitorOrigins, deniedEmails = new Set()) {
   const sessions = new Map();
   const attempts = new Map();
   return async (req, res, next) => {
@@ -27,6 +28,7 @@ export function pocketbaseAdminGuard(pbUrl, monitorOrigins) {
     const colon = decoded.indexOf(':');
     if (colon < 1) return deny();
     const email = decoded.slice(0, colon), password = decoded.slice(colon + 1);
+    if (deniedEmails.has(email.toLowerCase())) return deny();
     const key = createHash('sha256').update(header).digest('hex');
     const now = Date.now();
     for (const [k, v] of sessions) if (v.expires < now) sessions.delete(k);

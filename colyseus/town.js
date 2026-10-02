@@ -2,10 +2,13 @@ import { Room, ServerError } from '@colyseus/core';
 import { randomUUID } from 'node:crypto';
 import { userClient, ZONES } from './config.js';
 import { outbox } from './outbox.js';
-import { getMap, blocked, moveActor, entryPoint, spreadSpot, COLLECT_RADIUS, STAR_SPAWN_MS, ITEMS, STEP_PER_TICK, TICK_MS } from '../shared/world.js';
+import { getMap, blocked, moveActor, entryPoint, spreadSpot, COLLECT_RADIUS, STAR_SPAWN_MS, ITEMS, CATALOG, STEP_PER_TICK, TICK_MS } from '../shared/world.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Outfit shown to everyone comes from the PocketBase profile (written only by the shop hook), never from the client.
-export const lookOf=profile=>{const o=profile?.outfit||{};return Object.fromEntries(['hat','top','pet'].map(s=>[s,ITEMS[o[s]]?.slot===s?o[s]:null]));};
+// Outfit and character look (FR-014 avatar indexes) both come from the profile; invalid values fall back to null.
+const pickIndex=(v,list)=>Number.isInteger(v)&&v>=0&&v<list.length?v:null;
+export const lookOf=profile=>{const o=profile?.outfit||{},a=profile?.avatar||{},A=CATALOG.avatar;
+  return {...Object.fromEntries(['hat','top','pet'].map(s=>[s,ITEMS[o[s]]?.slot===s?o[s]:null])),skin:pickIndex(a.skin,A.skins),hair:pickIndex(a.hair,A.hairs),style:pickIndex(a.style,A.styles)};};
 export const INITIAL_STARS=5;
 export const MAX_STARS=12;
 export const MAX_MATCH_SCORE=64; // PocketBase hook limit per settlement
@@ -53,7 +56,8 @@ export class Town extends Room {
         this.lookJobs.set(client.sessionId,false);
         const p=this.players.get(client.sessionId),pb=client.auth.pb;
         if(!p)break;
-        p.look=lookOf(await pb.collection('profiles').getFirstListItem(pb.filter('user={:id}',{id:p.id})));
+        const profile=await pb.collection('profiles').getFirstListItem(pb.filter('user={:id}',{id:p.id}));
+        p.look=lookOf(profile);p.name=profile.name||p.name;p.color=profile.color||p.color; // character edits (FR-014) refresh the name tag too
       } while(this.lookJobs.get(client.sessionId));
       this.snapshot();
     } catch {} finally {this.lookJobs.delete(client.sessionId);}

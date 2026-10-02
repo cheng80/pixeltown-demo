@@ -13,6 +13,9 @@ async function open({ email, password }) {
   p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
   p.on('request', r => out.hosts.add(new URL(r.url()).origin)); p.on('websocket', ws => out.hosts.add(new URL(ws.url()).origin));
   await p.goto(BASE); await p.fill('input[type=email]', email); await p.fill('input[type=password]', password); await p.click('text=타운 입장하기');
+  // First entry without a chosen look shows the character set-up (FR-014); keep the account name and pick a look.
+  const setup = await p.waitForSelector('[role=dialog][aria-label="캐릭터 만들기"]', { timeout: 8000 }).catch(() => null);
+  if (setup) { out.setupShown = (out.setupShown || 0) + 1; await p.click('button[aria-label="머리 색 6"]'); await p.click('button:has-text("이대로 입장")'); }
   await p.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0, null, { timeout: 15000 });
   return p;
 }

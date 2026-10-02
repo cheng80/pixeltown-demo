@@ -41,4 +41,18 @@ function validateRoom(cat, placements, own) {
   }
   return null;
 }
-module.exports = { catalog, balance, owned, validateRoom };
+// Character set-up (FR-014). Returns { profile } with cleaned values or { error }. Only catalogue choices are accepted.
+function cleanProfile(cat, body) {
+  const a = cat.avatar, av = (body && body.avatar) || {};
+  const name = body && typeof body.name === "string" ? body.name.replace(/\s+/g, " ").trim() : "";
+  const length = [...name].length;
+  if (length < a.nameMin || length > a.nameMax) return { error: "닉네임은 " + a.nameMin + "–" + a.nameMax + "자로 지어 주세요." };
+  if (!/^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9 _-]+$/.test(name)) return { error: "닉네임에는 한글·영문·숫자·공백·_·-만 쓸 수 있어요." };
+  const lower = name.toLowerCase();
+  if (a.reserved.some(w => lower.replace(/\s/g, "").indexOf(w) >= 0)) return { error: "운영진으로 오해할 수 있는 이름은 쓸 수 없어요." };
+  if (a.shirts.indexOf(body.color) < 0) return { error: "고를 수 있는 옷 색이 아니에요." };
+  const pick = (v, list) => Number.isInteger(v) && v >= 0 && v < list.length;
+  if (!pick(av.skin, a.skins) || !pick(av.hair, a.hairs) || !pick(av.style, a.styles)) return { error: "고를 수 없는 모습이에요." };
+  return { profile: { name: name, color: body.color, avatar: { skin: av.skin, hair: av.hair, style: av.style } } };
+}
+module.exports = { catalog, balance, owned, validateRoom, cleanProfile };

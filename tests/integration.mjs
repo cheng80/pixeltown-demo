@@ -486,6 +486,37 @@ async function shopChecks() {
     assert.deepEqual((await runtime.admin.collection('profiles').getFirstListItem(`user="${c.id}"`)).room, good);
     return { wrongSlotOrUnownedRejected: true, directProfileWrite: patch.status, lookFromServerProfile: true, rejectedPlacements: statuses, savedPlacements: good.length };
   });
+  // Character set-up (FR-014): only the owner, only catalogue values, unique nickname; rooms show the new look and name.
+  await test('character_setup_profile_rules', async () => {
+    const save = (who, body) => request('/api/pixeltown/profile', { token: who?.token, method: 'POST', body });
+    const ok = { name: `별지기${runtime.runId.slice(0, 4)}`, color: '#9be38c', avatar: { skin: 3, hair: 6, style: 2 } };
+    const rejected = {
+      anonymous: (await save(null, ok)).status,
+      shortName: (await save(c, { ...ok, name: '가' })).status,
+      markup: (await save(c, { ...ok, name: '<b>hi</b>' })).status,
+      colour: (await save(c, { ...ok, color: '#000000' })).status,
+      skin: (await save(c, { ...ok, avatar: { ...ok.avatar, skin: 9 } })).status,
+    };
+    assert.equal(rejected.anonymous, 401); for (const [k, v] of Object.entries(rejected)) if (k !== 'anonymous') assert.equal(v, 400, k);
+    const rc = await join(c, 'garden'), rd = await join(d, 'garden');
+    assert.equal((await save(c, ok)).status, 200);
+    const takenResponse = await save(d, { ...ok, color: '#89cff0' }), taken = takenResponse.status;
+    assert.equal(taken, 400, 'Duplicate nickname accepted');
+    assert.match(takenResponse.data?.message || '', /이미 쓰는 닉네임/); assert.ok(takenResponse.data?.data?.name, 'Field marker for the UI');
+    // The DB index ignores letter case: "Star…" and "star…" are the same nickname.
+    const caseName = `Star${runtime.runId.slice(0, 4)}`;
+    assert.equal((await save(c, { ...ok, name: caseName })).status, 200);
+    const caseVariant = (await save(d, { ...ok, name: caseName.toLowerCase(), color: '#89cff0' })).status;
+    assert.equal(caseVariant, 400, 'Case variant of a taken nickname accepted');
+    assert.equal((await save(c, ok)).status, 200);
+    const stored = await runtime.admin.collection('profiles').getFirstListItem(`user="${c.id}"`);
+    assert.deepEqual([stored.name, stored.color, stored.avatar], [ok.name, ok.color, ok.avatar]);
+    rc.room.send('look');
+    const seen = await waitUntil(() => { const p = rd.snapshot.players.find(q => q.id === c.id); return p?.name === ok.name && p.look.skin === 3 && p; }, 'other player sees the new character');
+    assert.deepEqual([seen.color, seen.look.hair, seen.look.style], [ok.color, 6, 2]);
+    await leave(rc); await leave(rd);
+    return { rejected, duplicateNickname: taken, duplicateMessage: takenResponse.data?.message, caseVariant, saved: true, seenByOther: { name: true, skin: seen.look.skin, hair: seen.look.hair, style: seen.look.style, color: seen.color } };
+  });
 }
 
 async function gameChecks() {

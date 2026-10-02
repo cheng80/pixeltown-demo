@@ -1,4 +1,13 @@
 {
+  "avatar": {
+    "nameMin": 2,
+    "nameMax": 12,
+    "reserved": ["관리자", "운영자", "운영팀", "픽셀타운", "admin", "system", "moderator", "pixeltown"],
+    "skins": ["#ffe0c2", "#f6c9a0", "#d9a066", "#a86a3c"],
+    "hairs": ["#3a2440", "#6b3e26", "#c8643b", "#ffd23f", "#ff6fa8", "#4aa8ff", "#9b6bff", "#f4f1ea"],
+    "styles": ["단발", "긴 머리", "방울 머리", "두건"],
+    "shirts": ["#ff9ec4", "#ffb347", "#fff3a3", "#9be38c", "#89cff0", "#9fd0ff", "#c9a7ff", "#ff7a7a"]
+  },
   "home": {
     "floor": [10, 9, 29, 19],
     "door": [18, 17, 21, 19],

@@ -1,5 +1,5 @@
 // Procedural dot sprites. Everything is drawn at 1 art pixel, then outlined with a 1px plum line.
-import { PROPS, TILE, COLS, ROWS } from '../../shared/world.js';
+import { PROPS, TILE, COLS, ROWS, CATALOG } from '../../shared/world.js';
 
 export const LINE = '#3a2440';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
@@ -215,13 +215,16 @@ export function propSprite(p) {
 }
 
 // ---------- avatar (16x24, 2-head chibi) ----------
-const SKINS = ['#ffe0c2', '#f6c9a0', '#d9a066', '#a86a3c'];
-const HAIRS = ['#3a2440', '#6b3e26', '#c8643b', '#ffd23f', '#ff6fa8', '#4aa8ff', '#9b6bff', '#f4f1ea'];
+// Skin, hair colour and hair style come from the character set-up (FR-014, catalogue indexes in look);
+// players who have not chosen yet get a look derived from their id.
+const { skins: SKINS, hairs: HAIRS, styles: STYLES } = CATALOG.avatar;
+const choice = (v, n, fallback) => (Number.isInteger(v) && v >= 0 && v < n ? v : fallback);
 export function lookFor(player) {
   const h = hash(player.id || player.name || 'guest'), o = player.look || {};
   const hat = o.hat || null, top = o.top || null, pet = o.pet || null;
-  return { skin: SKINS[h % 3], hair: HAIRS[(h >>> 3) % HAIRS.length], style: (h >>> 7) % 4, shirt: /^#[0-9a-f]{6}$/i.test(player.color || '') ? player.color : '#ff9ec4', hat, top, pet,
-    key: `${h % 3}|${(h >>> 3) % HAIRS.length}|${(h >>> 7) % 4}|${player.color}|${hat}|${top}` };
+  const skin = choice(o.skin, SKINS.length, h % 3), hair = choice(o.hair, HAIRS.length, (h >>> 3) % HAIRS.length), style = choice(o.style, STYLES.length, (h >>> 7) % 4);
+  return { skin: SKINS[skin], hair: HAIRS[hair], style, shirt: /^#[0-9a-f]{6}$/i.test(player.color || '') ? player.color : '#ff9ec4', hat, top, pet,
+    key: `${skin}|${hair}|${style}|${player.color}|${hat}|${top}` };
 }
 // Shop tops recolour the shirt (and pants for the overall) and add a pattern on the chest.
 const TOPS = { top_heart: { shirt: '#fffafc' }, top_stripe: { shirt: '#4aa8ff' }, top_overall: { shirt: '#fff3a3', pants: '#4f7fd1' }, top_sailor: { shirt: '#fffafc' } };

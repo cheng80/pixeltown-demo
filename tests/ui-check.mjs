@@ -22,15 +22,15 @@ async function login(account = 1, { w = 1280, h = 720, mobile = false, query = '
   await sleep(400); p.name = `Demo ${account}`; return p;
 }
 // Throwaway shopper account with stars granted through the server-only settlement endpoint (dev DB of this worktree).
-async function shopper() {
+async function shopper({ avatar = { skin: 2, hair: 4, style: 1 }, name = `쇼핑왕${Date.now().toString(36).slice(-4)}` } = {}) {
   process.env.PB_URL ||= `http://127.0.0.1:${process.env.PIXELTOWN_PB_PORT || 18090}`;
   const { adminClient } = await import('../colyseus/config.js'), admin = await adminClient(), id = Date.now().toString(36);
   const email = `ui-${id}@pixeltown.local`, password = `PixelTown-${id}-1!`;
   const user = await admin.collection('users').create({ email, password, passwordConfirm: password, name: `Shop ${id}`, verified: true });
-  await admin.collection('profiles').create({ user: user.id, name: '쇼핑왕', color: '#9fd0ff' });
+  await admin.collection('profiles').create({ user: user.id, name, color: '#9fd0ff', ...(avatar ? { avatar } : {}) });
   await admin.send('/api/pixeltown/commit-match', { method: 'POST', body: { match_id: randomUUID(), zone: 'lobby', ended_at: new Date().toISOString(), scores: { [user.id]: 60 } } });
   await admin.send('/api/pixeltown/commit-match', { method: 'POST', body: { match_id: randomUUID(), zone: 'garden', ended_at: new Date().toISOString(), scores: { [user.id]: 60 } } });
-  return { email, password, id: user.id };
+  return { email, password, id: user.id, name };
 }
 async function loginAs({ email, password }, name, { w = 1280, h = 720 } = {}) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } });
@@ -186,7 +186,7 @@ await check('star_event_always_on', async () => {
   return out;
 });
 await check('shop_dress_pet_and_miniroom', async () => {
-  const acc = await shopper(), s = await loginAs(acc, '쇼핑왕'), o = await login(2), out = {};
+  const acc = await shopper(), s = await loginAs(acc, acc.name), o = await login(2), out = {};
   await collapseChat(s);
   await s.click('.profile .btn:has-text("별 상점")'); await s.waitForSelector('.shop');
   out.walletBefore = await s.textContent('.shop .stars-badge');
@@ -202,8 +202,8 @@ await check('shop_dress_pet_and_miniroom', async () => {
   out.walletAfter = await s.textContent('.shop .stars-badge');
   await s.click('.shop >> text=닫기');
   // The other player sees the crown, the sailor top and the puppy (from the server profile).
-  await o.waitForFunction(() => window.__pixeltown.state.current.players.find(q => q.name === '쇼핑왕')?.look?.pet === 'pet_puppy', null, { timeout: 5000 });
-  out.seenByOther = await o.evaluate(() => window.__pixeltown.state.current.players.find(q => q.name === '쇼핑왕').look);
+  await o.waitForFunction(n => window.__pixeltown.state.current.players.find(q => q.name === n)?.look?.pet === 'pet_puppy', acc.name, { timeout: 5000 });
+  out.seenByOther = await o.evaluate(n => window.__pixeltown.state.current.players.find(q => q.name === n).look, acc.name);
   const me = await pos(s); await walkTo(s, me.x + 50, me.y + 10); await sleep(1200);
   await shot(s, 'outfit-pet.png', me.x + 50, me.y + 5, 120, 80);
   await shot(o, 'outfit-pet-other.png', me.x + 50, me.y + 5, 120, 80);
@@ -229,6 +229,40 @@ await check('shop_dress_pet_and_miniroom', async () => {
   assert(out.petFacingDown?.dir === 0 && (Math.abs(out.petFacingDown.dx) >= 10 || out.petFacingDown.dy > 0), 'pet visible beside owner'); assert(/문 앞/.test(out.doorBlockedToast || ''), 'door rule'); assert(out.savedRoom?.length === 4, 'room saved'); assert(!out.pageErrors.length, 'page errors');
   return out;
 });
+await check('character_setup_first_entry', async () => {
+  // A brand-new account sees the set-up screen first, builds a character, enters, and others see it (FR-014).
+  const acc = await shopper({ avatar: null, name: `새싹${Date.now().toString(36).slice(-4)}` }), out = {};
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } }), p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
+  await p.goto(BASE); await p.fill('input[type=email]', acc.email); await p.fill('input[type=password]', acc.password); await p.click('text=타운 입장하기');
+  await p.waitForSelector('[role=dialog][aria-label="캐릭터 만들기"]');
+  out.roomJoinedBeforeSetup = await p.evaluate(() => Boolean(window.__pixeltown?.state.current.players?.length));
+  const nick = `별돌이${Date.now().toString(36).slice(-3)}`;
+  await p.fill('[role=dialog] input', '가'); out.shortNameDisabled = await p.isDisabled('[role=dialog] button:has-text("이대로 입장")');
+  // A taken nickname (case-insensitive) is refused with a message under the field; the room is still not joined.
+  await p.fill('[role=dialog] input', 'demo 1'); await p.click('button:has-text("이대로 입장")');
+  await p.waitForSelector('#name-error'); out.takenMessage = await p.textContent('#name-error');
+  out.takenFieldInvalid = await p.getAttribute('[role=dialog] input', 'aria-invalid'); await p.screenshot({ path: ASSETS + 'character-name-taken.png' });
+  assert(/이미 쓰는 닉네임/.test(out.takenMessage) && out.takenFieldInvalid === 'true', 'taken nickname feedback');
+  await p.fill('[role=dialog] input', nick);
+  await p.click('button[aria-label="피부 4"]'); await p.click('button[aria-label="머리 색 7"]'); await p.click('button:has-text("방울 머리")'); await p.click('button[aria-label="옷 색 4"]');
+  await p.screenshot({ path: ASSETS + 'character-setup.png' });
+  await p.click('button:has-text("이대로 입장")');
+  await p.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0, null, { timeout: 10000 }).catch(async e => { throw new Error(`enter after set-up: ${await p.evaluate(() => document.querySelector('[role=alert]')?.textContent)} ${e.message}`); });
+  const o = await login(2);
+  const seen = await o.waitForFunction(n => window.__pixeltown.state.current.players.find(q => q.name === n), nick, { timeout: 10000 }).then(h => h.jsonValue())
+    .catch(async e => { throw new Error(`seen by other: ${JSON.stringify(await o.evaluate(() => window.__pixeltown.state.current.players.map(q => q.name)))} ${e.message}`); });
+  out.seenByOther = { name: seen.name, color: seen.color, look: seen.look };
+  assert(seen.look.skin === 3 && seen.look.hair === 6 && seen.look.style === 2 && seen.color === '#9be38c', 'look synced');
+  // Later edit from the game: rename and recolour, the name tag follows.
+  await p.click('button:has-text("캐릭터 꾸미기")'); await p.fill('[role=dialog] input', nick + '2'); await p.click('button[aria-label="옷 색 2"]'); await p.click('[role=dialog] button:has-text("저장")');
+  await o.waitForFunction(n => window.__pixeltown.state.current.players.some(q => q.name === n && q.color === '#ffb347'), nick + '2', { timeout: 10000 });
+  out.editedName = nick + '2'; await sleep(500); await p.screenshot({ path: ASSETS + 'character-in-town.png' });
+  out.pageErrors = [...p.errs, ...o.errs];
+  assert(!out.roomJoinedBeforeSetup && out.shortNameDisabled && !out.pageErrors.length, JSON.stringify(out));
+  await ctx.close(); await o.context().close();
+  return out;
+});
+
 await check('viewports_no_scroll_integer_scale', async () => {
   const out = {};
   for (const [w, h, n] of [[1280, 720, 'desktop'], [390, 844, 'mobile'], [844, 390, 'landscape'], [390, 430, 'short']]) {

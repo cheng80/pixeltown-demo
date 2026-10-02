@@ -27,7 +27,9 @@ app.use((req,res,next)=>{
   if(req.method==='OPTIONS')return res.sendStatus(204);
   next();
 });
-app.use('/monitor',pocketbaseAdminGuard(PB_URL,monitorOrigins),monitor({prefix:'/monitor'}));
+// The outbox superuser in .env is a service account: it saves results but may not open the monitor.
+const monitorDenied=new Set([process.env.PB_ADMIN_EMAIL].filter(Boolean).map(e=>e.toLowerCase()));
+app.use('/monitor',pocketbaseAdminGuard(PB_URL,monitorOrigins,monitorDenied),monitor({prefix:'/monitor'}));
 app.get('/health',(_req,res)=>res.json({ok:true,service:'pixeltown-colyseus',persistence:outbox.status()}));
 app.get('/health/pocketbase',async(_req,res)=>{
   try {

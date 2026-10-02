@@ -29,16 +29,15 @@ const save = (key, v) => { try { localStorage.setItem(key, JSON.stringify(v)); }
 const isTyping = t => ["INPUT", "TEXTAREA", "SELECT"].includes(t?.tagName) || t?.isContentEditable;
 
 function Portrait({ player, scale = 6, className = "portrait" }) {
-  const ref = useRef(null);
+  const ref = useRef(null), look = lookFor(player);
   useEffect(() => {
     const c = ref.current?.getContext("2d");
     if (!c) return;
-    const look = lookFor(player);
     c.imageSmoothingEnabled = false; c.clearRect(0, 0, 18 * scale, 31 * scale);
     c.drawImage(avatarSprite(look, 0, 0), 0, 0, 18 * scale, 31 * scale);
     const pet = look.pet && petSprite(look.pet, 0);
     if (pet) c.drawImage(pet, 11 * scale, 19 * scale, 14 * scale * 0.7, 14 * scale * 0.7);
-  }, [player.id, player.color, player.look?.hat, player.look?.top, player.look?.pet, scale]);
+  }, [look.key, look.pet, scale]);
   return <div className={className}><canvas ref={ref} width={18 * scale} height={31 * scale} aria-hidden="true" /></div>;
 }
 
@@ -59,17 +58,22 @@ function App() {
   const [chatOpacity, setChatOpacity] = useState(() => load("pixeltown.chatOpacity", 72, v => Number.isInteger(v) && v >= 20 && v <= 95));
   const [notebook, setNotebook] = useState(false);
   const [records, setRecords] = useState({ profiles: [], inventory: [], results: [], purchases: [] });
+  const [loaded, setLoaded] = useState(false); // records fetched once after login
+  const [setup, setSetup] = useState(false); // character set-up opened from the game
   const [shop, setShop] = useState(false);
   const [edit, setEdit] = useState(null); // mini-room furniture editing: { placements, sel }
   const [recordError, setRecordError] = useState("");
   const [toast, setToast] = useState("");
   const [, setNow] = useState(0);
   const canvasRef = useRef(null), viewRef = useRef(null), room = useRef(null), keys = useRef(new Set()), touch = useRef({ dx: 0, dy: 0 });
-  const route = useRef([]), marker = useRef(null), state = useRef({ players: [], game: {} }), bubbles = useRef({}), emotes = useRef({});
+  const stall = useRef({ x: 0, y: 0, n: 0 }), route = useRef([]), marker = useRef(null), state = useRef({ players: [], game: {} }), bubbles = useRef({}), emotes = useRef({});
   const selfId = useRef("solo"), soloPos = useRef(null), entry = useRef("default"), portalArmed = useRef(false), chatVisible = useRef(chatOpen);
   const collectTimes = useRef({}), persistStatus = useRef(null), chatInput = useRef(null), lastSent = useRef("");
-  const entered = Boolean(user || solo), local = solo || zone === "home", zoneInfo = ZONES.find(z => z[0] === zone);
   const profile = records.profiles[0], outfit = profile?.outfit || {};
+  // First entry (FR-014): a signed-in user whose profile has no chosen look makes a character before joining a room.
+  const needsSetup = Boolean(user && !solo && loaded && profile && !profile.avatar);
+  const entered = Boolean(solo || (user && loaded && !needsSetup)), local = solo || zone === "home", zoneInfo = ZONES.find(z => z[0] === zone);
+  const myLook = { ...outfit, ...profile?.avatar };
   const owned = useMemo(() => new Set(records.purchases.map(p => p.item)), [records.purchases]);
   const earned = records.inventory.reduce((n, i) => n + (i.quantity || 0), 0), wallet = earned - records.purchases.reduce((n, p) => n + (p.price || 0), 0);
   const placements = edit ? edit.placements : Array.isArray(profile?.room) ? profile.room : [];
@@ -107,7 +111,7 @@ function App() {
       try { return [col, await pb.collection(col).getFullList({ filter: pb.filter("user = {:id}", { id: user.id }), sort: "-created" })]; }
       catch { failed.push(col); return [col, []]; }
     }));
-    setRecords(Object.fromEntries(rows));
+    setRecords(Object.fromEntries(rows)); setLoaded(true);
     if (failed.length) setRecordError(`${failed.join(", ")} 정보를 불러오지 못했어요.`);
   }
   useEffect(() => { if (user) loadRecords(); }, [user]);
@@ -157,7 +161,7 @@ function App() {
       r.onError((code, message) => { if (!cancelled) { setStatus("disconnected"); notify(message || `연결 오류 (${code})`); } });
     }).catch(e => { if (!cancelled) { setStatus("disconnected"); notify(`마을 연결 실패: ${e.message}`); } });
     return () => { cancelled = true; room.current?.leave(); room.current = null; };
-  }, [user, solo, zone]);
+  }, [entered, user, solo, zone]);
 
   // input: keyboard / d-pad / click route, sent to the server every tick
   useEffect(() => {
@@ -179,6 +183,10 @@ function App() {
       const me = local ? soloPos.current : s.players?.find(p => p.id === selfId.current);
       if (!me) return;
       if (!dx && !dy && route.current.length) {
+        // Re-plan from where the avatar really is when it has not moved for half a second (lag or a corner pushed it off the line).
+        const moved = Math.hypot(me.x - stall.current.x, me.y - stall.current.y) > 0.5;
+        stall.current = { x: me.x, y: me.y, n: moved ? 0 : stall.current.n + 1 };
+        if (stall.current.n >= 10) { route.current = findPath(m, me, route.current.at(-1)); stall.current.n = 0; }
         while (route.current.length && Math.hypot(route.current[0].x - me.x, route.current[0].y - me.y) < 2) route.current.shift();
         if (route.current.length) { dx = route.current[0].x - me.x; dy = route.current[0].y - me.y; }
         else marker.current = null;
@@ -189,7 +197,7 @@ function App() {
         if (blocked(m, me.x, me.y)) Object.assign(soloPos.current, nearestFree(m, me.x, me.y)); // furniture placed on top of me
         if (dx || dy) Object.assign(soloPos.current, moveActor(m, me.x, me.y, dx, dy, STEP_PER_TICK));
         const g = s.game;
-        s.players = [solo ? { id: "solo", name: "나그네", color: "#ff9ec4", ...soloPos.current } : { id: user.id, name: profileRef.current?.name || user.name || "나", color: profileRef.current?.color, look: profileRef.current?.outfit, ...soloPos.current }];
+        s.players = [solo ? { id: "solo", name: "나그네", color: "#ff9ec4", ...soloPos.current } : { id: user.id, name: profileRef.current?.name || user.name || "나", color: profileRef.current?.color, look: { ...profileRef.current?.outfit, ...profileRef.current?.avatar }, ...soloPos.current }];
         if (!g?.active) setSnap({ ...s });
         if (g?.active) {
           const now = Date.now();
@@ -212,7 +220,7 @@ function App() {
       else if (portalArmed.current && (local || status === "online")) { portalArmed.current = false; goZone(portal.to, portal.entry); }
     }, TICK_MS);
     return () => { clearInterval(tick); removeEventListener("keydown", down); removeEventListener("keyup", up); removeEventListener("blur", reset); document.removeEventListener("visibilitychange", reset); };
-  }, [user, solo, zone, status, local]);
+  }, [entered, user, solo, zone, status, local]);
 
   // render loop
   useEffect(() => {
@@ -299,14 +307,23 @@ function App() {
     else room.current?.send("chat", { text: text.slice(0, 200) });
     setChat("");
   }
+  async function saveCharacter(body) {
+    await pb.send("/api/pixeltown/profile", { method: "POST", body });
+    await loadRecords(); room.current?.send("look"); setSetup(false);
+  }
   function logout() {
     room.current?.leave(); room.current = null; pb.authStore.clear();
     setUser(null); setSolo(false); setNotebook(false); setShop(false); setEdit(null); setZone("lobby");
+    setLoaded(false); setSetup(false); setRecords({ profiles: [], inventory: [], results: [], purchases: [] });
   }
 
-  if (!entered) return <Login {...{ email, setEmail, password, setPassword, busy, error, setError, authenticate, setSolo }} />;
+  if (!entered) {
+    if (needsSetup) return <main className="page"><CharacterSetup profile={profile} userId={user.id} save={saveCharacter} /></main>;
+    if (user && !solo) return <main className="page"><p className="loading paper" role="status">{recordError || "내 미니홈피를 여는 중…"}</p></main>;
+    return <Login {...{ email, setEmail, password, setPassword, busy, error, setError, authenticate, setSolo }} />;
+  }
 
-  const game = snap.game || {}, me = snap.players?.find(p => p.id === selfId.current) || { id: selfId.current, name: profile?.name || user?.name || "나그네", color: profile?.color || "#ff9ec4", look: outfit };
+  const game = snap.game || {}, me = snap.players?.find(p => p.id === selfId.current) || { id: selfId.current, name: profile?.name || user?.name || "나그네", color: profile?.color || "#ff9ec4", look: myLook };
   const remaining = Math.max(0, Math.ceil(((game.endsAt || 0) - Date.now()) / 1000)), clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
   const myScore = game.scores?.[selfId.current] || 0;
   const ranking = Object.entries(game.scores || {}).map(([id, score]) => ({ id, score, name: snap.players?.find(p => p.id === id)?.name || (id === selfId.current ? "나" : "이웃") })).sort((a, b) => b.score - a.score);
@@ -334,6 +351,7 @@ function App() {
           <div className="row-badges"><span className="stars-badge" title="쓸 수 있는 별">지갑 ★ {wallet}</span>{solo && <span className="tag">연습 모드</span>}</div>
           {zone !== "home" && starCard}
           {!solo && <button className="btn wide" onClick={openShop}>🛍 별 상점 · 옷장</button>}
+          {!solo && <button className="btn ghost wide" onClick={() => setSetup(true)}>🎨 캐릭터 꾸미기</button>}
           <button className="btn ghost wide" onClick={() => { setNotebook(true); loadRecords(); }}>📒 내 수첩</button>
         </aside>
         <section className="room paper">
@@ -380,6 +398,7 @@ function App() {
       </div>
       {shop && <Shop {...{ wallet, owned, outfit, buy, wear, me, close: () => setShop(false) }} />}
       {notebook && <Notebook {...{ records, recordError, loadRecords, logout, solo, user, me, close: () => setNotebook(false) }} />}
+      {setup && <CharacterSetup profile={profile} userId={user.id} save={saveCharacter} close={() => setSetup(false)} />}
     </main>
   );
 }
@@ -476,6 +495,53 @@ function Notebook({ records, recordError, loadRecords, logout, solo, user, me, c
         </div>
         <div className="notebook-foot"><button className="btn small ghost" onClick={loadRecords} disabled={solo}>새로고침</button><button className="btn small" onClick={logout}>로그아웃</button></div>
       </aside>
+    </div>
+  );
+}
+
+// Character set-up (FR-014): nickname, skin, hair colour and style, shirt colour. The PB hook re-checks every value.
+function CharacterSetup({ profile, userId, save, close }) {
+  const A = CATALOG.avatar, cur = profile?.avatar || {};
+  const [name, setName] = useState(profile?.name || "");
+  const [color, setColor] = useState(A.shirts.includes(profile?.color) ? profile.color : A.shirts[0]);
+  const [look, setLook] = useState({ skin: cur.skin ?? 0, hair: cur.hair ?? 0, style: cur.style ?? 0 });
+  const [busy, setBusy] = useState(false), [error, setError] = useState(""), [nameError, setNameError] = useState(""), nameInput = useRef(null);
+  const length = [...name.trim()].length, nameOk = length >= A.nameMin && length <= A.nameMax;
+  async function submit(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNameError("");
+    try { await save({ name: name.trim(), color, avatar: look }); }
+    catch (err) {
+      // A taken nickname comes back as { data: { name: "taken" } }: point at the field so the player picks another name.
+      if (err.response?.data?.name) { setNameError(err.response.message); nameInput.current?.focus(); }
+      else setError(err.response?.message || "저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+    }
+    finally { setBusy(false); }
+  }
+  const swatches = (label, colors, selected, pick) => (
+    <fieldset className="swatches"><legend>{label}</legend>
+      {colors.map((c, i) => <button type="button" key={c} className="swatch" style={{ background: c }} aria-label={`${label} ${i + 1}`} aria-pressed={selected === i} onClick={() => pick(i)} />)}
+    </fieldset>
+  );
+  return (
+    <div className="sheet-backdrop" onClick={close}>
+      <form className="notebook setup paper" role="dialog" aria-label={close ? "캐릭터 꾸미기" : "캐릭터 만들기"} onSubmit={submit} onClick={e => e.stopPropagation()}>
+        <div className="notebook-head"><b>🎨 {close ? "캐릭터 꾸미기" : "내 캐릭터 만들기"}</b>{close && <button type="button" className="btn tiny ghost" onClick={close}>닫기</button>}</div>
+        <div className="notebook-body setup-body">
+          <Portrait player={{ id: userId, color, look: { ...profile?.outfit, ...look } }} scale={5} />
+          <div className="setup-fields">
+            <label className="field">닉네임<input ref={nameInput} value={name} maxLength={A.nameMax} onChange={e => { setName(e.target.value); setNameError(""); }} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "name-error" : "name-hint"} autoFocus={!close} /></label>
+            {nameError ? <p id="name-error" className="error" role="alert">{nameError}</p> : <small id="name-hint" className="muted">{A.nameMin}–{A.nameMax}자 · 한글·영문·숫자 · 다른 이웃과 겹치지 않게</small>}
+            {swatches("피부", A.skins, look.skin, i => setLook({ ...look, skin: i }))}
+            {swatches("머리 색", A.hairs, look.hair, i => setLook({ ...look, hair: i }))}
+            <fieldset className="swatches"><legend>머리 모양</legend>
+              {A.styles.map((label, i) => <button type="button" key={label} className="btn tiny ghost" aria-pressed={look.style === i} onClick={() => setLook({ ...look, style: i })}>{label}</button>)}
+            </fieldset>
+            {swatches("옷 색", A.shirts, A.shirts.indexOf(color), i => setColor(A.shirts[i]))}
+            {error && <p className="error" role="alert">{error}</p>}
+          </div>
+        </div>
+        <div className="notebook-foot"><span className="muted">{close ? "모자·옷·펫은 별 상점에서 사요." : "나중에 언제든 바꿀 수 있어요."}</span><button className="btn" disabled={busy || !nameOk}>{busy ? "저장 중…" : close ? "저장" : "이대로 입장 ▶"}</button></div>
+      </form>
     </div>
   );
 }

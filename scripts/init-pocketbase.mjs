@@ -45,6 +45,17 @@ export async function startPocketBase() {
     throw new Error('PocketBase startup timed out');
   } catch(e) {child.kill();throw e;}
 }
+// Keeps the oldest profile's nickname and gives later duplicates (case-insensitive) a numbered name, e.g. "쇼핑왕" -> "쇼핑왕2".
+async function uniqueNames(pb) {
+  const taken = new Set(); let renamed = 0;
+  for (const p of await pb.collection('profiles').getFullList({ sort: 'created' })) {
+    let name = p.name;
+    for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${p.name.slice(0, 12 - String(n).length)}${n}`;
+    if (name !== p.name) { await pb.collection('profiles').update(p.id, { name }); renamed++; }
+    taken.add(name.toLowerCase());
+  }
+  if (renamed) console.log(`Unique nickname index: renamed ${renamed} duplicate profile name(s)`);
+}
 // remote: true keeps the existing users collection rules and accounts (Mac mini install) and only adds game schema.
 export async function seed(client, { remote = false } = {}) {
   const target=new URL(client?.baseURL || PB_URL);
@@ -63,7 +74,7 @@ export async function seed(client, { remote = false } = {}) {
   ];
   const schemas = [
     {name:'rooms',listRule:"@request.auth.id != ''",viewRule:"@request.auth.id != ''",fields:[...timestamps,{name:'zone',type:'text',required:true},{name:'title',type:'text',required:true,max:80},{name:'max_players',type:'number',required:true,min:1,max:32}],indexes:['CREATE UNIQUE INDEX idx_rooms_zone ON rooms (zone)']},
-    {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true},{name:'outfit',type:'json',maxSize:2000},{name:'room',type:'json',maxSize:8000}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)']},
+    {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true},{name:'outfit',type:'json',maxSize:2000},{name:'room',type:'json',maxSize:8000},{name:'avatar',type:'json',maxSize:200}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)','CREATE UNIQUE INDEX idx_profiles_name ON profiles (name COLLATE NOCASE)']},
     {name:'results',fields:[...timestamps,relation,{name:'match_id',type:'text',required:true},{name:'zone',type:'text',required:true},{name:'score',type:'number',min:0},{name:'ended_at',type:'date',required:true}],indexes:['CREATE UNIQUE INDEX idx_results_match_user ON results (match_id, user)']},
     // Star shop ledger (ADR-004): written only by the shop hook, one row per owned item.
     {name:'purchases',fields:[...timestamps,relation,{name:'item',type:'text',required:true,max:40},{name:'price',type:'number',required:true,min:0}],indexes:['CREATE UNIQUE INDEX idx_purchases_user_item ON purchases (user, item)']},
@@ -75,6 +86,13 @@ export async function seed(client, { remote = false } = {}) {
       // Older databases: add fields introduced later (timestamps, profile outfit/room) without touching existing data.
       const missing = schema.fields.filter(field=>!existing.fields.some(current=>current.name===field.name));
       if(missing.length) await pb.collections.update(existing.id,{fields:[...existing.fields,...missing]});
+      // Indexes introduced later (unique nickname, PLAN-005). Existing duplicates would block the index, so rename them first.
+      const indexName = sql => sql.match(/INDEX\s+(\w+)/)[1];
+      const newIndexes = (schema.indexes||[]).filter(sql=>!existing.indexes.some(current=>indexName(current)===indexName(sql)));
+      if(newIndexes.length) {
+        if(newIndexes.some(sql=>indexName(sql)==='idx_profiles_name')) await uniqueNames(pb);
+        await pb.collections.update(existing.id,{indexes:[...existing.indexes,...newIndexes]});
+      }
     }
     catch(e) { if(e.status!==404)throw e; await pb.collections.create({...schema,type:'base',listRule:schema.listRule??ownerRule,viewRule:schema.viewRule??ownerRule,createRule:null,updateRule:null,deleteRule:null}); }
   }
@@ -88,8 +106,10 @@ export async function seed(client, { remote = false } = {}) {
     let user;
     try {user=await pb.collection('users').getFirstListItem(pb.filter('email={:email}',{email}));}
     catch(e) {if(e.status!==404)throw e;user=await pb.collection('users').create({email,password:'PixelTown123!',passwordConfirm:'PixelTown123!',name:`Demo ${n}`,verified:true});}
-    try {await pb.collection('profiles').getFirstListItem(pb.filter('user={:id}',{id:user.id}));}
-    catch(e) {if(e.status!==404)throw e;await pb.collection('profiles').create({user:user.id,name:`Demo ${n}`,color:n===1?'#ffb347':'#89cff0'});}
+    // Demo accounts are ready-made characters, so they skip the first-entry set-up screen (FR-014).
+    const avatar=n===1?{skin:0,hair:1,style:0}:{skin:1,hair:5,style:1};
+    try {const profile=await pb.collection('profiles').getFirstListItem(pb.filter('user={:id}',{id:user.id}));if(!profile.avatar)await pb.collection('profiles').update(profile.id,{avatar});}
+    catch(e) {if(e.status!==404)throw e;await pb.collection('profiles').create({user:user.id,name:`Demo ${n}`,color:n===1?'#ffb347':'#89cff0',avatar});}
   }
   console.log('Local PocketBase seeded: demo1/demo2; admin credentials in pocketbase/.env.local');
 }
