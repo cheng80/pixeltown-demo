@@ -105,6 +105,6 @@ world `960×640`, spawn `(480,400)`, 속도 `180px/s`, 경계 여백 16px, 충�
 
 실제 PocketBase/Colyseus에서 로그인, 잘못된 토큰 거부, 2명 WebSocket, 이동, chat/emote, 원거리 수집 거부, 게임 마감, results+inventory 저장, 같은 경기 재전송, 일반 사용자 write/endpoint 거부, transaction 롤백을 검증했다. `npm test`는 outbox 실패·재구성·단일 replay와 충돌 지형을 검증한다. 별도 통합 `tests/report.json`은 12/12 통과했으며 PB 장애→서버 재시작→복구, 사용자별 접근 격리, 양수 수집/보상, 중복 replay, 20명 10Hz 입력을 검증했다. 20명 검증은 단일 로컬 머신의 짧은 기능 부하 검사로 수용량 보장은 아니다.
 
-Colyseus 0.16의 전이 의존성 `nanoid 2.x`에 npm audit 경고(2 moderate, 1 high)가 남는다. 3.x 강제 override는 default export API가 달라 실행 실패하여 제거했다. 서버는 Colyseus에서 고정 길이 ID만 생성하며 외부 입력으로 nanoid 길이를 정하지 않는다. 개발 전용 구성이고 실서비스 전환 시 호환 client/server 동시 업그레이드와 audit 재검증이 필요하다.
+Colyseus 0.16의 전이 의존성 `nanoid 2.1.11`은 npm audit 경고(2 moderate, 1 high) 대상이다. 3.x override는 default export API가 달라 실행에 실패한다. 그래서 `vendor/nanoid`에 같은 API(`nanoid(size)`)의 로컬 대체 모듈을 두고 `package.json`의 `overrides: {nanoid: "$nanoid"}`로 교체했다. `node:crypto` 난수와 64자 알파벳(`byte & 63`, 편향 없음)을 쓰고 정수 1..1024 외 길이는 거부한다. `npm audit` 0건, `test/ids.test.js`가 Colyseus `generateId()` 경로를 검사한다. Colyseus 0.17+ 업그레이드 때 이 override와 `vendor/nanoid`를 제거한다.
 
 참고: [PocketBase custom routing](https://pocketbase.io/docs/js-routing/), [PocketBase records/transactions](https://pocketbase.io/docs/js-records/), [Colyseus room authentication](https://docs.colyseus.io/auth/room). 런타임 인증 규약은 설치된 0.16 소스를 기준으로 확인했다.

@@ -17,8 +17,9 @@ async function free(port) {
 }
 async function stop(code=0){
   if(ending)return;ending=true;
-  for(const child of children)child.kill('SIGTERM');
-  setTimeout(()=>process.exit(code),2000);
+  // Exit only after the children are gone, so the ports are free when this launcher returns (PocketBase can take ~20s).
+  await Promise.all(children.map(child=>child.exitCode!==null||child.signalCode?null:new Promise(r=>{child.once('exit',r);child.kill('SIGTERM');})));
+  process.exit(code);
 }
 process.on('SIGINT',()=>stop());process.on('SIGTERM',()=>stop());
 for(const port of [PB_PORT,GAME_PORT,WEB_PORT].map(Number))if(!await free(port)){

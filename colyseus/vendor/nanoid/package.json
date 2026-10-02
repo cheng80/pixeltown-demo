@@ -1,0 +1,7 @@
+{
+  "name": "nanoid",
+  "version": "2.1.11-pixeltown.1",
+  "description": "Local replacement for nanoid 2.x used by @colyseus/core 0.16 (npm audit GHSA-mwcw-c2x4-8c55 and related). Same default-export API.",
+  "main": "index.js",
+  "license": "MIT"
+}

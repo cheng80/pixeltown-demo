@@ -230,10 +230,10 @@ function App() {
         if (dist > 0.6) { a.dir = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 2 : 3) : (ddy > 0 ? 0 : 1); a.moving = now + 120; }
         if (a.moving > now) a.walk += dist * k2(dt); else a.walk = 0;
         const self = p.id === selfId.current, look = lookFor(p);
-        // pets trot to a spot just behind their owner
+        // pets trot to a spot just behind their owner; facing the camera they sit beside, not hidden behind the body
         let pet = null;
         if (look.pet) {
-          const back = [[0, -10], [0, 8], [-13, 2], [13, 2]][a.dir], tx = a.x + back[0], ty = a.y + back[1];
+          const back = [[-14, -3], [0, 8], [-13, 2], [13, 2]][a.dir], tx = a.x + back[0], ty = a.y + back[1];
           a.pet ||= { x: tx, y: ty, flip: false, hop: 0 };
           const pdx = tx - a.pet.x, pdy = ty - a.pet.y, pd = Math.hypot(pdx, pdy);
           if (pd > 60) Object.assign(a.pet, { x: tx, y: ty }); else { const k = Math.min(1, dt * 5); a.pet.x += pdx * k; a.pet.y += pdy * k; }

@@ -11,9 +11,13 @@
   "dependencies": {
     "@colyseus/core": "0.16.26",
     "@colyseus/ws-transport": "0.16.5",
-    "pocketbase": "0.28.1"
+    "pocketbase": "0.28.1",
+    "nanoid": "file:./vendor/nanoid"
   },
   "devDependencies": {
     "colyseus.js": "0.16.22"
+  },
+  "overrides": {
+    "nanoid": "$nanoid"
   }
 }
