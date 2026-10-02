@@ -85,3 +85,14 @@ test('PocketBase hook accepts score >12 and rejects over-64 total',async()=>{
   assert.throws(()=>invoke({'abcdefghijklmno':40,'ponmlkjihgfedcb':30}));
   assert.equal(rows.length,2);
 });
+
+test('a click route ends exactly on its target even when the client reacts late (network lag)',()=>{
+  const r=room(),p=r.players.get('session'),target={x:p.x+10,y:p.y};
+  assert(!blocked(r.map,target.x,target.y));
+  // The client keeps sending the same input while it still sees an old position; the server must not walk past the target.
+  for(let t=1;t<=8;t++){r.moveInputs.set('session',{dx:1,dy:0,at:1000+t*50,to:target});r.tick(1000+t*50);}
+  assert.deepEqual([p.x,p.y],[target.x,target.y]);
+  // A stale direction is corrected toward the target, and `to` never makes a step longer than a normal one.
+  const q={x:p.x-6,y:p.y-2};r.moveInputs.set('session',{dx:0,dy:1,at:2000,to:q});const before={x:p.x,y:p.y};r.tick(2000);
+  assert(p.x<before.x && Math.hypot(p.x-before.x,p.y-before.y)<=3.01);
+});

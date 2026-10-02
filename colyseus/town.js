@@ -2,7 +2,7 @@ import { Room, ServerError } from '@colyseus/core';
 import { randomUUID } from 'node:crypto';
 import { userClient, ZONES } from './config.js';
 import { outbox } from './outbox.js';
-import { getMap, blocked, moveActor, entryPoint, spreadSpot, COLLECT_RADIUS, STAR_SPAWN_MS, ITEMS, CATALOG, STEP_PER_TICK, TICK_MS } from '../shared/world.js';
+import { getMap, blocked, moveActor, entryPoint, spreadSpot, COLLECT_RADIUS, STAR_SPAWN_MS, ITEMS, CATALOG, STEP_PER_TICK, TICK_MS, WORLD } from '../shared/world.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Outfit shown to everyone comes from the PocketBase profile (written only by the shop hook), never from the client.
 // Outfit and character look (FR-014 avatar indexes) both come from the profile; invalid values fall back to null.
@@ -26,7 +26,10 @@ export class Town extends Room {
       if(!data || !Number.isFinite(data.dx) || !Number.isFinite(data.dy))return;
       let dx=clamp(data.dx,-1,1),dy=clamp(data.dy,-1,1);const len=Math.hypot(dx,dy);
       if(len>1){dx/=len;dy/=len;}
-      this.moveInputs.set(client.sessionId,{dx,dy,at:Date.now()});
+      // Optional final target of a click route: the server steers to it from the real position and stops on it,
+      // so network lag cannot carry the avatar past the clicked spot. Speed and collision rules are unchanged.
+      const to=data.to&&Number.isFinite(data.to.x)&&Number.isFinite(data.to.y)?{x:clamp(data.to.x,0,WORLD.width),y:clamp(data.to.y,0,WORLD.height)}:null;
+      this.moveInputs.set(client.sessionId,{dx,dy,to,at:Date.now()});
     });
     this.onMessage('chat',(client,data)=>{
       if(typeof data?.text!=='string' || !this.allow(client,'chat',700))return;
@@ -123,7 +126,12 @@ export class Town extends Room {
   tick(now=Date.now()) {
     for(const [session,p] of this.players) {
       const input=this.moveInputs.get(session);
-      if(input && now-input.at<=300 && (input.dx || input.dy)) Object.assign(p,moveActor(this.map,p.x,p.y,input.dx,input.dy,STEP_PER_TICK));
+      if(!input || now-input.at>300 || !(input.dx || input.dy))continue;
+      if(input.to) {
+        const ox=input.to.x-p.x,oy=input.to.y-p.y,left=Math.hypot(ox,oy);
+        if(left<0.5){input.dx=input.dy=0;continue;}
+        Object.assign(p,moveActor(this.map,p.x,p.y,ox/left,oy/left,Math.min(STEP_PER_TICK,left)));
+      } else Object.assign(p,moveActor(this.map,p.x,p.y,input.dx,input.dy,STEP_PER_TICK));
     }
     if(this.game.active && now>=this.game.endsAt)this.settle(now);
     else this.generateStars(now);

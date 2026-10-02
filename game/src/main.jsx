@@ -178,7 +178,7 @@ function App() {
     addEventListener("keydown", down); addEventListener("keyup", up); addEventListener("blur", reset); document.addEventListener("visibilitychange", reset);
     const tick = setInterval(() => {
       const m = mapRef.current, s = state.current;
-      let dx = touch.current.dx, dy = touch.current.dy;
+      let dx = touch.current.dx, dy = touch.current.dy, to = null;
       for (const k of keys.current) if (MOVE_KEYS[k]) { dx += MOVE_KEYS[k][0]; dy += MOVE_KEYS[k][1]; }
       const me = local ? soloPos.current : s.players?.find(p => p.id === selfId.current);
       if (!me) return;
@@ -188,7 +188,7 @@ function App() {
         stall.current = { x: me.x, y: me.y, n: moved ? 0 : stall.current.n + 1 };
         if (stall.current.n >= 10) { route.current = findPath(m, me, route.current.at(-1)); stall.current.n = 0; }
         while (route.current.length && Math.hypot(route.current[0].x - me.x, route.current[0].y - me.y) < 2) route.current.shift();
-        if (route.current.length) { dx = route.current[0].x - me.x; dy = route.current[0].y - me.y; }
+        if (route.current.length) { dx = route.current[0].x - me.x; dy = route.current[0].y - me.y; if (route.current.length === 1) to = route.current[0]; }
         else marker.current = null;
       }
       const len = Math.hypot(dx, dy);
@@ -207,7 +207,8 @@ function App() {
         }
       } else if (room.current) {
         const msg = `${dx.toFixed(2)},${dy.toFixed(2)}`;
-        if (dx || dy || msg !== lastSent.current) room.current.send("input", { dx, dy });
+        // On the last leg the server steers to `to` itself and stops on it, so lag cannot carry the avatar past the click.
+        if (dx || dy || msg !== lastSent.current) room.current.send("input", to ? { dx, dy, to: { x: to.x, y: to.y } } : { dx, dy });
         lastSent.current = msg;
         if (s.game?.active) for (const star of s.game.stars || [])
           if (Math.hypot(star.x - me.x, star.y - me.y) <= COLLECT_RADIUS - 1 && Date.now() - (collectTimes.current[star.id] || 0) > 600) {
@@ -530,7 +531,7 @@ function CharacterSetup({ profile, userId, save, close }) {
           <Portrait player={{ id: userId, color, look: { ...profile?.outfit, ...look } }} scale={5} />
           <div className="setup-fields">
             <label className="field">닉네임<input ref={nameInput} value={name} maxLength={A.nameMax} onChange={e => { setName(e.target.value); setNameError(""); }} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "name-error" : "name-hint"} autoFocus={!close} /></label>
-            {nameError ? <p id="name-error" className="error" role="alert">{nameError}</p> : <small id="name-hint" className="muted">{A.nameMin}–{A.nameMax}자 · 한글·영문·숫자 · 다른 이웃과 겹치지 않게</small>}
+            {nameError ? <p id="name-error" className="error" role="alert">{nameError}</p> : <small id="name-hint" className="muted">{A.nameMin}–{A.nameMax}자 · 한글·영문·숫자 · 띄어쓰기·대소문자·_·-만 다른 이름은 같은 이름이에요</small>}
             {swatches("피부", A.skins, look.skin, i => setLook({ ...look, skin: i }))}
             {swatches("머리 색", A.hairs, look.hair, i => setLook({ ...look, hair: i }))}
             <fieldset className="swatches"><legend>머리 모양</legend>
