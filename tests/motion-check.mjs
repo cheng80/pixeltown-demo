@@ -37,6 +37,10 @@ try {
   }, Number(process.env.JITTER));
   const page = await ctx.newPage(); await page.goto(BASE);
   await page.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0, null, { timeout: 60000 }); // slow with JITTER
+  if (process.env.ZONE) { // e.g. ZONE=오락실: the tab's label
+    await page.click(`.tabs button:has-text("${process.env.ZONE}")`);
+    await page.waitForFunction(z => window.__pixeltown?.state.current.zone !== 'lobby' && window.__pixeltown.state.current.players?.some(q => q.id === window.__pixeltown.self.current), null, { timeout: 60000 });
+  }
   await page.waitForTimeout(1000);
   const result = {};
   for (const [keys, label] of [[['ArrowRight'], 'right'], [['ArrowLeft'], 'left'], [['ArrowRight', 'ArrowDown'], 'diagonal'], [['ArrowLeft', 'ArrowUp'], 'diagonalBack']]) {

@@ -146,8 +146,10 @@ export class Town extends Room {
     for(const [session,p] of this.players) {
       const entry=this.moveInputs.get(session);
       if(!entry)continue;
-      // One step per tick on average; a tick that got no input lets the next one catch up by one (network jitter).
-      entry.credit=Math.min(2,entry.credit+1);
+      // One step per 50 ms of real time, counted from the clock and not from ticks: a timer runs a little late (51-52 ms),
+      // and a tick-counted credit made the server fall behind a walking client by ~1 s a minute, until the queue
+      // overflowed and the avatar snapped back. Credit tops at 2, so a late or empty tick lets the next catch up by one.
+      entry.credit=Math.min(2,entry.credit+(entry.at===undefined?1:(now-entry.at)/TICK_MS));entry.at=now;
       while(entry.credit>=1&&entry.queue.length){
         const input=entry.queue.shift();entry.credit--;
         Object.assign(p,stepInput(this.map,p,input));

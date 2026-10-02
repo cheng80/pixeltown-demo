@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-02T11:34:26.329Z",
+ "startedAt": "2026-10-02T12:03:08.152Z",
  "url": "http://127.0.0.1:5273/",
  "checks": {
   "depth_and_collision_lobby": {
@@ -18,7 +18,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 76
+    "ack": 78
    },
    "inFront": {
     "id": "4l0ykfu34v14g2t",
@@ -34,7 +34,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 89
+    "ack": 91
    },
    "trunkStop": {
     "id": "4l0ykfu34v14g2t",
@@ -50,13 +50,13 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 100
+    "ack": 102
    },
    "behindHouse": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 121.02,
-    "y": 49,
+    "x": 121.21,
+    "y": 49.05,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -66,13 +66,13 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 170
+    "ack": 171
    },
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 122.53,
-    "y": 99.28,
+    "x": 122.4,
+    "y": 99.3,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -82,7 +82,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 238
+    "ack": 241
    }
   },
   "depth_and_collision_arcade_garden": {
@@ -101,7 +101,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 109
+    "ack": 108
    },
    "frontCabinets": {
     "id": "4l0ykfu34v14g2t",
@@ -117,13 +117,13 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 165
+    "ack": 164
    },
    "behindPillar": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 200.34,
-    "y": 121.22,
+    "x": 200.54,
+    "y": 121.11,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -133,7 +133,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 227
+    "ack": 226
    },
    "behindCounter": {
     "id": "4l0ykfu34v14g2t",
@@ -149,7 +149,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 362
+    "ack": 360
    },
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
@@ -165,7 +165,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 529
+    "ack": 526
    },
    "underPergola": {
     "id": "4l0ykfu34v14g2t",
@@ -181,7 +181,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 549
+    "ack": 546
    },
    "pondStop": {
     "id": "4l0ykfu34v14g2t",
@@ -197,7 +197,7 @@
      "hair": 1,
      "style": 0
     },
-    "ack": 627
+    "ack": 624
    }
   },
   "two_users_move_chat_portal": {
@@ -257,8 +257,8 @@
    "stoppedAt": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 123.93,
-    "y": 100.62,
+    "x": 123.91,
+    "y": 100.85,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -292,11 +292,11 @@
    "startButton": false,
    "activeOnJoin": true,
    "initial": 5,
-   "minimumSpacing": 229,
+   "minimumSpacing": 172,
    "secondsToNextSettlement": 167,
    "myScore": 3,
    "stillActiveAfterSettlement": true,
-   "notebook": "Demo 1이 브라우저에 저장된 내 캐릭터별 보상 48개★ 별 조각×3★ 별 조각×1★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3산 물건 0개아직"
+   "notebook": "Demo 1이 브라우저에 저장된 내 캐릭터별 보상 58개★ 별 조각×3★ 별 조각×2★ 별 조각×1★ 별 조각×4★ 별 조각×3★ 별 조각×1★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×3산 물건 0개아직"
   },
   "shop_dress_pet_and_miniroom": {
    "ok": true,
@@ -339,8 +339,8 @@
     "dy": -3
    },
    "besideBed": {
-    "id": "jdes5pv4k9wbo2u",
-    "name": "쇼핑왕3rdn",
+    "id": "fqf7se93mmfdd01",
+    "name": "쇼핑왕4nvy",
     "color": "#9fd0ff",
     "look": {
      "hat": "hat_crown",
@@ -365,7 +365,7 @@
    "guestSaved": true,
    "reloadSameCharacter": true,
    "seenByOther": {
-    "name": "별돌이2nn",
+    "name": "별돌이zci",
     "color": "#9be38c",
     "look": {
      "hat": null,
@@ -376,7 +376,7 @@
      "style": 2
     }
    },
-   "editedName": "별돌이2nn2",
+   "editedName": "별돌이zci2",
    "pageErrors": []
   },
   "viewports_no_scroll_integer_scale": {
@@ -457,6 +457,6 @@
    }
   }
  },
- "finishedAt": "2026-10-02T11:39:11.444Z",
+ "finishedAt": "2026-10-02T12:07:53.821Z",
  "status": "passed"
 }

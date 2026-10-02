@@ -151,22 +151,30 @@ function App() {
     route.current = []; portalArmed.current = false; lastSent.current = ""; pred.current = null; pending.current = []; glide.current = null; trails.current = {};
     const via = entry.current; entry.current = "default";
     if (zone === "home") { selfId.current = user.id; soloPos.current = entryPoint(mapRef.current, via); return; }
+    // This room's own map: mapRef switches to the next zone on render, before this effect is cleaned up, and a late
+    // snapshot replayed on the wrong map snapped the avatar at a doorway.
+    const roomMap = getMap(zone);
     // A reload can race the server noticing the previous socket closed (409): retry briefly.
     client.auth.token = pb.authStore.token; // Colyseus 0.18: verified by the room's onAuth, not sent in join options
     const join = (n = 0) => client.joinOrCreate("town", { zone, entry: via })
       .catch(e => (e.code === 409 && n < 6 && !cancelled ? new Promise(r => setTimeout(r, 700)).then(() => join(n + 1)) : Promise.reject(e)));
+    // A join that neither succeeds nor fails (network gone mid-handshake) must not leave the dialog spinning.
+    const joinTimer = setTimeout(() => { if (!cancelled && !joined) setStatus("disconnected"); }, 15000);
     join().then(r => {
+      clearTimeout(joinTimer);
       if (cancelled) { r.leave(); return; }
       joined = r; room.current = r; selfId.current = user.id; rejoining.current = false; setStatus("online");
+      // A room being left can still deliver a last snapshot after the next zone's state was reset: ignore it, or its
+      // position becomes the new zone's prediction and the avatar slides across the map on arrival.
       r.onMessage("snapshot", data => {
-        if (data.zone !== zone) return;
+        if (cancelled || data.zone !== zone) return;
         const c = serverClock.current; c.samples.push(Date.now() - data.t); if (c.samples.length > 60) c.samples.shift(); c.offset = Math.min(...c.samples);
         const mine = data.players.find(p => p.id === user.id);
         if (mine) { // server position + my inputs it has not applied yet = where I am now
           pending.current = pending.current.filter(i => i.seq > (mine.ack ?? -1));
           let p = { x: mine.x, y: mine.y };
-          for (const i of pending.current) p = stepInput(mapRef.current, p, i);
-          if (pred.current) { const err = Math.hypot(p.x - pred.current.x, p.y - pred.current.y); if (err > 0.5) { corrections.current.push({ at: Date.now(), err: +err.toFixed(1), ack: mine.ack, pending: pending.current.length }); if (corrections.current.length > 100) corrections.current.shift(); } }
+          for (const i of pending.current) p = stepInput(roomMap, p, i);
+          if (pred.current) { const err = Math.hypot(p.x - pred.current.x, p.y - pred.current.y); if (err > 0.5) { corrections.current.push({ at: Date.now(), err: +err.toFixed(1), ack: mine.ack, pending: pending.current.length, zone, from: [Math.round(pred.current.x), Math.round(pred.current.y)], to: [Math.round(p.x), Math.round(p.y)] }); if (corrections.current.length > 100) corrections.current.shift(); } }
           setPred(p, !pred.current || Math.hypot(p.x - pred.current.x, p.y - pred.current.y) > 40);
         }
         for (const p of data.players) if (p.id !== user.id) { const b = (trails.current[p.id] ||= []); b.push({ t: data.t, x: p.x, y: p.y }); if (b.length > 40) b.shift(); }
@@ -175,8 +183,8 @@ function App() {
         if (p?.status === "saved" && persistStatus.current === "pending") { loadRecords(); notify("기록과 별 보상이 저장되었어요! 수첩에서 확인하세요."); }
         persistStatus.current = p?.status;
       });
-      r.onMessage("chat", d => append({ id: d.id, name: d.name || "이웃", text: d.text, mine: d.id === user.id }));
-      r.onMessage("emote", d => { emotes.current[d.id] = Date.now() + 2500; });
+      r.onMessage("chat", d => !cancelled && append({ id: d.id, name: d.name || "이웃", text: d.text, mine: d.id === user.id }));
+      r.onMessage("emote", d => { if (!cancelled) emotes.current[d.id] = Date.now() + 2500; });
       r.onMessage("gameEnded", m => { const n = m.scores?.[user.id]; if (n) { persistStatus.current = "pending"; notify(`별 ${n}개 정산! 기록을 저장하는 중이에요.`); } });
       // While the socket is down nothing moves or predicts on its own and a dialog blocks the page.
       // 1. Drop: the SDK reconnects into the same server session (kept 15 s), so nothing is lost.
@@ -199,9 +207,9 @@ function App() {
       r.onReconnect(() => { if (!cancelled) { clearTimeout(giveUp); room.current = r; lastSent.current = ""; setStatus("online"); } });
       r.onLeave(joinAgain);
       r.onError((code, message) => { if (!cancelled) console.warn(`room error ${code}: ${message}`); });
-    }).catch(e => { if (!cancelled) { setStatus("disconnected"); notify(`마을 연결 실패: ${e.message}`); } });
+    }).catch(e => { clearTimeout(joinTimer); if (!cancelled) { setStatus("disconnected"); notify(`마을 연결 실패: ${e.message}`); } });
     return () => {
-      cancelled = true; clearTimeout(giveUp);
+      cancelled = true; clearTimeout(giveUp); clearTimeout(joinTimer);
       if (joined && joined !== room.current) { joined.reconnection.maxRetries = 0; try { joined.connection?.close(); } catch {} } // stop a dropped room's retries
       room.current?.leave(); room.current = null;
     };
@@ -221,7 +229,7 @@ function App() {
     const reset = () => { keys.current.clear(); touch.current = { dx: 0, dy: 0 }; };
     addEventListener("keydown", down); addEventListener("keyup", up); addEventListener("blur", reset); document.addEventListener("visibilitychange", reset);
     const tick = setInterval(() => {
-      const m = mapRef.current, s = state.current;
+      const m = local ? mapRef.current : getMap(zone), s = state.current; // see roomMap: never the next zone's map
       let dx = touch.current.dx, dy = touch.current.dy, to = null;
       for (const k of keys.current) if (MOVE_KEYS[k]) { dx += MOVE_KEYS[k][0]; dy += MOVE_KEYS[k][1]; }
       const me = local ? soloPos.current : pred.current;

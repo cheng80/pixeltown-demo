@@ -135,3 +135,14 @@ test('a reload replaces a dropped session of the same user that is still waiting
   assert.equal(rejected,1);assert(!r.players.has('session'));assert(r.players.has('fresh'));
   assert.throws(()=>r.onJoin({sessionId:'third'},{},{id:'player',name:'P',look:{}}),/already joined/,'a live session still blocks a second tab');
 });
+
+test('steps follow real time, not tick count: late ticks (52 ms) never let a walking client fall behind',()=>{
+  const r=room(),p=r.players.get('session'),x0=p.x;let seq=0,t=1000;
+  // The client sends one step every 50 ms for 60 s; the server ticks every 52 ms.
+  const e={queue:[],credit:1};r.moveInputs.set('session',e);
+  for(let sent=0;t<61000;t+=52){while(sent*50<t-1000){e.queue.push({dx:1,dy:0,to:null,seq:++seq});sent++;}r.tick(t);}
+  assert(e.queue.length<=2,`queued ${e.queue.length} steps behind`);
+  assert(p.ack>=seq-2,'acknowledged up to the latest steps');
+  assert(p.x-x0<=3*seq+0.01,'never more than one step per input');
+});
+

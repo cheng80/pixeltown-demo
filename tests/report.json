@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-02T11:33:15.683Z",
+  "startedAt": "2026-10-02T12:01:57.016Z",
   "targets": {
     "pocketbase": "http://127.0.0.1:18191",
     "colyseus": "ws://127.0.0.1:12668"
@@ -9,12 +9,12 @@
     {
       "name": "isolated_development_setup",
       "status": "passed",
-      "durationMs": 654
+      "durationMs": 671
     },
     {
       "name": "two_real_users_login",
       "status": "passed",
-      "durationMs": 151,
+      "durationMs": 154,
       "evidence": {
         "distinctAuthenticatedUsers": 2
       }
@@ -22,7 +22,7 @@
     {
       "name": "invalid_token_rejected",
       "status": "passed",
-      "durationMs": 14,
+      "durationMs": 13,
       "evidence": {
         "rejected": true,
         "errorCode": 401
@@ -31,7 +31,7 @@
     {
       "name": "two_players_join_and_move_sync",
       "status": "passed",
-      "durationMs": 133,
+      "durationMs": 135,
       "evidence": {
         "sameRoom": true,
         "observedDisplacement": 3
@@ -49,7 +49,7 @@
     {
       "name": "zone_switch_isolation",
       "status": "passed",
-      "durationMs": 460,
+      "durationMs": 468,
       "evidence": {
         "leftOldZone": true,
         "independentRooms": true,
@@ -59,36 +59,36 @@
     {
       "name": "star_generation_cap_and_collection_regeneration",
       "status": "passed",
-      "durationMs": 29606,
+      "durationMs": 29593,
       "evidence": {
         "cap": 12,
         "periodMs": 1500,
         "startCount": 5,
-        "timeToCapMs": 10096,
+        "timeToCapMs": 10093,
         "observedGenerationIntervalsMs": [
-          1531,
-          1528,
-          1531,
-          1527,
           1530,
+          1529,
+          1529,
+          1530,
+          1526,
           1531
         ],
         "stableAtCapMs": 3100,
         "minimumStarSpacing": 102,
-        "refillDelayMs": 288,
+        "refillDelayMs": 739,
         "collectionFreedSlot": true,
         "regeneratedWithFreshId": true,
         "maximumObservedStars": 12,
-        "observedSnapshots": 583,
+        "observedSnapshots": 582,
         "continuedAfterSettlement": true
       }
     },
     {
       "name": "game_finish_result_and_inventory_query",
       "status": "passed",
-      "durationMs": 46,
+      "durationMs": 88,
       "evidence": {
-        "matchId": "35ce3d9e-b540-4a7d-be1f-f1acf69cac75",
+        "matchId": "d400a4b1-ff63-48e8-8229-a09d4ada1d05",
         "serverScore": 1,
         "resultsPerScoringUser": 1,
         "rewardPerScoringUser": 1,
@@ -98,7 +98,7 @@
     {
       "name": "result_tamper_and_cross_user_access_denied",
       "status": "passed",
-      "durationMs": 6,
+      "durationMs": 217,
       "evidence": {
         "attempts": [
           {
@@ -129,7 +129,7 @@
     {
       "name": "duplicate_delivery_idempotency",
       "status": "passed",
-      "durationMs": 3307,
+      "durationMs": 3086,
       "evidence": {
         "outboxReplayCount": 2,
         "adminApiReplayCount": 2,
@@ -140,7 +140,7 @@
     {
       "name": "conflicting_replay_denied_and_transaction_rollback",
       "status": "passed",
-      "durationMs": 4,
+      "durationMs": 3,
       "evidence": {
         "conflictingReplayStatus": 400,
         "invalidSecondParticipantStatus": 404,
@@ -151,9 +151,9 @@
     {
       "name": "storage_outage_durable_queue_restart_recovery",
       "status": "passed",
-      "durationMs": 29025,
+      "durationMs": 29006,
       "evidence": {
-        "persistedMatchId": "dba99ca3-fcbb-4799-b004-33a54e4a71eb",
+        "persistedMatchId": "0bbc5369-c196-4d35-ad00-7570a08554e9",
         "queuedOnDisk": true,
         "survivedServerRestart": true,
         "resultsAndInventoryRecovered": true,
@@ -163,7 +163,7 @@
     {
       "name": "shop_purchase_wallet_and_forgery_denied",
       "status": "passed",
-      "durationMs": 152,
+      "durationMs": 165,
       "evidence": {
         "grantedStars": 40,
         "crownPrice": 30,
@@ -180,7 +180,7 @@
     {
       "name": "shop_equip_look_sync_and_room_rules",
       "status": "passed",
-      "durationMs": 146,
+      "durationMs": 149,
       "evidence": {
         "wrongSlotOrUnownedRejected": true,
         "directProfileWrite": 403,
@@ -198,7 +198,7 @@
     {
       "name": "character_setup_profile_rules",
       "status": "passed",
-      "durationMs": 360,
+      "durationMs": 371,
       "evidence": {
         "rejected": {
           "anonymous": 401,
@@ -211,9 +211,9 @@
         "duplicateMessage": "이미 쓰는 닉네임이에요. 다른 이름을 지어 주세요.",
         "caseVariant": 400,
         "spacingVariants": {
-          "S tarf4df": 400,
-          "Star_f4df": 400,
-          "st-arf4df": 400
+          "S tar3d48": 400,
+          "Star_3d48": 400,
+          "st-ar3d48": 400
         },
         "guest": {
           "created": true,
@@ -239,7 +239,7 @@
     {
       "name": "guest_abuse_limits_and_cleanup",
       "status": "passed",
-      "durationMs": 150,
+      "durationMs": 166,
       "evidence": {
         "guestSignupsPerVisitorIp": [
           400,
@@ -279,14 +279,14 @@
     {
       "name": "twenty_client_local_load",
       "status": "passed",
-      "durationMs": 5805,
+      "durationMs": 6206,
       "evidence": {
         "clients": 20,
-        "joinedMs": 60,
+        "joinedMs": 65,
         "sentInputs": 600,
         "targetInputHzPerClient": 10,
-        "durationMs": 3017,
-        "effectiveInputHzPerClient": 9.94,
+        "durationMs": 3011,
+        "effectiveInputHzPerClient": 9.96,
         "minimumSnapshots": 59,
         "chatBroadcastP95Ms": 42,
         "scope": "single local machine; short functional load, not capacity benchmark"
@@ -295,11 +295,11 @@
   ],
   "load": {
     "clients": 20,
-    "joinedMs": 60,
+    "joinedMs": 65,
     "sentInputs": 600,
     "targetInputHzPerClient": 10,
-    "durationMs": 3017,
-    "effectiveInputHzPerClient": 9.94,
+    "durationMs": 3011,
+    "effectiveInputHzPerClient": 9.96,
     "minimumSnapshots": 59,
     "chatBroadcastP95Ms": 42,
     "scope": "single local machine; short functional load, not capacity benchmark"
@@ -317,7 +317,7 @@
     "operatingInstancesTouched": false,
     "externalSiteAccess": false
   },
-  "finishedAt": "2026-10-02T11:34:26.155Z",
+  "finishedAt": "2026-10-02T12:03:07.962Z",
   "summary": {
     "passed": 17,
     "failed": 0
