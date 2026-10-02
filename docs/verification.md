@@ -199,3 +199,16 @@ Demo 1이 오락실에 들어가자 시작 버튼 없이 바로 진행 중이었
 | 3 | 띄어쓰기만 다른 닉네임 허용 | `name COLLATE NOCASE`는 대소문자만 무시했다 | 식 인덱스 `idx_profiles_name_key = lower(replace(replace(replace(name,' ',''),'_',''),'-',''))`. PB 0.39.7·0.40.4 모두 허용과 강제를 확인했다. 시드가 같은 키의 기존 중복에 번호를 붙인다. 안내 문구 "띄어쓰기·대소문자·_·-만 다른 이름은 같은 이름이에요" | 통합: `S tar…`·`Star_…`·`st-ar…` 400. 원격 인덱스 적용, 이름 변경 0건(직전 백업 `pixeltown-nickname-key-20261002`) |
 
 같은 회차 회귀: 단위 21/21, build, 로컬 UI 8/8, 원격 기능 8/8, 원격 UI(Tester 2명) 통과, 원격 보고서 `tests/remote-report.json`(클릭 이동 요약 포함), `tests/remote-click-report.json`.
+
+## 13. 첫 화면 캐릭터 만들기 + 게스트 자동 가입 (PLAN-006, 2026-10-02)
+
+| 검사 | 로컬 | 원격 |
+|---|---|---|
+| 통합 | 17/17(PB 0.40.4·100명), 16/16(PB 0.39.7). 게스트 발급 200·`@guest.pixeltown.local`·같은 비밀번호로 재로그인·광장 입장, 이미 쓰는 닉네임(띄어쓰기 변형)·짧은 비밀번호·사칭 단어 400, 거부 시 사용자 수 변화 없음 | — |
+| 브라우저 | 8/8. `character_setup_first_entry`: 첫 화면에 이메일·비밀번호·연습 버튼 없음, 중복 닉네임 안내, 저장 후 입장·`localStorage`에 게스트 자격증명, 새로고침하면 같은 캐릭터로 바로 입장, 상대 화면 반영, 게임 안 수정 반영 | `tests/remote-ui.mjs`: Tester 2명이 저장 자격증명으로 입장. 새 방문자가 캐릭터 화면 → 게스트 계정 → Tester 1 화면에 보임 → 새로고침해도 같은 캐릭터, 페이지 오류 0 |
+| 기능·보안 | — | `tests/remote-check.mjs` 8/8(공개 `users` 직접 가입 403 유지) |
+| 클릭 이동 | — | `tests/remote-click.mjs` 10/10 도착, 끝 오차 최대 1.5도트 |
+
+![첫 화면](assets/first-screen.png)
+
+원격 반영 전 백업 `pixeltown-guest-20261002`(DB·`pb_hooks`). 원격 검증으로 게스트 계정이 실행마다 1개씩 생긴다(정리 정책 미정).

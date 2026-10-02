@@ -1,5 +1,5 @@
 {
- "startedAt": "2026-10-02T04:22:05.913Z",
+ "startedAt": "2026-10-02T05:11:37.695Z",
  "url": "http://127.0.0.1:5273/",
  "checks": {
   "depth_and_collision_lobby": {
@@ -67,8 +67,8 @@
    "wallStop": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 121,
-    "y": 99.5,
+    "x": 122.52,
+    "y": 99.28,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -85,8 +85,8 @@
    "behindCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 107,
-    "y": 191,
+    "x": 108.32,
+    "y": 190.95,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -100,8 +100,8 @@
    "frontCabinets": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 108.58,
-    "y": 222.75,
+    "x": 107.66,
+    "y": 222.9,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -115,8 +115,8 @@
    "behindPillar": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 200.34,
-    "y": 121.22,
+    "x": 200.4,
+    "y": 121.2,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -130,8 +130,8 @@
    "behindCounter": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 539.56,
-    "y": 312.64,
+    "x": 539.95,
+    "y": 312.71,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -193,8 +193,8 @@
    "seenByOther": {
     "id": "f87ubkhwf2u1c4p",
     "name": "Demo 2",
-    "x": 375.72,
-    "y": 271.64,
+    "x": 376.37,
+    "y": 270.83,
     "color": "#89cff0",
     "look": {
      "hat": null,
@@ -258,8 +258,8 @@
    "stoppedAt": {
     "id": "4l0ykfu34v14g2t",
     "name": "Demo 1",
-    "x": 123.91,
-    "y": 100.85,
+    "x": 123.92,
+    "y": 100.82,
     "color": "#ffb347",
     "look": {
      "hat": null,
@@ -292,11 +292,11 @@
    "startButton": false,
    "activeOnJoin": true,
    "initial": 5,
-   "minimumSpacing": 226,
-   "secondsToNextSettlement": 166,
+   "minimumSpacing": 213,
+   "secondsToNextSettlement": 167,
    "myScore": 3,
    "stillActiveAfterSettlement": true,
-   "notebook": "Demo 1demo1@pixeltown.local별 보상 21개★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오후 1:263점오락실26. 10. 2. 오후 12:593점오락실26. 10. 2."
+   "notebook": "Demo 1이 브라우저에 저장된 내 캐릭터별 보상 25개★ 별 조각×3★ 별 조각×1★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×3★ 별 조각×2★ 별 조각×3★ 별 조각×3★ 별 조각×0★ 별 조각×1★ 별 조각×0산 물건 0개아직 산 물건이 없어요.최근 기록오락실26. 10. 2. 오후 2:153점오락실26. 10. 2. 오후 2:121점오락"
   },
   "shop_dress_pet_and_miniroom": {
    "ok": true,
@@ -339,8 +339,8 @@
     "dy": -3
    },
    "besideBed": {
-    "id": "l826r0gr9s87h8g",
-    "name": "쇼핑왕nrms",
+    "id": "7j9w3t0kjv5zln6",
+    "name": "쇼핑왕fh7g",
     "color": "#9fd0ff",
     "look": {
      "hat": "hat_crown",
@@ -357,12 +357,15 @@
   },
   "character_setup_first_entry": {
    "ok": true,
+   "noLoginForm": true,
    "roomJoinedBeforeSetup": false,
    "shortNameDisabled": true,
    "takenMessage": "이미 쓰는 닉네임이에요. 다른 이름을 지어 주세요.",
    "takenFieldInvalid": "true",
+   "guestSaved": true,
+   "reloadSameCharacter": true,
    "seenByOther": {
-    "name": "별돌이30s",
+    "name": "별돌이sja",
     "color": "#9be38c",
     "look": {
      "hat": null,
@@ -373,7 +376,7 @@
      "style": 2
     }
    },
-   "editedName": "별돌이30s2",
+   "editedName": "별돌이sja2",
    "pageErrors": []
   },
   "viewports_no_scroll_integer_scale": {
@@ -454,6 +457,6 @@
    }
   }
  },
- "finishedAt": "2026-10-02T04:26:50.858Z",
+ "finishedAt": "2026-10-02T05:16:23.121Z",
  "status": "passed"
 }

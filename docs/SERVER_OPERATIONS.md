@@ -134,7 +134,7 @@ launchctl kickstart -k gui/501/com.fastmake.pixeltown.pocketbase
 | `pixeltown-colyseus/app/scripts/` | `init-pocketbase.mjs`(`seed(_, {remote:true})`), `provision-accounts.mjs` |
 | `pixeltown-colyseus/outbox/` | 영구 outbox(0700). `.env`의 `OUTBOX_PATH` |
 | `pixeltown-colyseus/server.lobby-20261002.mjs` | 이전 `lobby` 서버 진입점(롤백용) |
-| `pixeltown/pb_hooks/` | 기존 `realtime.pb.js` 유지 + `matches.pb.js`, `shop.pb.js`, `profile.pb.js`(캐릭터, PLAN-005), `shop_lib.js`, `catalog.json` |
+| `pixeltown/pb_hooks/` | 기존 `realtime.pb.js` 유지 + `matches.pb.js`, `shop.pb.js`, `profile.pb.js`(캐릭터, PLAN-005), `guest.pb.js`(게스트 가입, PLAN-006), `shop_lib.js`, `catalog.json` |
 
 원격 `.env` 키(값은 기록하지 않음): `PORT`, `POCKETBASE_URL`, `ALLOWED_ORIGINS`, `NODE_ENV`(기존) + `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `OUTBOX_PATH`(추가). 파일 권한 0600. `PB_ADMIN_*`는 outbox 저장 전용 superuser `colyseus-outbox@pixeltown.local`이며 PocketBase CLI(`pocketbase superuser create`)로 만들었다. 암호는 원격에서 `openssl rand -hex 32`로 생성해 `.env`에만 썼고 출력하지 않았다. 기존 관리자 `cheng80@gmail.com`은 바꾸지 않았다. 이 계정은 superuser지만 Colyseus Monitor 보호가 `PB_ADMIN_EMAIL`을 거부한다(원격 확인: Monitor 401, PB 저장 인증 200). `.env` 0600 권한은 그대로 유지한다.
 
@@ -143,7 +143,8 @@ launchctl kickstart -k gui/501/com.fastmake.pixeltown.pocketbase
 - 스키마: `rooms`, `profiles`(outfit·room 포함), `results`, `inventory`, `purchases` 컬렉션과 unique 인덱스, `rooms` 행 3개(lobby/garden/arcade). `users`는 기존 필드와 본인 조회·수정·삭제 규칙을 그대로 두었다. 공개 가입은 이후 사용자 결정으로 차단했다(`createRule = null`, [PLAN-004](plans/PLAN-004.md) 10절).
 - 사용자 데이터: 로컬 `pb_data`·로컬 데모 계정(`demo1/2`, 공개 암호)은 옮기지 않았다. 원격 사용자는 이전 시점에 0명이었다.
 - 테스트 계정: `pixeltown-test1-…@fastmake.net`, `pixeltown-test2-…@fastmake.net`(이름 Tester 1/2). 24바이트 무작위 암호. 자격증명은 이 컴퓨터의 `pocketbase/.local/remote-accounts.json`(0600, git 무시)에만 있다. 계정은 다음 테스트를 위해 남겨 두었다. 검증으로 생긴 결과·별 보상·구매(리본 모자·의자)·미니룸 배치 행도 남아 있다.
-- 공개 가입은 막혀 있다(일반 요청 403). 새 사용자는 superuser 권한으로만 만들며, 게임 입장에 필요한 `profiles`까지 한 번에 만드는 `provision-accounts.mjs`를 쓴다. 관리 화면(`/_/`)에서 만들면 `profiles`도 직접 추가해야 한다. 서버 폴더의 옛 `verify.mjs`(lobby 검증)는 공개 가입에 의존하므로 더 이상 쓰지 않는다:
+- 게스트 자동 가입(PLAN-006): 첫 화면에서 캐릭터를 만들면 `POST /api/pixeltown/guest`가 `guest-…@guest.pixeltown.local` 사용자와 프로필을 만든다. 속도 제한·정리가 없으므로 게스트 수를 가끔 확인한다(`sqlite3 pb_data/data.db "select count(*) from users where email like '%@guest.pixeltown.local'"`). `users` 컬렉션 직접 가입은 여전히 막혀 있다(일반 요청 403).
+- 이전 설명: 공개 가입은 막혀 있다(일반 요청 403). 새 사용자는 superuser 권한으로만 만들며, 게임 입장에 필요한 `profiles`까지 한 번에 만드는 `provision-accounts.mjs`를 쓴다. 관리 화면(`/_/`)에서 만들면 `profiles`도 직접 추가해야 한다. 서버 폴더의 옛 `verify.mjs`(lobby 검증)는 공개 가입에 의존하므로 더 이상 쓰지 않는다:
 
 ```sh
 # 이 컴퓨터에서. 입력 JSON: [{"email","password","name","color"}]. 암호는 stdin으로만 전달
@@ -156,7 +157,7 @@ PocketBase는 `pb_hooks` 파일이 바뀌면 스스로 재시작하며, 그동�
 
 ### 6.2 백업과 롤백(실제 위치)
 
-추가 백업: 가입 차단 직전 `…/backups/pixeltown-signup-close-20261002/data.db`, 캐릭터 기능(PLAN-005) 반영 직전 `…/backups/pixeltown-character-20261002/`(DB·`pb_hooks`·`app`), 닉네임 유니크 인덱스 직전 `…/backups/pixeltown-nickname-20261002/data.db`, 닉네임 비교 키 확장 직전 `…/backups/pixeltown-nickname-key-20261002/data.db`.
+추가 백업: 가입 차단 직전 `…/backups/pixeltown-signup-close-20261002/data.db`, 캐릭터 기능(PLAN-005) 반영 직전 `…/backups/pixeltown-character-20261002/`(DB·`pb_hooks`·`app`), 닉네임 유니크 인덱스 직전 `…/backups/pixeltown-nickname-20261002/data.db`, 닉네임 비교 키 확장 직전 `…/backups/pixeltown-nickname-key-20261002/data.db`, 게스트 가입 직전 `…/backups/pixeltown-guest-20261002/`(DB·`pb_hooks`).
 
 백업 `/Users/cheng80/Servers/backups/pixeltown-migration-20261002/`(0700): `data.db`·`auxiliary.db`(실행 중 DB의 SQLite online `.backup`, integrity_check ok, sha256 `c2294748…523b` / `2c5d66e3…d717`), `pb_hooks/`, `types.d.ts`, `colyseus/`(server·server.before-monitor·monitor-auth·verify·package·lock·README·.env), `launchd/`(plist 2개). 롤백 명령은 [PLAN-004](plans/PLAN-004.md) 5절.
 

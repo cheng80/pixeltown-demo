@@ -42,11 +42,11 @@ React / Canvas
 
 관련: FR-001/006, BR-001/007.
 
-브라우저는 `users.authWithPassword(email,password)`로 PB 로그인하고 토큰을 `client.auth.token`으로 방 입장에 전달한다(서버 `onAuth`의 `context.token`). 서버는 입장마다 새 PB 인스턴스를 생성해 `authStore.save(token)` 후 `users.authRefresh()`를 호출한다. 사용자 ID는 응답 record.id, 이름·색은 자기 profiles 조회에서 확정한다. 인증 저장소를 여러 사용자 간 공유하지 않는다. PB 요청은 5초 타임아웃이다.
+브라우저는 첫 방문 때 `POST /api/pixeltown/guest`로 게스트 계정을 만들거나, 저장된 게스트 자격증명(`localStorage` `pixeltown.guest`)으로 `users.authWithPassword(email,password)`를 해서 받은 토큰을 `client.auth.token`으로 방 입장에 전달한다(서버 `onAuth`의 `context.token`). 서버는 입장마다 새 PB 인스턴스를 생성해 `authStore.save(token)` 후 `users.authRefresh()`를 호출한다. 사용자 ID는 응답 record.id, 이름·색은 자기 profiles 조회에서 확정한다. 인증 저장소를 여러 사용자 간 공유하지 않는다. PB 요청은 5초 타임아웃이다.
 
 토큰·프로필 검증 실패는 401, 허용하지 않은 장소는 400, 같은 사용자의 같은 방 중복 입장은 409다. 전체 장소에 걸친 하나의 세션 제한이나 서버 자동 재접속을 보장하지 않는다. 클라이언트는 연결 끊김 UI에서 명시적 재연결을 제공한다.
 
-users는 자신의 record만 list/view, profiles/results/inventory는 `user = @request.auth.id`에 한해 list/view한다. create/update/delete 규칙은 `null`로 일반 사용자 쓰기를 잠근다. 회원가입은 제외되며 공개 등록 API가 없다. 서버 저장은 별도 관리자 클라이언트가 `_superusers.authWithPassword` 후 수행한다.
+users는 자신의 record만 list/view, profiles/results/inventory는 `user = @request.auth.id`에 한해 list/view한다. create/update/delete 규칙은 `null`로 일반 사용자 쓰기를 잠근다. 공개 `users` 생성은 막혀 있고(createRule null), 가입 경로는 게스트 훅 하나다. 서버 저장은 별도 관리자 클라이언트가 `_superusers.authWithPassword` 후 수행한다.
 
 개발 seed 계정은 demo1/demo2@pixeltown.local, 공개 데모 비밀번호는 PixelTown123!다. 관리자 인증정보는 최초 실행 시 무작위 생성해 pocketbase/.env.local(mode 0600)에 저장한다. 실제 값을 문서·로그·VITE_ 변수·Git에 넣지 않는다. PB 데이터·outbox·바이너리·node_modules는 공개 대상에서 제외한다.
 
@@ -124,6 +124,7 @@ player는 `{id,name,x,y,color,look:{hat,top,pet,skin,hair,style}}`(look은 카�
 | 경로 | 요청 | 처리 |
 |---|---|---|
 | `POST /api/pixeltown/shop/buy` | `{item}` | 트랜잭션: 이미 보유면 거부 → purchases 행 저장 → 지갑 재계산, 음수면 "별이 부족해요" 롤백. 응답 `{ok,item,balance}` |
+| `POST /api/pixeltown/guest` | `{name,color,avatar,password}` | 인증 없음(PLAN-006). profile과 같은 닉네임·외형 검사, password 32–128자(브라우저 생성). users(`guest-<무작위>@guest.pixeltown.local`, verified)와 profile을 한 트랜잭션으로 만들고 PB 인증 응답 `{token, record}`. 닉네임 중복이면 400 `{data:{name:'taken'}}`이고 사용자도 만들지 않는다. 속도 제한 없음 |
 | `POST /api/pixeltown/profile` | `{name,color,avatar:{skin,hair,style}}` | 로그인 본인만(FR-014). 닉네임 2–12자·한글/영문/숫자/공백/_/-, color는 `avatar.shirts`, 색인은 카탈로그 범위, 운영진 사칭 단어(`avatar.reserved`) 400, 다른 사용자와 같은 닉네임(공백·_·-·영문 대소문자 무시, DB unique 식 인덱스 `idx_profiles_name_key` 위반) 400 `{message, data:{name:'taken'}}`. 응답 `{ok,profile}` |
 | `POST /api/pixeltown/shop/equip` | `{hat,top,pet}` 각 id 또는 null | 슬롯이 맞고 보유한 아이템만, profiles.outfit 저장. 응답 `{ok,outfit}` |
 | `POST /api/pixeltown/shop/room` | `{placements:[{item,c,r}]}` | 보유 가구·하나씩·최대 24·바닥 `floor` 안·`door` 칸 제외·flat(러그) 아닌 가구끼리 겹침 없음, profiles.room 저장 |
