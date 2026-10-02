@@ -2,7 +2,7 @@ import { Room, ServerError } from '@colyseus/core';
 import { randomUUID } from 'node:crypto';
 import { userClient, ZONES } from './config.js';
 import { outbox } from './outbox.js';
-import { getMap, blocked, stepInput, entryPoint, spreadSpot, touchesStar, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS, WORLD } from '../shared/world.js';
+import { getMap, blocked, stepInput, entryPoint, spreadSpot, touchesStar, MAX_QUEUED_INPUTS, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS, WORLD } from '../shared/world.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Outfit shown to everyone comes from the PocketBase profile (written only by the shop hook), never from the client.
 // Outfit and character look (FR-014 avatar indexes) both come from the profile; invalid values fall back to null.
@@ -12,7 +12,7 @@ export const lookOf=profile=>{const o=profile?.outfit||{},a=profile?.avatar||{},
 export const INITIAL_STARS=5;
 export const MAX_STARS=12;
 export const RECONNECT_SECONDS=clamp(Number(process.env.RECONNECT_SECONDS)||15,1,60);
-export const MAX_QUEUED_INPUTS=20; // 1 s of 50 ms steps
+export { MAX_QUEUED_INPUTS };
 export const MAX_MATCH_SCORE=64; // PocketBase hook limit per settlement
 export const STAR_SPAWN_INTERVAL_MS=clamp(Number(process.env.STAR_SPAWN_INTERVAL_MS)||STAR_SPAWN_MS,1000,60000);
 // The star event never stops; scores are settled (saved) every period and the next period starts right away.

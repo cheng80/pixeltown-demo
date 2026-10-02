@@ -4,7 +4,7 @@ import PocketBase from "pocketbase";
 import { Client } from "@colyseus/sdk";
 import g11 from "galmuri/dist/Galmuri11.woff2";
 import g11b from "galmuri/dist/Galmuri11-Bold.woff2";
-import { getMap, moveActor, stepInput, facing, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, touchesStar, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
+import { getMap, moveActor, stepInput, facing, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, touchesStar, STEP_PER_TICK, TICK_MS, MAX_QUEUED_INPUTS } from "../../shared/world.js";
 import { scene, createView } from "./render.js";
 import { avatarSprite, lookFor, petSprite, propSprite } from "./sprites.js";
 import "./style.css";
@@ -250,13 +250,16 @@ function App() {
         if (dx || dy) { Object.assign(soloPos.current, moveActor(m, me.x, me.y, dx, dy, STEP_PER_TICK)); setPred(soloPos.current); }
         s.players = [{ id: user.id, name: profileRef.current?.name || user.name || "나", color: profileRef.current?.color, look: { ...profileRef.current?.outfit, ...profileRef.current?.avatar }, ...soloPos.current }];
         setSnap({ ...s });
+      } else if (room.current && pending.current.length >= MAX_QUEUED_INPUTS - 4) {
+        // The server has not confirmed ~1 s of steps (the connection stalled): wait in place instead of predicting further
+        // ahead. Past the server's queue the oldest steps would be dropped and the avatar would snap back when it resumes.
       } else if (room.current) {
         const msg = `${dx.toFixed(2)},${dy.toFixed(2)}`;
         // On the last leg the server steers to `to` itself and stops on it, so lag cannot carry the avatar past the click.
         if (dx || dy || msg !== lastSent.current) {
           const input = { dx, dy, seq: ++seq.current, ...(to ? { to: { x: to.x, y: to.y } } : {}) };
           room.current.send("input", input);
-          pending.current.push(input); if (pending.current.length > 40) pending.current.shift();
+          pending.current.push(input);
           setPred(stepInput(m, me, input)); // show the step now; the server confirms it with `ack`
         }
         lastSent.current = msg;
