@@ -55,4 +55,18 @@ function cleanProfile(cat, body) {
   if (!pick(av.skin, a.skins) || !pick(av.hair, a.hairs) || !pick(av.style, a.styles)) return { error: "고를 수 없는 모습이에요." };
   return { profile: { name: name, color: body.color, avatar: { skin: av.skin, hair: av.hair, style: av.style } } };
 }
-module.exports = { catalog, balance, owned, validateRoom, cleanProfile };
+// Guests (PLAN-006) not seen for `days` days are deleted with everything they own (relations cascade). Only
+// @guest.pixeltown.local accounts are touched. last_seen is set on sign-in; empty means never signed in again since creation.
+function cleanupGuests(app, days, limit) {
+  const cut = new Date(Date.now() - days * 86400000).toISOString().replace("T", " ");
+  const stale = app.findRecordsByFilter("profiles", "user.email ~ '@guest.pixeltown.local' && ((last_seen != '' && last_seen < {:cut}) || (last_seen = '' && created < {:cut}))", "created", limit, 0, { cut: cut });
+  let deleted = 0;
+  for (const profile of stale) {
+    const user = app.findRecordById("users", profile.getString("user"));
+    if (!/@guest\.pixeltown\.local$/.test(user.email())) continue;
+    app.delete(user);
+    deleted++;
+  }
+  return deleted;
+}
+module.exports = { catalog, balance, owned, validateRoom, cleanProfile, cleanupGuests };

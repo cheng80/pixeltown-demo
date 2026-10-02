@@ -100,16 +100,21 @@ function App() {
     if (pb.authStore.isValid) return;
     const saved = load(GUEST_KEY, null, v => typeof v?.email === "string" && typeof v?.password === "string");
     if (!saved) { setBooting(false); return; }
-    pb.collection("users").authWithPassword(saved.email, saved.password)
+    const signIn = (n = 0) => pb.collection("users").authWithPassword(saved.email, saved.password)
       .then(r => { setUser(r.record); setBooting(false); })
       .catch(e => {
         if (e.status === 400) { try { localStorage.removeItem(GUEST_KEY); } catch {} setBooting(false); } // account gone: make a new character
+        else if (e.status === 429 && n < 5) setTimeout(() => signIn(n + 1), 3000); // shared IP hit the sign-in rate limit
         else setBootError("마을 서버에 연결하지 못했어요. 잠시 뒤 새로고침해 주세요.");
       });
+    signIn();
   }, []);
   async function createGuest(body) {
     const password = Array.from(crypto.getRandomValues(new Uint8Array(24)), b => b.toString(16).padStart(2, "0")).join("");
-    const r = await pb.send("/api/pixeltown/guest", { method: "POST", body: { ...body, password } });
+    const r = await pb.send("/api/pixeltown/guest", { method: "POST", body: { ...body, password } }).catch(e => {
+      if (e.status === 429) e.response = { message: "이 곳에서 새 캐릭터를 너무 많이 만들었어요. 한 시간쯤 뒤에 다시 시도해 주세요." };
+      throw e;
+    });
     save(GUEST_KEY, { email: r.record.email, password });
     pb.authStore.save(r.token, r.record); setUser(r.record);
   }

@@ -58,6 +58,18 @@ async function uniqueNames(pb) {
   }
   if (renamed) console.log(`Unique nickname index: renamed ${renamed} duplicate profile name(s)`);
 }
+// Abuse limits for a public server behind Cloudflare (PLAN-006): PocketBase's own rate limiter keyed by the visitor IP that
+// Cloudflare puts in CF-Connecting-IP (PB listens on loopback only, so nobody can reach it without the tunnel), at most
+// GUEST_PER_HOUR guest sign-ups per IP, and PB's default rules (auth brute force etc.). Loopback callers (the Colyseus
+// server: authRefresh on every join, outbox saves) are excluded so the game server is never throttled.
+export const GUEST_PER_HOUR = 5;
+export async function applyAbuseLimits(pb) {
+  const { rateLimits } = await pb.settings.getAll();
+  const label = 'POST /api/pixeltown/guest';
+  const rules = [...rateLimits.rules.filter(r => r.label !== label), { label, audience: '', duration: 3600, maxRequests: GUEST_PER_HOUR }];
+  const excludedIPs = [...new Set([...(rateLimits.excludedIPs || []), '127.0.0.1', '::1'])];
+  await pb.settings.update({ trustedProxy: { headers: ['CF-Connecting-IP'], useLeftmostIP: false }, rateLimits: { enabled: true, excludedIPs, rules } });
+}
 // remote: true keeps the existing users collection rules and accounts (Mac mini install) and only adds game schema.
 export async function seed(client, { remote = false } = {}) {
   const target=new URL(client?.baseURL || PB_URL);
@@ -76,7 +88,7 @@ export async function seed(client, { remote = false } = {}) {
   ];
   const schemas = [
     {name:'rooms',listRule:"@request.auth.id != ''",viewRule:"@request.auth.id != ''",fields:[...timestamps,{name:'zone',type:'text',required:true},{name:'title',type:'text',required:true,max:80},{name:'max_players',type:'number',required:true,min:1,max:32}],indexes:['CREATE UNIQUE INDEX idx_rooms_zone ON rooms (zone)']},
-    {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true},{name:'outfit',type:'json',maxSize:2000},{name:'room',type:'json',maxSize:8000},{name:'avatar',type:'json',maxSize:200}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)',"CREATE UNIQUE INDEX idx_profiles_name_key ON profiles (lower(replace(replace(replace(name, ' ', ''), '_', ''), '-', '')))"]},
+    {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true},{name:'outfit',type:'json',maxSize:2000},{name:'room',type:'json',maxSize:8000},{name:'avatar',type:'json',maxSize:200},{name:'last_seen',type:'date'}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)',"CREATE UNIQUE INDEX idx_profiles_name_key ON profiles (lower(replace(replace(replace(name, ' ', ''), '_', ''), '-', '')))"]},
     {name:'results',fields:[...timestamps,relation,{name:'match_id',type:'text',required:true},{name:'zone',type:'text',required:true},{name:'score',type:'number',min:0},{name:'ended_at',type:'date',required:true}],indexes:['CREATE UNIQUE INDEX idx_results_match_user ON results (match_id, user)']},
     // Star shop ledger (ADR-004): written only by the shop hook, one row per owned item.
     {name:'purchases',fields:[...timestamps,relation,{name:'item',type:'text',required:true,max:40},{name:'price',type:'number',required:true,min:0}],indexes:['CREATE UNIQUE INDEX idx_purchases_user_item ON purchases (user, item)']},
@@ -102,7 +114,7 @@ export async function seed(client, { remote = false } = {}) {
     try {await pb.collection('rooms').getFirstListItem(pb.filter('zone={:zone}',{zone}));}
     catch(e) {if(e.status!==404)throw e;await pb.collection('rooms').create({zone,title,max_players:32});}
   }
-  if (remote) { console.log('Game schema ready (existing users and rules kept)'); return; }
+  if (remote) { await applyAbuseLimits(pb); console.log('Game schema and abuse limits ready (existing users and rules kept)'); return; }
   for(let n=1;n<=2;n++) {
     const email = `demo${n}@pixeltown.local`;
     let user;

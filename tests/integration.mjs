@@ -547,6 +547,34 @@ async function shopChecks() {
     assert.equal(player(rg, guestAccount).name, guestName); await leave(rg);
     return { rejected, duplicateNickname: taken, duplicateMessage: takenResponse.data?.message, caseVariant, spacingVariants: spacing, guest: { created: true, relogin: true, joinedTown: true, rejected: guestRejected, noOrphanUser: true }, saved: true, seenByOther: { name: true, skin: seen.look.skin, hair: seen.look.hair, style: seen.look.style, color: seen.color } };
   });
+  // Abuse limits (PLAN-006): the production settings function, the guest sign-up limit per visitor IP, last_seen and clean-up.
+  await test('guest_abuse_limits_and_cleanup', async () => {
+    const initializer = await import(pathToFileURL(resolve(root, 'scripts/init-pocketbase.mjs')).href);
+    await initializer.applyAbuseLimits(runtime.admin);
+    const settings = await runtime.admin.settings.getAll();
+    assert.deepEqual(settings.trustedProxy.headers, ['CF-Connecting-IP']); assert.ok(settings.rateLimits.enabled);
+    assert.ok(['127.0.0.1', '::1'].every(ip => settings.rateLimits.excludedIPs.includes(ip)));
+    const visitor = ip => fetch(`${PB_URL}/api/pixeltown/guest`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': ip }, body: '{}' }).then(r => r.status);
+    const fromOne = []; for (let i = 0; i <= initializer.GUEST_PER_HOUR; i++) fromOne.push(await visitor('203.0.113.9'));
+    const otherVisitor = await visitor('198.51.100.7'), gameServer = (await request('/api/pixeltown/guest', { method: 'POST', body: {} })).status;
+    assert.deepEqual(fromOne, [...Array(initializer.GUEST_PER_HOUR).fill(400), 429]); assert.equal(otherVisitor, 400); assert.equal(gameServer, 400);
+    // last_seen: written on sign-in; idle guests go, active guests and normal accounts stay.
+    const make = async n => { const password = randomBytes(24).toString('hex'), r = await request('/api/pixeltown/guest', { method: 'POST', body: { name: `정리${n}${runtime.runId.slice(0, 3)}`, color: '#ffb347', avatar: { skin: 1, hair: 1, style: 1 }, password } }); assert.equal(r.status, 200); return { id: r.data.record.id, email: r.data.record.email, password }; };
+    const idle = await make('가'), active = await make('나');
+    await request('/api/collections/users/auth-with-password', { method: 'POST', body: { identity: active.email, password: active.password } });
+    const activeProfile = await runtime.admin.collection('profiles').getFirstListItem(`user="${active.id}"`);
+    assert.ok(activeProfile.last_seen, 'last_seen not recorded on sign-in');
+    const idleProfile = await runtime.admin.collection('profiles').getFirstListItem(`user="${idle.id}"`);
+    await runtime.admin.collection('profiles').update(idleProfile.id, { last_seen: new Date(Date.now() - 40 * 86400000).toISOString() });
+    const anonymousCleanup = (await request('/api/pixeltown/guest-cleanup', { method: 'POST', body: {} })).status;
+    const cleanup = await request('/api/pixeltown/guest-cleanup', { token: runtime.admin.authStore.token, method: 'POST', body: { days: 30 } });
+    assert.equal(anonymousCleanup, 401); assert.equal(cleanup.status, 200); assert.equal(cleanup.data.deleted, 1);
+    const gone = await runtime.admin.collection('users').getOne(idle.id).then(() => false, e => e.status === 404);
+    const kept = await runtime.admin.collection('users').getOne(active.id).then(() => true, () => false);
+    const normalKept = await runtime.admin.collection('users').getOne(c.id).then(() => true, () => false);
+    assert.ok(gone && kept && normalKept);
+    return { guestSignupsPerVisitorIp: fromOne, otherVisitorIp: otherVisitor, gameServerLoopbackExcluded: gameServer, lastSeenOnSignIn: true, cleanup: { anonymous: anonymousCleanup, deleted: cleanup.data.deleted, idleGuestGone: gone, activeGuestKept: kept, normalAccountKept: normalKept } };
+  });
 }
 
 async function gameChecks() {
