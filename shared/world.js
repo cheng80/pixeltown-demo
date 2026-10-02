@@ -9,6 +9,7 @@ export const FOOT = { hw: 5, hh: 3 }; // player ground box half extents
 export const STEP_PER_TICK = 3; // px per 50ms server tick (60 px/s)
 export const TICK_MS = 50;
 export const COLLECT_RADIUS = 16;
+export const STAR_SPAWN_MS = 6000; // one new star per period, until the zone holds 12
 
 // Tiles that block movement. Everything else (grass, path, plaza, bridge, floor, rug, portal) is walkable.
 export const SOLID_TILES = new Set(['#', '~', 'F', 'W', 'x']);
@@ -250,15 +251,23 @@ export function findPath(map, from, to) {
   const path = [];
   for (let i = goal; i >= 0; i = prev[i]) path.unshift(cellCenter(i));
   path.shift();
-  // Drop intermediate points on straight runs.
+  if (path.length && !blocked(map, to.x, to.y) && Math.hypot(path[path.length - 1].x - to.x, path[path.length - 1].y - to.y) < 8) path[path.length - 1] = { x: to.x, y: to.y };
+  // String pulling: from each corner, head straight for the farthest following point with a clear walk.
   const out = [];
-  for (let i = 0; i < path.length; i++) {
-    const a = out[out.length - 1] || start, b = path[i], c = path[i + 1];
-    if (c && Math.sign(b.x - a.x) === Math.sign(c.x - b.x) && Math.sign(b.y - a.y) === Math.sign(c.y - b.y)) continue;
-    out.push(b);
+  let a = blocked(map, from.x, from.y) ? start : from;
+  for (let i = 0; i < path.length;) {
+    let j = i;
+    while (j + 1 < path.length && clearWalk(map, a, path[j + 1])) j++;
+    out.push(path[j]); a = path[j]; i = j + 1;
   }
-  if (out.length && !blocked(map, to.x, to.y) && Math.hypot(out[out.length - 1].x - to.x, out[out.length - 1].y - to.y) < 8) out[out.length - 1] = { x: to.x, y: to.y };
   return out;
+}
+
+// A straight walk from a to b never overlaps a blocker (sampled every 2px of the foot box).
+export function clearWalk(map, a, b) {
+  const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 2);
+  for (let i = 1; i <= n; i++) if (blocked(map, a.x + (b.x - a.x) * i / n, a.y + (b.y - a.y) * i / n)) return false;
+  return true;
 }
 
 // Walkable cells not reachable from the zone spawn (should be none).
@@ -280,6 +289,17 @@ export function starSpots(map) {
     map.stars.push({ x, y });
   }
   return map.stars;
+}
+
+// Best of 24 random star spots: the one farthest from everything in `taken`, so stars spread over the whole map.
+export function spreadSpot(map, taken, rnd = Math.random) {
+  const spots = starSpots(map);
+  let best, bestD = -1;
+  for (let n = 0; n < 24; n++) {
+    const s = spots[Math.floor(rnd() * spots.length)], d = Math.min(...taken.map(t => Math.hypot(t.x - s.x, t.y - s.y)));
+    if (d > bestD) { best = s; bestD = d; }
+  }
+  return { ...best };
 }
 
 export const portalAt = (map, x, y) => map.portals.find(p => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h);

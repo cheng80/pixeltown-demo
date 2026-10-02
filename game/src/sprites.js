@@ -239,8 +239,10 @@ export function avatarSprite(look, dir, frame) {
 let starCv;
 export function starSprite() {
   return (starCv ||= sprite(13, 13, c => {
-    R(c, 5, 0, 3, 13, '#ffd23f'); R(c, 0, 4, 13, 3, '#ffd23f'); R(c, 2, 3, 9, 6, '#ffd23f'); R(c, 1, 9, 3, 3, '#ffd23f'); R(c, 9, 9, 3, 3, '#ffd23f');
-    R(c, 5, 2, 2, 4, '#fff3a3'); R(c, 4, 7, 1, 1, LINE); R(c, 8, 7, 1, 1, LINE);
+    // 행별 [x, y, 폭] — 다리 사이를 비워 세로 막대(코처럼 보임)가 생기지 않게 한다
+    [[6, 0, 1], [5, 1, 3], [5, 2, 3], [4, 3, 5], [0, 4, 13], [1, 5, 11], [2, 6, 9], [3, 7, 7], [3, 8, 7],
+      [2, 9, 3], [8, 9, 3], [2, 10, 2], [9, 10, 2], [1, 11, 2], [10, 11, 2]].forEach(([x, y, w]) => R(c, x, y, w, 1, '#ffd23f'));
+    R(c, 6, 1, 1, 3, '#fff3a3'); R(c, 4, 6, 1, 2, LINE); R(c, 8, 6, 1, 2, LINE);
   }));
 }
 

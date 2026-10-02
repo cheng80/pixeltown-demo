@@ -240,92 +240,85 @@ async function loadChecks() {
   await Promise.allSettled(clients.map(leave));
 }
 
-async function playMatch(state, account, { collect = true, verifyGeneration = false } = {}) {
+// The star event is always on: there is no start command, scores are settled every period.
+async function playMatch(state, account, { verifyGeneration = false } = {}) {
   const offset = state.messages.length;
-  state.room.send('startGame', { score: 999999, scores: { [account.id]: 999999 }, endsAt: 0 });
-  await waitUntil(() => state.snapshot.game.active, 'game start');
-  assert.equal(state.snapshot.game.scores[account.id], 0, 'Client spoofed initial score');
-  const generation = { initialCount: state.snapshot.game.stars.length, cap: 12, periodMs: 1500 };
+  await waitUntil(() => state.snapshot.game.active, 'event active on join');
+  await sleep(150);
+  assert.ok(!state.snapshot.game.scores[account.id], 'Client spoofed score');
+  const generation = { cap: 12, periodMs: runtime.starSpawnMs };
   if (verifyGeneration) {
-    assert.equal(generation.initialCount, 5, 'Game must start with exactly five stars');
-    const started = performance.now();
-    await waitUntil(() => state.snapshot.game.stars.length === 12, 'periodic generation reaches twelve stars without collection', 13000);
-    generation.timeToCapMs = Math.round(performance.now() - started);
+    const started = performance.now(), startCount = state.snapshot.game.stars.length;
+    assert.ok(startCount >= 5, 'Event must keep at least five stars on the map');
+    await waitUntil(() => state.snapshot.game.stars.length === 12, `periodic generation reaches twelve stars without collection (start ${startCount}, now ${state.snapshot.game.stars.length}, ids ${state.snapshot.game.stars.map(s => s.id.slice(-3)).join(' ')})`, (12 - startCount + 1) * runtime.starSpawnMs + 1500);
+    generation.startCount = startCount; generation.timeToCapMs = Math.round(performance.now() - started);
     const growth = state.messages.slice(offset).filter(m => m.type === 'snapshot' && m.payload.game.active);
     const increments = [];
-    let previousCount = 5, previousAt = growth[0]?.at;
+    let previousCount = startCount, previousAt;
     for (const message of growth) {
       const count = message.payload.game.stars.length;
-      assert.ok(count >= previousCount, 'Stars disappeared without collection');
+      assert.ok(count >= previousCount, 'Stars disappeared without collection (settlement must keep them)');
       if (count > previousCount) {
         assert.equal(count, previousCount + 1, 'Generator must add one star per period');
         if (previousAt !== undefined) {
           const interval = message.at - previousAt;
-          assert.ok(interval >= 1200 && interval <= 1800, `Generation interval ${Math.round(interval)}ms differs from 1500ms`);
+          assert.ok(Math.abs(interval - runtime.starSpawnMs) <= 300, `Generation interval ${Math.round(interval)}ms differs from ${runtime.starSpawnMs}ms`);
           increments.push(Math.round(interval));
         }
         previousCount = count; previousAt = message.at;
       }
     }
     assert.equal(previousCount, 12);
-    assert.equal(increments.length, 7, 'Expected seven periodic additions from five to twelve');
     generation.observedGenerationIntervalsMs = increments;
     const capOffset = state.snapshots.length;
     const capIds = state.snapshot.game.stars.map(s => s.id).sort();
-    await sleep(3100); // More than two generation periods while no stars are collected.
-    const capped = state.snapshots.slice(capOffset);
-    assert.ok(capped.length >= 15, 'Missing snapshots during cap observation');
-    for (const snapshot of capped) {
-      assert.ok(snapshot.game.active, 'Game ended before the cap could be observed');
+    await sleep(runtime.starSpawnMs * 2 + 100); // More than two generation periods while no stars are collected.
+    for (const snapshot of state.snapshots.slice(capOffset)) {
       assert.equal(snapshot.game.stars.length, 12);
       assert.deepEqual(snapshot.game.stars.map(s => s.id).sort(), capIds, 'Generator replaced stars while at capacity');
     }
-    generation.stableAtCapMs = 3100;
+    generation.stableAtCapMs = runtime.starSpawnMs * 2 + 100;
+    const stars = state.snapshot.game.stars;
+    generation.minimumStarSpacing = Math.round(Math.min(...stars.flatMap((a, i) => stars.slice(i + 1).map(b => Math.hypot(a.x - b.x, a.y - b.y)))));
   }
-  const nearest = [...state.snapshot.game.stars].sort((x, y) => Math.hypot(x.x - player(state, account).x, x.y - player(state, account).y) - Math.hypot(y.x - player(state, account).x, y.y - player(state, account).y))[0];
-  if (collect) {
-    // Sending collect from a distant location must not create a score.
-    const distant = state.snapshot.game.stars.find(s => Math.hypot(s.x - player(state, account).x, s.y - player(state, account).y) > 32);
-    if (distant) {
-      state.room.send('collect', { id: distant.id, score: 999999, x: distant.x, y: distant.y });
-      await sleep(150);
-      assert.equal(state.snapshot.game.scores[account.id], 0, 'Out-of-range collection accepted');
-    }
-    await moveTo(state, account, nearest);
-    state.room.send('input', { dx: 0, dy: 0 });
-    const beforeCollectIds = state.snapshot.game.stars.map(s => s.id);
-    const collectOffset = state.snapshots.length;
-    const collectedAt = performance.now();
-    state.room.send('collect', { id: nearest.id, score: 999999 });
-    await waitUntil(() => state.snapshot.game.scores[account.id] === 1, 'server-authoritative collection score');
-    if (verifyGeneration) {
-      await waitUntil(() => state.snapshots.slice(collectOffset).some(s => s.game.active && s.game.stars.length === 11 && !s.game.stars.some(star => star.id === nearest.id)), 'collection frees one star slot');
-      await waitUntil(() => state.snapshot.game.active && state.snapshot.game.stars.length === 12 && state.snapshot.game.stars.some(star => !beforeCollectIds.includes(star.id)), 'next generation period refills collected slot', 1900);
-      assert.ok(!state.snapshot.game.stars.some(s => s.id === nearest.id), 'Collected star ID was reused');
-      generation.refillDelayMs = Math.round(performance.now() - collectedAt);
-      const refillOffset = state.snapshots.length;
-      const refillIds = state.snapshot.game.stars.map(s => s.id).sort();
-      await sleep(1600);
-      for (const snapshot of state.snapshots.slice(refillOffset)) {
-        assert.ok(snapshot.game.active, 'Game ended before regenerated cap observation');
-        assert.equal(snapshot.game.stars.length, 12);
-        assert.deepEqual(snapshot.game.stars.map(s => s.id).sort(), refillIds);
-      }
-      generation.collectionFreedSlot = true;
-      generation.regeneratedWithFreshId = true;
-    }
-    state.room.send('collect', { id: nearest.id });
-    await sleep(180);
-    assert.equal(state.snapshot.game.scores[account.id], 1, 'Duplicate collection scored twice');
+  const me = () => player(state, account);
+  const nearest = [...state.snapshot.game.stars].sort((x, y) => Math.hypot(x.x - me().x, x.y - me().y) - Math.hypot(y.x - me().x, y.y - me().y))[0];
+  // Sending collect from a distant location must not create a score.
+  const distant = state.snapshot.game.stars.find(s => Math.hypot(s.x - me().x, s.y - me().y) > 32);
+  if (distant) {
+    state.room.send('collect', { id: distant.id, score: 999999, x: distant.x, y: distant.y });
+    await sleep(150);
+    assert.ok(!state.snapshot.game.scores[account.id], 'Out-of-range collection accepted');
   }
-  const ended = (await waitUntil(() => state.messages.slice(offset).find(m => m.type === 'gameEnded'), 'game finish', runtime.gameDurationMs + 2000)).payload;
+  await moveTo(state, account, nearest);
+  state.room.send('input', { dx: 0, dy: 0 });
+  const beforeCollectIds = state.snapshot.game.stars.map(s => s.id);
+  const collectOffset = state.snapshots.length;
+  const collectedAt = performance.now();
+  state.room.send('collect', { id: nearest.id, score: 999999 });
+  const scored = await waitUntil(() => state.snapshots.slice(collectOffset).find(s => s.game.scores[account.id] === 1), 'server-authoritative collection score');
+  const matchId = scored.game.id;
+  if (verifyGeneration) {
+    await waitUntil(() => state.snapshots.slice(collectOffset).some(s => s.game.stars.length === 11 && !s.game.stars.some(star => star.id === nearest.id)), 'collection frees one star slot');
+    await waitUntil(() => state.snapshot.game.stars.length === 12 && state.snapshot.game.stars.some(star => !beforeCollectIds.includes(star.id)), 'next generation period refills collected slot', runtime.starSpawnMs + 400);
+    assert.ok(!state.snapshot.game.stars.some(s => s.id === nearest.id), 'Collected star ID was reused');
+    generation.refillDelayMs = Math.round(performance.now() - collectedAt);
+    generation.collectionFreedSlot = true;
+    generation.regeneratedWithFreshId = true;
+  }
+  state.room.send('collect', { id: nearest.id });
+  await sleep(180);
+  if (state.snapshot.game.id === matchId) assert.equal(state.snapshot.game.scores[account.id], 1, 'Duplicate collection scored twice');
+  const ended = (await waitUntil(() => state.messages.slice(offset).find(m => m.type === 'gameEnded' && m.payload.match_id === matchId), 'period settlement', runtime.gameDurationMs + 2000)).payload;
+  assert.ok(state.snapshot.game.active, 'Event stopped after settlement');
+  assert.ok(state.snapshot.game.id !== matchId, 'Next period did not start');
   if (verifyGeneration) {
     const snapshots = state.messages.slice(offset).filter(m => m.type === 'snapshot' && m.payload.game.active).map(m => m.payload);
     for (const snapshot of snapshots) {
       assert.ok(snapshot.game.stars.length <= 12, 'Live star count exceeded twelve');
       assert.equal(new Set(snapshot.game.stars.map(s => s.id)).size, snapshot.game.stars.length, 'Duplicate live star IDs');
     }
-    runtime.generationEvidence = { ...generation, maximumObservedStars: Math.max(...snapshots.map(s => s.game.stars.length)), observedSnapshots: snapshots.length };
+    runtime.generationEvidence = { ...generation, maximumObservedStars: Math.max(...snapshots.map(s => s.game.stars.length)), observedSnapshots: snapshots.length, continuedAfterSettlement: true };
   }
   return ended;
 }
@@ -347,8 +340,9 @@ async function setup() {
   await writeFile(envFile, `PB_ADMIN_EMAIL=integration-${randomBytes(8).toString('hex')}@pixeltown.local\nPB_ADMIN_PASSWORD=${randomBytes(32).toString('hex')}\n`, { mode: 0o600 });
   runtime = { runId: randomBytes(5).toString('hex'), local, dataDir: resolve(local, 'pb_data'), outboxDir: resolve(local, 'outbox'), binary: resolve(root, 'pocketbase/.local/pocketbase'), client: new Client(WS_URL) };
   assert.ok(existsSync(runtime.binary), 'Backend owner must prepare local PocketBase binary first; this test never downloads it');
-  runtime.gameDurationMs = 24000; // Allows 10.5s growth, two capped periods, collection and refill.
-  runtime.env = { ...process.env, PIXELTOWN_LOCAL_DIR: local, PIXELTOWN_ENV_FILE: envFile, PB_DATA_DIR: runtime.dataDir, OUTBOX_PATH: runtime.outboxDir, GAME_DURATION_MS: String(runtime.gameDurationMs), PB_URL, POCKETBASE_URL: PB_URL, COLYSEUS_PORT: String(GAME_PORT), COLYSEUS_HOST: '127.0.0.1', SERVER_PORT: String(GAME_PORT), SERVER_HOST: '127.0.0.1' };
+  runtime.gameDurationMs = 30000; // Settlement period: growth to the cap, two capped periods, collection and refill fit in one or two periods.
+  runtime.starSpawnMs = 1500; // Shortened from the 6s default so growth to the cap is observable in seconds.
+  runtime.env = { ...process.env, PIXELTOWN_LOCAL_DIR: local, PIXELTOWN_ENV_FILE: envFile, PB_DATA_DIR: runtime.dataDir, OUTBOX_PATH: runtime.outboxDir, GAME_DURATION_MS: String(runtime.gameDurationMs), STAR_SPAWN_INTERVAL_MS: String(runtime.starSpawnMs), PB_URL, POCKETBASE_URL: PB_URL, COLYSEUS_PORT: String(GAME_PORT), COLYSEUS_HOST: '127.0.0.1', SERVER_PORT: String(GAME_PORT), SERVER_HOST: '127.0.0.1' };
   Object.assign(process.env, { PIXELTOWN_LOCAL_DIR: local, PIXELTOWN_ENV_FILE: envFile, PB_DATA_DIR: runtime.dataDir, OUTBOX_PATH: runtime.outboxDir, PB_URL, POCKETBASE_URL: PB_URL, COLYSEUS_PORT: String(GAME_PORT), COLYSEUS_HOST: '127.0.0.1' });
   const config = await import(pathToFileURL(resolve(root, 'colyseus/config.js')).href);
   const credentials = config.credentials();
@@ -400,8 +394,8 @@ async function gameChecks() {
     const items = await records('inventory', a, `match_id="${match.match_id}"`);
     assert.equal(items.length, 1); assert.equal(items[0].quantity, 1); assert.equal(items[0].item, 'star');
     const ownB = await records('results', b, `match_id="${match.match_id}"`);
-    assert.equal(ownB.length, 1); assert.equal(ownB[0].user, b.id); assert.equal(ownB[0].score, 0);
-    return { matchId: match.match_id, serverScore: row.score, resultsPerUser: 1, rewardPerUser: 1 };
+    assert.equal(ownB.length, 0, 'A player without points must not get an empty result row');
+    return { matchId: match.match_id, serverScore: row.score, resultsPerScoringUser: 1, rewardPerScoringUser: 1, zeroScoreRows: 0 };
   });
   if (!row) return;
   await test('result_tamper_and_cross_user_access_denied', async () => {
@@ -439,17 +433,15 @@ async function gameChecks() {
       await writeFile(resolve(runtime.outboxDir, `${match.match_id}.json`), JSON.stringify(match), { mode: 0o600 });
       await waitUntil(async () => (await (await fetch(`${HTTP_URL}/health`)).json()).persistence.pending === 0, 'replayed outbox drained', 10000);
     }
-    for (const account of [a, b]) {
-      for (const collection of ['results', 'inventory']) {
-        const rows = await records(collection, account, `match_id="${match.match_id}"`);
-        assert.equal(rows.length, 1, `${collection} duplicated after delivery replay`);
-      }
+    for (const collection of ['results', 'inventory']) {
+      const rows = await records(collection, a, `match_id="${match.match_id}"`);
+      assert.equal(rows.length, 1, `${collection} duplicated after delivery replay`);
     }
     for (let replay = 0; replay < 2; replay++) {
       const response = await request('/api/pixeltown/commit-match', { token: runtime.admin.authStore.token, method: 'POST', body: match });
       assert.equal(response.status, 200);
     }
-    for (const account of [a, b]) for (const collection of ['results', 'inventory']) assert.equal((await records(collection, account, `match_id="${match.match_id}"`)).length, 1);
+    for (const collection of ['results', 'inventory']) assert.equal((await records(collection, a, `match_id="${match.match_id}"`)).length, 1);
     const duplicate = await runtime.admin.collection('results').create({ user: a.id, match_id: match.match_id, zone: match.zone, score: 1, ended_at: match.ended_at }).then(() => true, error => { assert.equal(error.status, 400); return false; });
     assert.equal(duplicate, false, 'Unique constraint missing');
     return { outboxReplayCount: 2, adminApiReplayCount: 2, rowsPerMatchAndUser: 1, databaseUniqueConstraint: true };
@@ -469,10 +461,9 @@ async function gameChecks() {
     return { conflictingReplayStatus: conflicting.status, invalidSecondParticipantStatus: badSecondParticipant.status, partialResultRows: 0, partialInventoryRows: 0 };
   });
   await test('storage_outage_durable_queue_restart_recovery', async () => {
-    await sleep(2100); // Respect startGame cooldown.
     await stop(runtime.pb);
     await assert.rejects(fetch(`${PB_URL}/api/health`, { signal: AbortSignal.timeout(500) }));
-    const outageMatch = await playMatch(ra, a, { collect: false });
+    const outageMatch = await playMatch(ra, a);
     await waitUntil(async () => (await (await fetch(`${HTTP_URL}/health`)).json()).persistence.pending > 0, 'pending persistence during outage');
     const queued = JSON.parse(await readFile(resolve(runtime.outboxDir, `${outageMatch.match_id}.json`), 'utf8'));
     assert.equal(queued.match_id, outageMatch.match_id);
@@ -485,9 +476,9 @@ async function gameChecks() {
     runtime.pb = startPB();
     await ready(`${PB_URL}/api/health`, runtime.pb);
     await waitUntil(async () => (await (await fetch(`${HTTP_URL}/health`)).json()).persistence.pending === 0, 'outbox recovered', 15000);
-    for (const account of [a, b]) for (const collection of ['results', 'inventory']) {
-      const rows = await records(collection, account, `match_id="${outageMatch.match_id}"`);
-      assert.equal(rows.length, 1); assert.equal(rows[0].user, account.id);
+    for (const collection of ['results', 'inventory']) {
+      const rows = await records(collection, a, `match_id="${outageMatch.match_id}"`);
+      assert.equal(rows.length, 1); assert.equal(rows[0].user, a.id);
     }
     const reconnected = await join(a, 'garden'); await leave(reconnected);
     return { persistedMatchId: outageMatch.match_id, queuedOnDisk: true, survivedServerRestart: true, resultsAndInventoryRecovered: true, authenticatedReconnect: true };

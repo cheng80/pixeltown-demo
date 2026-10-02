@@ -4,7 +4,7 @@ import PocketBase from "pocketbase";
 import { Client } from "colyseus.js";
 import g11 from "galmuri/dist/Galmuri11.woff2";
 import g11b from "galmuri/dist/Galmuri11-Bold.woff2";
-import { getMap, moveActor, findPath, portalAt, entryPoint, starSpots, COLLECT_RADIUS, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
+import { getMap, moveActor, findPath, portalAt, entryPoint, spreadSpot, COLLECT_RADIUS, STAR_SPAWN_MS, STEP_PER_TICK, TICK_MS } from "../../shared/world.js";
 import { scene, createView } from "./render.js";
 import { avatarSprite, lookFor } from "./sprites.js";
 import "./style.css";
@@ -113,7 +113,13 @@ function App() {
     collectTimes.current = {}; bubbles.current = {}; emotes.current = {}; keys.current.clear(); touch.current = { dx: 0, dy: 0 };
     route.current = []; portalArmed.current = false; lastSent.current = "";
     const via = entry.current; entry.current = "default";
-    if (solo) { selfId.current = "solo"; soloPos.current = entryPoint(getMap(zone), via); return; }
+    if (solo) {
+      selfId.current = "solo"; soloPos.current = entryPoint(getMap(zone), via);
+      const stars = [];
+      while (stars.length < 5) stars.push({ id: String(stars.length), ...spreadSpot(getMap(zone), [...stars, soloPos.current]) });
+      state.current.game = { active: true, endsAt: 0, counter: 5, nextSpawnAt: Date.now() + STAR_SPAWN_MS, stars, scores: { solo: 0 } };
+      return;
+    }
     // A reload can race the server noticing the previous socket closed (409): retry briefly.
     const join = (n = 0) => client.joinOrCreate("town", { token: pb.authStore.token, zone, entry: via })
       .catch(e => (e.code === 409 && n < 6 && !cancelled ? new Promise(r => setTimeout(r, 700)).then(() => join(n + 1)) : Promise.reject(e)));
@@ -129,7 +135,7 @@ function App() {
       });
       r.onMessage("chat", d => append({ id: d.id, name: d.name || "이웃", text: d.text, mine: d.id === user.id }));
       r.onMessage("emote", d => { emotes.current[d.id] = Date.now() + 2500; });
-      r.onMessage("gameEnded", () => { persistStatus.current = "pending"; notify("별 모으기 끝! 기록을 저장하는 중이에요."); });
+      r.onMessage("gameEnded", m => { const n = m.scores?.[user.id]; if (n) { persistStatus.current = "pending"; notify(`별 ${n}개 정산! 기록을 저장하는 중이에요.`); } });
       r.onLeave(() => { if (!cancelled) setStatus("disconnected"); });
       r.onError((code, message) => { if (!cancelled) { setStatus("disconnected"); notify(message || `연결 오류 (${code})`); } });
     }).catch(e => { if (!cancelled) { setStatus("disconnected"); notify(`마을 연결 실패: ${e.message}`); } });
@@ -169,8 +175,7 @@ function App() {
         if (g?.active) {
           const now = Date.now();
           g.stars = g.stars.filter(star => { if (Math.hypot(star.x - me.x, star.y - me.y) <= COLLECT_RADIUS) { g.scores.solo++; return false; } return true; });
-          if (now >= g.nextSpawnAt && now < g.endsAt) { if (g.stars.length < 12) g.stars.push(randomStar(m, g.counter++)); g.nextSpawnAt = now + 1500; }
-          if (now >= g.endsAt) { g.active = false; g.stars = []; notify(`연습 끝! 별 ${g.scores.solo}개 (기록은 저장되지 않아요)`); }
+          if (now >= g.nextSpawnAt) { if (g.stars.length < 12) g.stars.push({ id: String(g.counter++), ...spreadSpot(m, [...g.stars, me]) }); g.nextSpawnAt = now + STAR_SPAWN_MS; }
           setSnap({ ...s, game: { ...g } });
         }
       } else if (room.current) {
@@ -239,12 +244,6 @@ function App() {
     else room.current?.send("chat", { text: text.slice(0, 200) });
     setChat("");
   }
-  function startGame() {
-    if (!solo) { room.current?.send("startGame", {}); return; }
-    const m = getMap(zone), now = Date.now();
-    state.current.game = { active: true, endsAt: now + 30000, maxStars: 12, counter: 5, nextSpawnAt: now + 1500, stars: Array.from({ length: 5 }, (_, i) => randomStar(m, i)), scores: { solo: 0 } };
-    setSnap({ ...state.current });
-  }
   function logout() {
     room.current?.leave(); room.current = null; pb.authStore.clear();
     setUser(null); setSolo(false); setNotebook(false);
@@ -253,7 +252,7 @@ function App() {
   if (!entered) return <Login {...{ email, setEmail, password, setPassword, busy, error, setError, authenticate, setSolo }} />;
 
   const game = snap.game || {}, me = snap.players?.find(p => p.id === selfId.current) || { id: selfId.current, name: user?.name || "나그네", color: "#ff9ec4" };
-  const remaining = Math.max(0, Math.ceil(((game.endsAt || 0) - Date.now()) / 1000));
+  const remaining = Math.max(0, Math.ceil(((game.endsAt || 0) - Date.now()) / 1000)), clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
   const myScore = game.scores?.[selfId.current] || 0;
   const ranking = Object.entries(game.scores || {}).map(([id, score]) => ({ id, score, name: snap.players?.find(p => p.id === id)?.name || (id === selfId.current ? "나" : "이웃") })).sort((a, b) => b.score - a.score);
   const totalStars = records.inventory.reduce((n, i) => n + (i.quantity || 0), 0);
@@ -261,12 +260,11 @@ function App() {
   const saving = snap.persistence?.status === "pending";
   const starCard = (
     <section className="star-card" aria-label="별 모으기">
-      <div className="star-card-head"><b>★ 별 모으기</b>{game.active ? <span className="timer">{remaining}초</span> : <span className="muted">30초</span>}</div>
-      {game.active ? <p className="star-line">내 별 <b>{myScore}</b>개 · 남은 별 {game.stars?.length || 0}/{game.maxStars || 12}</p>
-        : <p className="star-line muted">별 가까이 걸어가면 자동으로 모아요</p>}
+      <div className="star-card-head"><b>★ 별 모으기</b><span className="muted">{solo ? "연습" : "상시 이벤트"}</span></div>
+      <p className="star-line">내 별 <b>{myScore}</b>개 · 맵의 별 {game.stars?.length || 0}/12</p>
+      <p className="star-line muted">{solo ? "별 가까이 걸어가면 모아요 (저장 안 됨)" : game.active ? `다음 정산까지 ${clock}` : "별 가까이 걸어가면 모아요"}</p>
       {ranking.length > 0 && <ol className="ranking">{ranking.slice(0, 3).map(p => <li key={p.id} className={p.id === selfId.current ? "mine" : ""}><span>{ranking.filter(q => q.score > p.score).length + 1}</span>{p.name}<b>{p.score}★</b></li>)}</ol>}
       {saving && <p className="save-state" role="status">{snap.persistence.lastError ? "기록 저장 재시도 중…" : "기록 저장 중…"}</p>}
-      <button className="btn" disabled={game.active || (!solo && status !== "online")} onClick={startGame}>{game.active ? "진행 중" : "시작하기 ▶"}</button>
     </section>
   );
   return (
@@ -288,7 +286,7 @@ function App() {
           </header>
           <div className="stage" onPointerDown={onStagePointer}>
             <canvas ref={canvasRef} className="world" aria-label={`${map.title} 미니룸. 화면을 누르면 그곳으로 걸어가요.`} />
-            <div className="strip" onPointerDown={e => e.stopPropagation()}>{starCard}</div>
+            <div className="strip">{starCard}</div>
             {status === "disconnected" && <div className="notice" role="alert" onPointerDown={e => e.stopPropagation()}>서버 연결이 끊겼어요. <button className="btn small" onClick={() => setUser({ ...user })}>다시 연결</button></div>}
             <Chat {...{ chatOpen, setChatOpen, unread, chatOpacity, setChatOpacity, messages, chat, setChat, sendChat, chatInput, keys, route, online, canSend: solo || status === "online" }} />
             <div className="dpad" aria-label="방향 이동" onPointerDown={e => e.stopPropagation()}>
@@ -315,7 +313,6 @@ function App() {
   );
 }
 const k2 = dt => Math.min(1, dt * 16);
-function randomStar(map, i) { const s = starSpots(map); return { id: String(i), ...s[Math.floor(Math.random() * s.length)] }; }
 
 function Chat({ chatOpen, setChatOpen, unread, chatOpacity, setChatOpacity, messages, chat, setChat, sendChat, chatInput, keys, route, online, canSend }) {
   const end = useRef(null);
@@ -326,8 +323,8 @@ function Chat({ chatOpen, setChatOpen, unread, chatOpacity, setChatOpacity, mess
     </button>
   );
   return (
-    <section className="chat" style={{ backgroundColor: `rgba(255, 250, 252, ${chatOpacity / 100})` }} onPointerDown={e => e.stopPropagation()} aria-label="방 채팅">
-      <div className="chat-head">
+    <section className="chat" style={{ backgroundColor: `rgba(255, 250, 252, ${chatOpacity / 100})` }} aria-label="방 채팅">
+      <div className="chat-head" onPointerDown={e => e.stopPropagation()}>
         <b>마을 이야기 <span>{online}</span></b>
         <label className="opacity">배경<input type="range" min="20" max="95" step="1" value={chatOpacity} onChange={e => setChatOpacity(Number(e.target.value))} aria-label="채팅 배경 불투명도" /><span>{chatOpacity}%</span></label>
         <button className="btn tiny ghost" aria-expanded="true" onClick={() => setChatOpen(false)}>접기</button>
@@ -337,7 +334,7 @@ function Chat({ chatOpen, setChatOpen, unread, chatOpacity, setChatOpacity, mess
         {messages.map(m => <p key={m.key} className={m.mine ? "mine" : ""}><b>{m.name}</b> {m.text}</p>)}
         <div ref={end} />
       </div>
-      <form className="chat-form" onSubmit={sendChat}>
+      <form className="chat-form" onSubmit={sendChat} onPointerDown={e => e.stopPropagation()}>
         <input ref={chatInput} value={chat} maxLength={200} onFocus={() => { keys.current.clear(); route.current = []; }} onChange={e => setChat(e.target.value)} onKeyDown={e => { if (e.key === "Escape") e.currentTarget.blur(); }} placeholder="메시지 입력" aria-label="채팅 메시지" />
         <button className="btn small" disabled={!chat.trim() || !canSend}>전송</button>
       </form>
