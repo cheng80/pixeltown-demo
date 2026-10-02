@@ -11,7 +11,7 @@ export const lookOf=profile=>{const o=profile?.outfit||{},a=profile?.avatar||{},
   return {...Object.fromEntries(['hat','top','pet'].map(s=>[s,ITEMS[o[s]]?.slot===s?o[s]:null])),skin:pickIndex(a.skin,A.skins),hair:pickIndex(a.hair,A.hairs),style:pickIndex(a.style,A.styles)};};
 export const INITIAL_STARS=5;
 export const MAX_STARS=12;
-export const RECONNECT_SECONDS=8;
+export const RECONNECT_SECONDS=15; // the client retries 6 times within ~11 s
 export const MAX_QUEUED_INPUTS=20; // 1 s of 50 ms steps
 export const MAX_MATCH_SCORE=64; // PocketBase hook limit per settlement
 export const STAR_SPAWN_INTERVAL_MS=clamp(Number(process.env.STAR_SPAWN_INTERVAL_MS)||STAR_SPAWN_MS,1000,60000);

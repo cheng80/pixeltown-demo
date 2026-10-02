@@ -142,7 +142,7 @@ function App() {
   // room connection (or local practice)
   useEffect(() => {
     if (!entered) return;
-    let cancelled = false;
+    let cancelled = false, giveUp = null;
     setStatus(local ? "home" : "connecting");
     state.current = { players: [], game: {}, zone }; setSnap(state.current);
     persistStatus.current = null; setMessages([]); setUnread(0);
@@ -177,16 +177,20 @@ function App() {
       r.onMessage("chat", d => append({ id: d.id, name: d.name || "이웃", text: d.text, mine: d.id === user.id }));
       r.onMessage("emote", d => { emotes.current[d.id] = Date.now() + 2500; });
       r.onMessage("gameEnded", m => { const n = m.scores?.[user.id]; if (n) { persistStatus.current = "pending"; notify(`별 ${n}개 정산! 기록을 저장하는 중이에요.`); } });
-      // While the socket is down nothing moves or predicts on its own and a dialog blocks the page. The SDK retries a few
-      // times into the same server session (kept RECONNECT_SECONDS); after that the dialog offers a fresh join.
+      // While the socket is down nothing moves or predicts on its own and a dialog blocks the page. The SDK retries 6 times
+      // (~11 s) into the same server session (kept 15 s); after that, or if a retry hangs, the dialog offers a fresh join.
       const halt = next => { keys.current.clear(); touch.current = { dx: 0, dy: 0 }; route.current = []; marker.current = null; pending.current = []; setStatus(next); };
-      r.reconnection.maxRetries = 5;
-      r.onDrop(() => { if (!cancelled) { room.current = null; halt("reconnecting"); } });
-      r.onReconnect(() => { if (!cancelled) { room.current = r; lastSent.current = ""; setStatus("online"); } });
+      r.reconnection.maxRetries = 6;
+      r.onDrop(() => {
+        if (cancelled) return;
+        room.current = null; halt("reconnecting");
+        clearTimeout(giveUp); giveUp = setTimeout(() => { if (!cancelled && !room.current) halt("disconnected"); }, 15000);
+      });
+      r.onReconnect(() => { if (!cancelled) { clearTimeout(giveUp); room.current = r; lastSent.current = ""; setStatus("online"); } });
       r.onLeave(() => { if (!cancelled) { room.current = null; halt("disconnected"); } });
       r.onError((code, message) => { if (!cancelled) { room.current = null; halt("disconnected"); notify(message || `연결 오류 (${code})`); } });
     }).catch(e => { if (!cancelled) { setStatus("disconnected"); notify(`마을 연결 실패: ${e.message}`); } });
-    return () => { cancelled = true; room.current?.leave(); room.current = null; };
+    return () => { cancelled = true; clearTimeout(giveUp); room.current?.leave(); room.current = null; };
   }, [entered, user, zone]);
 
   // input: keyboard / d-pad / click route, sent to the server every tick

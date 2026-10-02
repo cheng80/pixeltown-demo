@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Town, INITIAL_STARS, MAX_STARS, STAR_SPAWN_INTERVAL_MS } from '../town.js';
+import { Town, INITIAL_STARS, MAX_STARS, STAR_SPAWN_INTERVAL_MS, RECONNECT_SECONDS } from '../town.js';
 const T=STAR_SPAWN_INTERVAL_MS;
 import { outbox } from '../outbox.js';
 // Never touch the real outbox directory from unit tests.
@@ -124,7 +124,7 @@ test('a dropped player is kept for reconnection; a join refused in onJoin is not
   r.moveInputs.set('session',{queue:[{dx:1,dy:0}],credit:1});
   r.onDrop({sessionId:'session'});r.onDrop({sessionId:'refused'});
   await new Promise(done=>setImmediate(done)); // a rejection escaping onDrop would fail the test as unhandled
-  assert.deepEqual(held,[['session',8]]);assert(r.players.has('session'),'avatar stays while it may come back');
+  assert.deepEqual(held,[['session',RECONNECT_SECONDS]]);assert(r.players.has('session'),'avatar stays while it may come back');
   assert(!r.moveInputs.has('session'),'queued steps are dropped');
 });
 

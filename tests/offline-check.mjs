@@ -25,6 +25,7 @@ try {
     };
   });
   const p = await ctx.newPage(); await p.goto(BASE);
+  if (process.env.DEBUG) p.on('console', m => console.log('page', Math.round(performance.now()), m.text().slice(0, 150)));
   await p.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0, null, { timeout: 20000 });
   await sleep(5500); // the SDK only retries a room that has been up for 5 s
   const me = () => p.evaluate(() => { const t = window.__pixeltown, a = t.anim.get(t.self.current); return a && `${Math.round(a.x)},${Math.round(a.y)}`; });
@@ -51,18 +52,22 @@ try {
   await drop(); await sleep(300);
   out.short = { dialog: await dialog(), ...(await blocked()) };
   await allow();
-  await p.waitForSelector('[role="alertdialog"]', { state: 'detached', timeout: 10000 });
+  await p.waitForSelector('[role="alertdialog"]', { state: 'detached', timeout: 15000 });
   out.short.reconnected = await p.textContent('.room-title .online');
   out.short.movesAfterReconnect = await moves();
 
   // 2. Long drop: the retries give up, the dialog offers a fresh join.
   await sleep(5500); await drop();
-  await p.waitForSelector('[role="alertdialog"] button', { timeout: 15000 });
+  await p.waitForSelector('[role="alertdialog"] button', { timeout: 20000 });
   out.long = { dialog: await dialog(), focus: await p.evaluate(() => document.activeElement?.textContent), ...(await blocked()) };
-  await allow(); await sleep(2500); // the server holds the dropped session for 8 s; a join before that retries on 409
+  await allow(); // a join while the server still holds the dropped session replaces it
   await p.click('[role="alertdialog"] button');
-  await p.waitForSelector('.room-title .online.online', { timeout: 15000 });
+  // Joined again = my avatar is in a snapshot of the new room (the status class alone also matches while connecting).
+  await p.waitForFunction(() => { const t = window.__pixeltown; return t.state.current.players?.some(q => q.id === t.self.current); }, null, { timeout: 15000 });
   out.long.movesAfterJoin = await moves();
+  if (!out.long.movesAfterJoin) out.long.state = await p.evaluate(() => { const t = window.__pixeltown, s = t.state.current, a = t.anim.get(t.self.current);
+    return { self: t.self.current, zone: s.zone, players: s.players?.map(q => `${q.name}@${Math.round(q.x)},${Math.round(q.y)} ack${q.ack}`), drawn: a && `${Math.round(a.x)},${Math.round(a.y)}`,
+      status: document.querySelector('.room-title .online')?.textContent, dialog: Boolean(document.querySelector('[role=alertdialog]')), focus: document.activeElement?.tagName, toast: document.querySelector('.toast')?.textContent }; });
 
   const quiet = r => !r.keyMoved && !r.clickRoute && !r.tabClicked;
   out.ok = out.movesBefore && /다시 연결하는 중/.test(out.short.dialog) && quiet(out.short) && /접속 중/.test(out.short.reconnected) && out.short.movesAfterReconnect

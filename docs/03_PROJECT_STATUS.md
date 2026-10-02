@@ -110,7 +110,7 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 
 ## 8. 변경된 계약
 
-- 연결 끊김(2026-10-02): 서버 `onDrop`이 끊긴 플레이어를 8초(`RECONNECT_SECONDS`) 동안 남기고 SDK 재접속을 받는다. 그 사이 같은 사용자의 새 입장은 대기 세션을 정리하고 받는다. 입력 대기열 상한 6 → 20(`MAX_QUEUED_INPUTS`). 클라이언트는 끊기면 화면 전체를 막는 대화상자를 띄우고 입력을 막는다(재시도 5번). 카메라는 원본과 같이 고정(데드존·댐핑은 시험 후 쓰지 않음). TECH_SPEC 마지막 절.
+- 연결 끊김(2026-10-02): 서버 `onDrop`이 끊긴 플레이어를 15초(`RECONNECT_SECONDS`) 동안 남기고 SDK 재접속을 받는다. 그 사이 같은 사용자의 새 입장은 대기 세션을 정리하고 받는다. 입력 대기열 상한 6 → 20(`MAX_QUEUED_INPUTS`). 클라이언트는 끊기면 화면 전체를 막는 대화상자를 띄우고 입력을 막는다(재시도 6번, 15초 안전장치). 카메라는 원본과 같이 고정(데드존·댐핑은 시험 후 쓰지 않음). TECH_SPEC 마지막 절.
 - 별 수집 히트박스(2026-10-02): `COLLECT_RADIUS` 제거, `BODY_BOX`·`STAR_BOX`·`touchesStar` 추가(shared/world.js). 서버가 매 틱 자동 수집하고 클라이언트는 `collect`를 보내지 않는다(서버는 구 버전용으로 계속 받는다). 화면은 닿는 순간 별을 숨기고 1초 안에 서버가 지우지 않으면 다시 보인다. TECH_SPEC 마지막 절.
 - PLAN-005: `profiles.avatar` json 필드, `POST /api/pixeltown/profile`, snapshot `look`에 `skin/hair/style`, `look` 메시지가 이름·옷 색도 갱신, `shared/catalog.json`에 `avatar` 선택지(렌더러의 피부·머리 색 상수 이동). 프로필에 외형이 없으면 클라이언트가 방 입장 전에 캐릭터 화면을 띄운다. `scripts/deploy-macmini.sh`가 원격 스키마 추가분도 반영한다.
 - PLAN-004: Colyseus 0.16 → 0.18.18, 클라이언트 `colyseus.js` → `@colyseus/sdk 0.18.4`. 토큰은 join 옵션의 `token`이 아니라 `client.auth.token`(서버 `context.token`). 서버에 express·`/health/pocketbase`·`/me`·`/monitor/`(PB superuser)·`ALLOWED_ORIGINS` 추가, `/health`에 `service`. 환경변수 `POCKETBASE_URL`·`PORT`·`PB_ADMIN_*`(프로세스 환경 우선)·`MONITOR_ORIGINS` 인식. `seed(_, {remote:true})`, `provision-accounts.mjs`, `deploy-macmini.sh`, `.env.remote`·`npm run dev:remote`, 훅 카탈로그 경로 `pb_hooks/catalog.json` 우선. `vendor/nanoid`와 그 단위 테스트 제거.
