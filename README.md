@@ -44,7 +44,7 @@ Ctrl+C는 이 실행으로 시작한 서버들을 종료한다.
 
 ### Mac mini 서버에 연결 (원격 모드)
 
-게임 서버는 Mac mini의 PocketBase(`https://pixeltown.fastmake.net`)와 Colyseus(`wss://pixeltown-rt.fastmake.net`)에도 설치되어 있다. 프런트만 이 컴퓨터에서 띄워 원격 서버로 플레이한다.
+배포 주소는 **https://pixeltown.fastmake.net**(Cloudflare Pages, `main` push 시 자동 배포)이다. 게임 서버는 Mac mini의 PocketBase(`https://pixeltown-pb.fastmake.net`)와 Colyseus(`wss://pixeltown-rt.fastmake.net`)다. 이 컴퓨터에서 프런트만 띄워 같은 서버로 플레이할 수도 있다.
 
 ```sh
 npm run dev:remote   # → http://127.0.0.1:5173 (.env.remote의 공개 주소 사용)

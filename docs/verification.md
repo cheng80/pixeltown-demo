@@ -224,3 +224,23 @@ Demo 1이 오락실에 들어가자 시작 버튼 없이 바로 진행 중이었
 반영 전 백업 `pixeltown-abuse-limits-20261002`(DB·`pb_hooks`).
 
 게스트 발급 한도 상향(사용자 지시): 시간당 5회 → 20회. 통합 `guest_abuse_limits_and_cleanup`에서 같은 IP 20번까지 400(정상 처리), 21번째 429. 원격 배포 후 규칙 `POST /api/pixeltown/guest` `maxRequests: 20`, `enabled: true`, `CF-Connecting-IP` 확인. 원격에서 21회 요청 시험은 이 PC IP를 1시간 막기 때문에 하지 않았다(규칙 동작은 5회 기준으로 원격 확인 완료).
+
+## 15. 주소 이전·Pages 배포·부드러운 이동 (2026-10-02)
+
+주소: 게임 https://pixeltown.fastmake.net(Cloudflare Pages `pixeltown`), PB https://pixeltown-pb.fastmake.net, Colyseus wss://pixeltown-rt.fastmake.net. 절차와 되돌리기는 SERVER_OPERATIONS 10절.
+
+| 검사 | 결과 |
+|---|---|
+| 터널 경로 `pixeltown-pb` 추가 | Mac mini·외부에서 `/api/health` 200. 이 Mac은 앞서 조회 실패한 결과가 mDNSResponder에 약 1시간 남아 `ENOTFOUND`가 났다(상위 DNS는 정상). 대기 중에는 테스트에 IP 고정 우회를 썼고, 지금은 해소됐다 |
+| Pages 첫 배포(`8740186`) | 성공. 빌드에 `pixeltown-pb`·`pixeltown-rt` 주소 확인. 사용자 지정 도메인 활성 후 `https://pixeltown.fastmake.net`이 게임 HTML 제공(이전 PB JSON 아님) |
+| Colyseus Origin | `https://pixeltown-4x2.pages.dev` 추가 후 200 |
+
+부드러운 이동(`tests/motion-check.mjs`, 방향키 2초, 프레임마다 측정, 원격은 같은 Tester 계정):
+
+| 환경 | 화면 위 아바타 위치(값 개수) | 프레임 이동량 변동계수 | 멈춤/튐 |
+|---|---|---|---|
+| 원격, 수정 전 클라이언트(배포본) | 5–6개(떨림) | 0.44–0.45 | 0/0 |
+| 원격, 수정 후(5173 원격 모드) | 1개(고정) | 0.19–0.24 | 0/0 |
+| 로컬 5273, 수정 후 | 1개 | 0.21–0.22 | 0/0 |
+
+회귀(수정 후): 단위 22/22(한 입력 = 한 걸음, `ack`, 빠르게 보내도 1틱 1걸음, 지연 입력이 목표를 지나치지 않음), 통합 18/18(0.40.4·100명), 17/17(0.39.7), UI 8/8, build, 원격 기능 8/8(새 서버, PB `pixeltown-pb`).

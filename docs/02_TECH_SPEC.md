@@ -82,7 +82,7 @@ DB number min0 제약 외에 commit 훅은 개인 점수 정수 0–64와 전체
 
 | 방향 | 메시지 | payload / 서버 규칙 |
 |---|---|---|
-| C→S | input | `{dx,dy,to?}` finite number, 각각 -1..1 clamp, 길이>1 정규화; user ID는 받지 않음. `to:{x,y}`(맵 범위로 clamp)는 클릭 경로의 마지막 구간에서만 보낸다. 서버는 실제 위치에서 `to` 쪽으로 같은 속도·충돌 규칙으로 움직이고 도착하면 멈춘다(지연으로 지나치지 않음). 위치를 지정하는 텔레포트가 아니다 |
+| C→S | input | `{dx,dy,to?,seq?}` — **입력 하나 = 한 걸음**. 서버는 받은 순서대로 틱마다 평균 한 개씩 적용한다(크레딧 최대 2, 대기열 6개 초과분은 오래된 것부터 버림 → 빨리 보내도 빨라지지 않음). 적용한 `seq`를 player `ack`로 돌려준다. dx/dy는 finite number, 각각 -1..1 clamp, 길이>1 정규화; user ID는 받지 않음. `to:{x,y}`(맵 범위로 clamp)는 클릭 경로의 마지막 구간에서만 보낸다. 서버는 실제 위치에서 `to` 쪽으로 같은 속도·충돌 규칙으로 움직이고 도착하면 멈춘다(지연으로 지나치지 않음). 위치를 지정하는 텔레포트가 아니다 |
 | C→S | chat | `{text}` 문자열, 제어문자 제거·trim·240자 제한, 사용자별 700ms cooldown; 프런트 입력 제한 200자 |
 | C→S | emote | `{}`; 서버 wave 이벤트, 1000ms cooldown |
 | C→S | look | `{}`(내용 무시); 500ms cooldown. 서버가 사용자 토큰으로 자기 프로필을 다시 읽어 `look` 갱신 |
@@ -181,7 +181,7 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 | SERVER_HOST / SERVER_PORT / PORT | Colyseus bind, 127.0.0.1 / 12567 (Mac mini 2567) |
 | ALLOWED_ORIGINS / MONITOR_ORIGINS | 정확한 브라우저 Origin 목록, wildcard 없음 |
 | PB_ADMIN_EMAIL / PB_ADMIN_PASSWORD | outbox superuser(Mac mini `.env` 0600). 로컬은 PIXELTOWN_ENV_FILE |
-| `.env.remote` (VITE_PB_URL / VITE_GAME_URL) | `npm run dev:remote`: https://pixeltown.fastmake.net / wss://pixeltown-rt.fastmake.net |
+| `.env.remote` (VITE_PB_URL / VITE_GAME_URL) | `npm run dev:remote`·`npm run build:remote`(Pages): https://pixeltown-pb.fastmake.net / wss://pixeltown-rt.fastmake.net |
 | PIXELTOWN_LOCAL_DIR | 바이너리·로컬 자산, pocketbase/.local |
 | PIXELTOWN_ENV_FILE | 비공개 관리자 파일, pocketbase/.env.local |
 | PB_DATA_DIR | 로컬 PB 데이터, pocketbase/.local/pb_data |
@@ -200,3 +200,13 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 `findPath`는 8도트 격자 BFS 후 직선 구간으로 당긴다. 시작 칸은 플레이어가 직진할 수 있는 가장 가까운 걷는 칸이다(2칸 이내, 없으면 가장 가까운 걷는 칸). 이전에는 소품 가장자리처럼 실제 위치는 비었지만 칸 중심이 막힌 곳에서 빈 경로를 돌려줘 클릭 이동이 반응하지 않거나 직진하다 끼었다. `moveActor`의 모서리 비켜가기(최대 6도트)는 거의 축 방향(다른 축 성분이 25% 미만)일 때도 동작한다. 반올림으로 생긴 0.03도트 어긋남이 비켜가기를 끄던 문제를 막는다. 단위 테스트가 세 장소의 막히지 않은 위치에서 입구까지 경로를 서버 이동으로 따라가 도착하는지 검사한다.
 
 원격 지연 보정: 클라이언트는 늦은 snapshot으로 도착을 판정하므로 원격(왕복 약 100–200ms)에서 목표를 6–7도트 지나쳐 멈추거나 왕복했다. 마지막 구간에 `to`를 보내 서버가 실제 위치 기준으로 목표에 정확히 멈춘다. 클릭 이동 중 0.5초 동안 움직이지 않으면 클라이언트가 경로를 다시 찾는다. `tests/remote-click.mjs`가 실제 브라우저 클릭의 도착·반전·끝 오차를 측정한다.
+
+## 부드러운 이동 (2026-10-02)
+
+원격에서 이동할 때 화면이 흔들렸다. 내 아바타를 늦고 불규칙하게 도착하는 snapshot 쪽으로 보정했고, 카메라가 따로 지연·반올림돼 아바타가 화면에서 1도트씩 떨렸다. 수정:
+
+- 내 아바타는 클라이언트 예측이다. 보낸 입력을 같은 `stepInput`(shared/world.js)으로 즉시 적용한다. snapshot이 오면 서버 위치에 아직 `ack`되지 않은 입력을 다시 적용해 맞춘다. 화면에는 틱(50ms) 동안 고르게 미끄러지듯 그린다.
+- 다른 사람은 snapshot의 서버 시각 `t`를 기준으로 약 100ms 늦게 그리고, 두 snapshot 사이를 선형 보간한다. 시계 차이는 최근 60개 표본의 최솟값으로 추정한다.
+- 카메라는 아바타에 정수 도트로 고정한다. 둘 다 `floor`와 정수 오프셋을 쓰고, 지연 보간은 없앴다. 맵 가장자리에서만 멈춘다.
+- 측정은 `tests/motion-check.mjs`로 한다. 방향키를 누른 채 프레임마다 화면 위 아바타 위치와 이동량을 잰다.
+

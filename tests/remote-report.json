@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-10-02T05:22:57.847Z",
-  "pocketbase": "https://pixeltown.fastmake.net",
+  "startedAt": "2026-10-02T06:28:09.205Z",
+  "pocketbase": "https://pixeltown-pb.fastmake.net",
   "realtime": "wss://pixeltown-rt.fastmake.net",
   "checks": {
     "auth_and_forgery_rejected": {
@@ -15,21 +15,21 @@
       "forgedPurchase": 403,
       "commitAsUser": 403,
       "publicSignup": 403,
-      "ms": 2284
+      "ms": 2743
     },
     "two_users_move_chat": {
       "ok": true,
       "movedBy": 30,
       "target": 360,
       "chatSenderIsServerId": true,
-      "ms": 1857
+      "ms": 1796
     },
     "zone_separation": {
       "ok": true,
       "lobbyPlayers": 1,
       "gardenPlayers": 1,
       "crossZoneChat": false,
-      "ms": 1697
+      "ms": 1791
     },
     "star_cap_collect_and_refill": {
       "ok": true,
@@ -39,29 +39,29 @@
       "collected": 10,
       "refillId": true,
       "serverScore": 10,
-      "ms": 72552
+      "ms": 73546
     },
     "default_3min_settlement_saved": {
       "ok": true,
-      "matchId": "acd382e0-9dcd-4113-b65a-ffdebdc1bc94",
+      "matchId": "66713ae0-6868-4de3-9a62-9b4bdc00eb6c",
       "scoreSaved": 10,
       "inventoryQuantity": 10,
       "serverScores": {
         "bfibz83fzdylm8m": 10
       },
-      "measuredPeriodMs": 180061,
+      "measuredPeriodMs": 179854,
       "starsKeptIntoNextPeriod": true,
       "otherUserCanRead": false,
-      "ms": 104793
+      "ms": 104076
     },
     "shop_equip_room_and_relogin": {
       "ok": true,
       "bought": [
-        "pet_chick"
+        "f_desk"
       ],
-      "wear": "pet_chick",
-      "furniture": "f_chair",
-      "walletBefore": 12,
+      "wear": "hat_ribbon",
+      "furniture": "f_desk",
+      "walletBefore": 10,
       "walletAfter": 0,
       "duplicateBuy": 400,
       "unaffordable": 400,
@@ -70,12 +70,12 @@
       "savedRoom": [
         {
           "c": 11,
-          "item": "f_chair",
+          "item": "f_desk",
           "r": 10
         }
       ],
       "otherSeesOutfit": true,
-      "ms": 3375
+      "ms": 4121
     },
     "character_setup_profile": {
       "ok": true,
@@ -89,63 +89,24 @@
         "style": 1,
         "color": "#ffb347"
       },
-      "ms": 422
+      "ms": 604
     },
     "monitor_admin_only": {
       "ok": true,
       "anonymous": 401,
       "gameUser": 401,
       "wrongPassword": 401,
-      "ms": 886
-    },
-    "outbox_outage_restart_recovery": {
-      "ok": true,
-      "matchId": "039f2021-9b62-4f1b-81ec-14c12887c187",
-      "pocketbaseWhileDown": 502,
-      "outboxFilesOnDisk": 1,
-      "pendingAfterColyseusRestart": 1,
-      "flushedStatus": "saved",
-      "savedScore": 1,
-      "ms": 34628,
-      "runAt": "2026-10-02T02:36:56.261Z",
-      "note": "earlier run on the same outbox code path"
+      "ms": 925
     }
   },
   "users": {
     "user1": "bfibz83fzdylm8m",
     "user2": "p2srnojs4omvb9g"
   },
-  "matchId": "acd382e0-9dcd-4113-b65a-ffdebdc1bc94",
-  "finishedAt": "2026-10-02T05:26:06.258Z",
+  "matchId": "66713ae0-6868-4de3-9a62-9b4bdc00eb6c",
+  "finishedAt": "2026-10-02T06:31:19.502Z",
   "summary": {
-    "passed": 9,
+    "passed": 8,
     "failed": 0
-  },
-  "serverSide": {
-    "persistence": {
-      "matchId": "19d17530-aa35-4ab4-8063-f33507c24fb6",
-      "replayStatus": 200,
-      "rowsAfterReplay": {
-        "results": 1,
-        "inventory": 1
-      },
-      "conflictingStatus": 400,
-      "partialBatchStatus": 404,
-      "partialRowsWritten": 0,
-      "runner": "tests/remote-persistence.mjs on the Mac mini"
-    }
-  },
-  "clickMovement": {
-    "at": "2026-10-02T05:22:57.699Z",
-    "arrived": "10/10",
-    "maxEndOffDots": 1.1
-  },
-  "abuseLimits": {
-    "settings": "rateLimits enabled; guest POST 5/h per CF-Connecting-IP; excluded 127.0.0.1, ::1; PB default rules on",
-    "realVisitorIpLogged": true,
-    "testerLastSeenRecorded": true,
-    "cleanup30dDeleted": 0,
-    "probeFromThisIp": "400,400,400,400 then 429 (5th request incl. one remote-ui guest); other API 200",
-    "countersResetByPbRestart": true
   }
 }

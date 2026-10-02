@@ -1,6 +1,6 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `576b261`(main). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-006(첫 화면 캐릭터 만들기 + 게스트 자동 가입, 로그인·연습 모드 제거). 직전 PLAN-005(캐릭터 만들기). 직전 PLAN-004(Mac mini 서버 이전, Colyseus 0.18). 서버 주소·배치·백업은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md).
+갱신일: 2026-10-02 (Asia/Seoul). 기준 리비전 `576b261`(main). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-006(첫 화면 캐릭터 만들기 + 게스트 자동 가입, 로그인·연습 모드 제거). 직전 PLAN-005(캐릭터 만들기). 직전 PLAN-004(Mac mini 서버 이전, Colyseus 0.18). 서버 주소·배치·백업은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md). **배포 주소 https://pixeltown.fastmake.net**(Cloudflare Pages), PB는 https://pixeltown-pb.fastmake.net.
 
 ## 1. 로드맵
 
@@ -143,6 +143,8 @@ UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketB
 | 남은 문제 1·2·3(셋업 실패 원인, 원격 클릭 지연, 닉네임 띄어쓰기) | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | verification 12절, 원격 클릭 20/20 |
 | 게스트 자동 가입·첫 화면(PLAN-006) 로컬·원격 | PASS | RECHECKED | 2026-10-02 | PLAN-006 커밋 | CURRENT | verification 13절 |
 | 게스트 남용 방지(발급 제한·기본 rate limit·30일 정리) 로컬·원격 | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | verification 14절 |
+| 주소 이전(PB→pixeltown-pb)·Cloudflare Pages 배포(pixeltown.fastmake.net) | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | verification 15절, SERVER_OPERATIONS 10절 |
+| 부드러운 이동(예측·보간·카메라 고정) | PASS | RECHECKED | 2026-10-02 | 해당 커밋 | CURRENT | `tests/motion-check.mjs` 원격 화면 위치 5–6개 → 1개 |
 | 디자인 승인 | PENDING | NONE | - | - | UNKNOWN | 사용자 판단 |
 | 실제 모바일 기기·키보드 | NOT_RUN | NONE | - | - | UNKNOWN | 에뮬레이션만 |
 | 공개 경로 부하·인터넷 지연·한 화면 100명·관리자 Monitor 로그인 | NOT_RUN | NONE | - | - | UNKNOWN | 정책상 금지 또는 관리자 암호 미사용 |
@@ -163,6 +165,7 @@ CHROME_PATH=/path/to/chromium PIXELTOWN_WEB_PORT=5273 PIXELTOWN_PB_PORT=18190 no
 npm run build
 node tests/remote-check.mjs                              # 원격 2유저 기능(약 4분, 기본 3분 정산)
 CHROME_PATH=/path/to/chromium node tests/remote-click.mjs  # dev:remote 실행 중 실제 브라우저 클릭 이동 도착·반전 측정
+CHROME_PATH=/path/to/chromium BASE=https://pixeltown.fastmake.net/ ACCOUNT=email:password node tests/motion-check.mjs  # 이동 중 화면 흔들림 측정
 PIXELTOWN_REMOTE_OUTAGE=1 node tests/remote-check.mjs    # 원격 outbox 장애 복구(SSH, PB를 잠시 중단)
 CHROME_PATH=/path/to/chromium node tests/remote-ui.mjs  # dev:remote 실행 중 브라우저 2유저
 scripts/deploy-macmini.sh                                # 원격 코드 갱신(Colyseus만 재시작)

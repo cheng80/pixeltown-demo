@@ -14,9 +14,10 @@
 | 용도 | 주소 | 인증 / 설명 |
 |---|---|---|
 | Mac mini SSH | `cheng80@100.92.43.82` | Tailscale 연결과 등록된 SSH 키 필요 |
-| PocketBase API | https://pixeltown.fastmake.net | 일반 게임 사용자는 PocketBase 사용자 인증 |
-| PocketBase 관리자 | https://pixeltown.fastmake.net/_/ | 기존 관리자 계정 |
-| PocketBase 상태 | https://pixeltown.fastmake.net/api/health | 공개 상태 조회 |
+| **게임(배포)** | **https://pixeltown.fastmake.net** | Cloudflare Pages 프로젝트 `pixeltown`(GitHub `cheng80/pixeltown-demo` `main` 자동 배포). 기본 주소 https://pixeltown-4x2.pages.dev |
+| PocketBase API | https://pixeltown-pb.fastmake.net | 2026-10-02 `pixeltown.fastmake.net`에서 이전. 일반 게임 사용자는 PocketBase 사용자 인증 |
+| PocketBase 관리자 | https://pixeltown-pb.fastmake.net/_/ | 기존 관리자 계정 |
+| PocketBase 상태 | https://pixeltown-pb.fastmake.net/api/health | 공개 상태 조회 |
 | Colyseus HTTPS | https://pixeltown-rt.fastmake.net | HTTP matchmaking·상태 API |
 | Colyseus WebSocket | `wss://pixeltown-rt.fastmake.net` | PocketBase 사용자 인증 후 방 입장 |
 | Colyseus 상태 | https://pixeltown-rt.fastmake.net/health | 서버 상태 |
@@ -71,7 +72,7 @@ PocketBase 데이터는 `/Users/cheng80/Servers/pixeltown/pb_data`에 있다. Co
 게임 이전이 끝난 뒤 프런트에 필요한 공개 환경변수:
 
 ```dotenv
-VITE_PB_URL=https://pixeltown.fastmake.net
+VITE_PB_URL=https://pixeltown-pb.fastmake.net
 VITE_GAME_URL=wss://pixeltown-rt.fastmake.net
 ```
 
@@ -79,12 +80,13 @@ VITE_GAME_URL=wss://pixeltown-rt.fastmake.net
 
 | 실행 모드 | 명령 | 주소 |
 |---|---|---|
-| 원격 연동(프런트만 로컬) | `npm run dev:remote` | http://127.0.0.1:5173 → `https://pixeltown.fastmake.net`, `wss://pixeltown-rt.fastmake.net` |
+| 배포(Cloudflare Pages) | `main` push 시 자동 빌드 `npm run build:remote` → `dist`, `NODE_VERSION=22` | https://pixeltown.fastmake.net |
+| 원격 연동(프런트만 로컬) | `npm run dev:remote` | http://127.0.0.1:5173 → `https://pixeltown-pb.fastmake.net`, `wss://pixeltown-rt.fastmake.net` |
 | 독립 로컬 백엔드 | `npm run dev:all` (5173을 원격 모드가 쓰면 `PIXELTOWN_PB_PORT=18190 PIXELTOWN_GAME_PORT=12667 PIXELTOWN_WEB_PORT=5273 npm run dev:all`) | http://127.0.0.1:5173 또는 5273 |
 
 `dev:all`은 로컬 PocketBase·Colyseus를 시작하고 `VITE_*`를 로컬 주소로 덮어쓰므로 원격 연동에 쓰지 않는다. 두 모드는 포트만 다르면 동시에 실행된다.
 
-Colyseus `ALLOWED_ORIGINS`에는 이미 `https://pixeltown.fastmake.net`, `https://pixeltown-rt.fastmake.net`, `http://localhost:5173`, `http://127.0.0.1:5173`이 정확히 들어 있어 이전 작업에서 바꾸지 않았다. wildcard는 쓰지 않는다. 원격 모드를 다른 포트로 띄우면 그 Origin을 추가해야 한다. PocketBase는 기본 CORS로 5173에서 동작함을 확인했다.
+Colyseus `ALLOWED_ORIGINS`(2026-10-02 Pages 추가 후): `https://pixeltown.fastmake.net`(게임 배포), `https://pixeltown-4x2.pages.dev`(Pages 기본 주소), `https://pixeltown-rt.fastmake.net`, `http://localhost:5173`, `http://127.0.0.1:5173`. Pages 미리보기 배포(`<hash>.pixeltown-4x2.pages.dev`)는 허용하지 않는다. 예전 설명: `ALLOWED_ORIGINS`에는 이미 `https://pixeltown.fastmake.net`, `https://pixeltown-rt.fastmake.net`, `http://localhost:5173`, `http://127.0.0.1:5173`이 정확히 들어 있어 이전 작업에서 바꾸지 않았다. wildcard는 쓰지 않는다. 원격 모드를 다른 포트로 띄우면 그 Origin을 추가해야 한다. PocketBase는 기본 CORS로 5173에서 동작함을 확인했다.
 
 ## 5. 접속과 일상 점검
 
@@ -214,3 +216,18 @@ PocketBase는 `pb_hooks` 파일이 바뀌면 스스로 재시작하며, 그동�
 | 로컬 프런트(5173) 원격 모드 2유저 | 통과, 요청 대상 `https://pixeltown.fastmake.net`·`wss://pixeltown-rt.fastmake.net`, 페이지 오류 0 | `tests/remote-ui.mjs`, `docs/assets/remote-lobby-two-users.png` |
 
 미검증·제약: 공개 경로 부하(정책상 하지 않음), 실제 모바일 기기, 관리자 계정으로의 Monitor 화면 로그인(관리자 암호를 다루지 않음), 진행 중 경기의 프로세스 강제 종료 복원(설계상 미지원). outbox 복구 시험은 세 번 실행했다. 1회차는 스크립트 오류로 원격 변경 없이 중단했다. 2회차는 PB 중단·재기동과 저장까지 끝났으나 끊긴 방의 `leave()`가 멈춰 보고서를 쓰지 못했다. 3회차는 통과했다. 그래서 Tester 1에게 1점 기록이 하나 더 있다. 매 회차 끝에 30초 단축값 제거와 PB 기동 상태를 확인했다.
+
+## 10. 주소 이전과 Cloudflare Pages 배포 (2026-10-02, 사용자 승인)
+
+| 단계 | 내용 | 결과 |
+|---|---|---|
+| 1 | 터널 `mac-mini`(ff0b41d3…)에 게시 경로 `pixeltown-pb.fastmake.net → http://127.0.0.1:8091` 추가(대시보드, DNS 자동) | Mac mini·외부에서 `/api/health` 200 |
+| 2 | 코드 전환: `.env.remote` `VITE_PB_URL=https://pixeltown-pb.fastmake.net`, 원격 검증 스크립트 기본값, `npm run build:remote`. PB 설정 `appName=PixelTown`, `appURL=https://pixeltown-pb.fastmake.net` | 커밋 `8740186` |
+| 3 | Pages 프로젝트 `pixeltown` 생성: GitHub `cheng80/pixeltown-demo`, 브랜치 `main`, 빌드 `npm run build:remote`, 출력 `dist`, `NODE_VERSION=22` | 첫 배포 성공(`https://pixeltown-4x2.pages.dev`), 빌드에 `pixeltown-pb`·`pixeltown-rt` 주소 확인 |
+| 4 | Colyseus `ALLOWED_ORIGINS`에 `https://pixeltown-4x2.pages.dev` 추가 후 Colyseus만 재시작(직전 `.env` 사본 `backups/pixeltown-abuse-limits-20261002/colyseus.env.before-pages`) | Origin 검사 200 |
+| 5 | 터널에서 `pixeltown.fastmake.net` 경로 삭제, Pages 사용자 지정 도메인 `pixeltown.fastmake.net` 추가(CNAME을 터널 → `pixeltown-4x2.pages.dev`로 교체) | `https://pixeltown.fastmake.net`이 게임 화면 제공 |
+
+다른 터널 경로(stonematch·stonematch-pb·preview·pixeltown-rt)는 바꾸지 않았다. 되돌리기: Pages 사용자 지정 도메인을 지우고 터널에 `pixeltown.fastmake.net → http://127.0.0.1:8091` 경로를 다시 추가한다. `.env.remote`와 PB `appURL`도 되돌린다.
+
+배포는 `main`에 push하면 Pages가 자동으로 빌드한다. 서버 코드(Colyseus·훅)는 계속 `scripts/deploy-macmini.sh`로 Mac mini에 배포한다. 게스트 캐릭터는 주소별로 브라우저에 저장되므로, 이전 주소(로컬 5173 등)에서 만든 캐릭터는 배포 주소에서 보이지 않는다.
+
