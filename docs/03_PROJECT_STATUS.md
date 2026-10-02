@@ -1,6 +1,6 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-03 (Asia/Seoul). 최신: 로컬 우선 이동 + 서버 검증 전환(ADR-005, 7절 맨 위). 기준 리비전 `576b261`(main). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-006(첫 화면 캐릭터 만들기 + 게스트 자동 가입, 로그인·연습 모드 제거). 직전 PLAN-005(캐릭터 만들기). 직전 PLAN-004(Mac mini 서버 이전, Colyseus 0.18). 서버 주소·배치·백업은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md). **배포 주소 https://pixeltown.fastmake.net**(Cloudflare Pages), PB는 https://pixeltown-pb.fastmake.net.
+갱신일: 2026-10-03 (Asia/Seoul). 최신: 장소 이동 즉시 표시·걷기 속도 80px/s(7절 맨 위). 직전: 로컬 우선 이동 + 서버 검증 전환(ADR-005). 기준 리비전 `576b261`(main). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-006(첫 화면 캐릭터 만들기 + 게스트 자동 가입, 로그인·연습 모드 제거). 직전 PLAN-005(캐릭터 만들기). 직전 PLAN-004(Mac mini 서버 이전, Colyseus 0.18). 서버 주소·배치·백업은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md). **배포 주소 https://pixeltown.fastmake.net**(Cloudflare Pages), PB는 https://pixeltown-pb.fastmake.net.
 
 ## 1. 로드맵
 
@@ -95,6 +95,12 @@
 4. PWA·앱 포장은 웹 핵심 플레이 검증 후 별도 계획으로 다룬다.
 
 ## 7. 인수인계
+
+### 장소 이동 즉시 표시·걷기 속도 (2026-10-03)
+
+- 사용자 보고: 장소 이동이 느리고, 방 가운데를 비추다가 캐릭터가 나타나야 입구로 카메라가 간다. 요청: 걷기 속도 올리기.
+- 원인: 새 방 연결(매칭 HTTP 0.8–1초 + WebSocket 0.7초 + 첫 snapshot 0.3초, 배포 경로 핑 300ms에서 약 1.9초)이 끝나야 내 위치를 알았고, 그동안 카메라는 맵 기본 위치를 비췄다.
+- 변경: 입구에 바로 그리고 연결 중에도 걷는다(TECH_SPEC "로컬 우선 이동"의 장소 입장). 걷기 속도 60 → 80px/s. 측정 도구 `tests/zone-check.mjs` 추가. verification 24절.
 
 ### 로컬 우선 이동 전환 (2026-10-03, 커밋 `bbb7776` 이후)
 

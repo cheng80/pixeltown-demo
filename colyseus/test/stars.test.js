@@ -126,10 +126,14 @@ test('walking anywhere is never corrected: random key presses and click routes i
 });
 test('speed: reports in a burst after a stall pass, sending faster than walking does not',()=>{
   const r=room(),p=r.players.get('session');let t=1000,seq=0;
-  // 2 s of 3-dot steps (40) stalled on the way, then arriving within a few ms: all accepted.
+  // 2 s of steps (40) stalled on the way, then arriving within a few ms: all accepted.
   r.move(C,{x:p.x+1,y:p.y,seq:++seq,fix:0},t);
   t+=2000;for(let i=0;i<40;i++){const q=stepInput(r.map,p,{dx:1,dy:0});r.move(C,{...q,seq:++seq,fix:p.fix},t+=1);}
   assert.equal(p.fix,0,'stall burst refused');
+  // Steps taken while the room was still being joined (the client keeps up to 60) arrive right after the join: accepted.
+  const r2=room(),p2=r2.players.get('session');let s2=0;
+  for(let i=0;i<60;i++){const q=stepInput(r2.map,p2,{dx:i<30?1:-1,dy:0.3});r2.move(C,{...q,seq:++s2,fix:0},5000+i);}
+  assert.equal(p2.fix,0,'early steps refused');assert.equal(p2.ack,60);
   // A cheat sending 6-dot hops (back and forth) 40 times a second for 10 s moves no farther than the allowance.
   const x1=p.x;assert(!blocked(r.map,x1+6,p.y));let moved=0;
   for(let i=0;i<400;i++){const from=p.x;r.move(C,{x:p.x===x1?x1+6:x1,y:p.y,seq:++seq,fix:p.fix},t+=25);moved+=Math.abs(p.x-from);}

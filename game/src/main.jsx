@@ -69,6 +69,9 @@ function App() {
   // back (`fix`) if a step was impossible. Drawn with an even per-tick glide; other players are replayed step by step
   // (playback.js).
   const pred = useRef(null), fix = useRef(0), seq = useRef(0), glide = useRef(null);
+  // Arriving in a room shows me on its doorway at once and lets me walk while the room is still being joined (about 2 s
+  // on the slow route); those steps are sent as soon as it is. ponytail: 60 steps (3 s), within the server's saved allowance.
+  const early = useRef(null);
   const stall = useRef({ x: 0, y: 0, n: 0 }), route = useRef([]), marker = useRef(null), state = useRef({ players: [], game: {} }), bubbles = useRef({}), emotes = useRef({});
   const trails = useRef({}), selfId = useRef("me"), soloPos = useRef(null), entry = useRef("default"), portalArmed = useRef(false), chatVisible = useRef(chatOpen);
   const [joinTry, setJoinTry] = useState(0), rejoining = useRef(false), lastAutoJoin = useRef(0), [ping, setPing] = useState(null);
@@ -159,12 +162,16 @@ function App() {
     if (!entered) return;
     let cancelled = false, giveUp = null, joined = null;
     setStatus(local ? "home" : rejoining.current ? "reconnecting" : "connecting");
-    state.current = { players: [], game: {}, zone }; setSnap(state.current);
     persistStatus.current = null; setMessages([]); setUnread(0);
     picked.current = {}; lastAck.current = { ack: -1, at: 0 }; bubbles.current = {}; emotes.current = {}; keys.current.clear(); touch.current = { dx: 0, dy: 0 };
     route.current = []; portalArmed.current = false; pred.current = null; glide.current = null; trails.current = {};
     const via = entry.current; entry.current = "default";
-    if (zone === "home") { selfId.current = user.id; soloPos.current = entryPoint(mapRef.current, via); return; }
+    selfId.current = user.id; early.current = null;
+    if (zone === "home") { soloPos.current = entryPoint(mapRef.current, via); state.current = { players: [mePlayer(soloPos.current)], game: {}, zone }; setSnap(state.current); return; }
+    // The server puts me on the same doorway spot (or one step aside when someone stands there: its first snapshot moves me).
+    const door = entryPoint(getMap(zone), via), seq0 = seq.current;
+    fix.current = 0; early.current = []; setPred(door, true);
+    state.current = { players: [mePlayer(door)], game: {}, zone }; setSnap(state.current);
     // A reload can race the server noticing the previous socket closed (409): retry briefly.
     client.auth.token = pb.authStore.token; // Colyseus 0.18: verified by the room's onAuth, not sent in join options
     const join = (n = 0) => client.joinOrCreate("town", { zone, entry: via })
@@ -174,7 +181,9 @@ function App() {
     join().then(r => {
       clearTimeout(joinTimer);
       if (cancelled) { r.leave(); return; }
-      joined = r; room.current = r; selfId.current = user.id; rejoining.current = false; setStatus("online");
+      joined = r; room.current = r; rejoining.current = false; setStatus("online");
+      for (const step of early.current || []) r.send("move", step);
+      early.current = null;
       // A room being left can still deliver a last snapshot after the next zone's state was reset: ignore it, or its
       // position becomes the new zone's prediction and the avatar slides across the map on arrival.
       r.onMessage("snapshot", data => {
@@ -182,9 +191,10 @@ function App() {
         const mine = data.players.find(p => p.id === user.id);
         if (mine) { // my own position comes from the server only on arrival and when it refused a step (`fix` went up)
           lastAck.current = { ack: mine.ack ?? -1, at: Date.now() };
-          if (!pred.current || mine.fix !== fix.current) {
+          const placed = mine.ack === undefined && seq.current === seq0; // arrived and not walked yet: stand where the server put me
+          if (!pred.current || mine.fix !== fix.current || placed) {
             const err = pred.current ? Math.hypot(mine.x - pred.current.x, mine.y - pred.current.y) : 0;
-            if (pred.current) { corrections.current.push({ at: Date.now(), err: +err.toFixed(1), ack: mine.ack, zone, from: [Math.round(pred.current.x), Math.round(pred.current.y)], to: [Math.round(mine.x), Math.round(mine.y)] }); if (corrections.current.length > 100) corrections.current.shift(); }
+            if (pred.current && !placed) { corrections.current.push({ at: Date.now(), err: +err.toFixed(1), ack: mine.ack, zone, from: [Math.round(pred.current.x), Math.round(pred.current.y)], to: [Math.round(mine.x), Math.round(mine.y)] }); if (corrections.current.length > 100) corrections.current.shift(); }
             fix.current = mine.fix; setPred({ x: mine.x, y: mine.y }, !pred.current || err > 40);
           }
         }
@@ -240,7 +250,7 @@ function App() {
   useEffect(() => {
     if (!entered) return;
     const down = e => {
-      if (isTyping(e.target) || (!local && status !== "online")) return;
+      if (isTyping(e.target) || (!local && status !== "online" && status !== "connecting")) return;
       const k = e.key.toLowerCase();
       if (MOVE_KEYS[k]) { e.preventDefault(); keys.current.add(k); route.current = []; marker.current = null; }
       else if (k === " " && e.target.tagName !== "BUTTON") { e.preventDefault(); if (!e.repeat) sendEmote(); }
@@ -269,12 +279,16 @@ function App() {
       if (local) {
         if (blocked(m, me.x, me.y)) Object.assign(soloPos.current, nearestFree(m, me.x, me.y)); // furniture placed on top of me
         if (dx || dy) { Object.assign(soloPos.current, moveActor(m, me.x, me.y, dx, dy, STEP_PER_TICK)); setPred(soloPos.current); }
-        s.players = [{ id: user.id, name: profileRef.current?.name || user.name || "나", color: profileRef.current?.color, look: { ...profileRef.current?.outfit, ...profileRef.current?.avatar }, ...soloPos.current }];
+        s.players = [mePlayer(soloPos.current)];
         setSnap({ ...s });
-      } else if (room.current && (dx || dy)) {
+      } else if ((room.current || (status === "connecting" && early.current?.length < 60)) && (dx || dy)) {
         // Lag never holds the avatar back or pulls it back: the step is mine at once, the server only checks it.
         const next = stepInput(m, me, { dx, dy, to });
-        if (next.x !== me.x || next.y !== me.y) { room.current.send("move", { ...next, seq: ++seq.current, fix: fix.current }); setPred(next); }
+        if (next.x !== me.x || next.y !== me.y) {
+          const step = { ...next, seq: ++seq.current, fix: fix.current };
+          if (room.current) room.current.send("move", step); else early.current.push(step);
+          setPred(next);
+        }
       }
       // doorway mats: only after stepping off the arrival mat once
       const portal = portalAt(m, me.x, me.y);
@@ -343,6 +357,10 @@ function App() {
   function setPred(p, jump = false) {
     const at = performance.now(), from = jump ? p : glidePos(at) || p;
     pred.current = { x: p.x, y: p.y }; glide.current = { from, to: pred.current, at };
+  }
+  function mePlayer(pos) {
+    const pr = profileRef.current;
+    return { id: user.id, name: pr?.name || user.name || "나", color: pr?.color, look: { ...pr?.outfit, ...pr?.avatar }, x: pos.x, y: pos.y };
   }
   function glidePos(t) {
     const g = glide.current; if (!g) return null;

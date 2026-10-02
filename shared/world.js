@@ -7,10 +7,10 @@ export const ROWS = 26;
 export const WORLD = { width: COLS * TILE, height: ROWS * TILE };
 export const ZONE_IDS = ['lobby', 'garden', 'arcade'];
 export const FOOT = { hw: 5, hh: 3 }; // player ground box half extents
-export const STEP_PER_TICK = 3; // px per 50ms server tick (60 px/s)
+export const STEP_PER_TICK = 4; // px per 50ms server tick (80 px/s)
 export const TICK_MS = 50;
 // Local-first movement: the browser moves its own avatar and reports each step; the server only checks it. A report may
-// hop at most MAX_HOP dots (one step is <= 4.3 with a corner slide). That is less than the 6-dot foot box height, so a hop
+// hop at most MAX_HOP dots (one step is <= 5.5 with a corner slide). That is less than the 6-dot foot box height, so a hop
 // can never pass through a blocker. Over time the avatar may cover MOVE_SLACK x walking speed, with up to MOVE_BURST_MS of
 // saved-up distance for reports that arrive in a burst after the connection stalled.
 export const MAX_HOP = 6, MOVE_SLACK = 1.5, MOVE_BURST_MS = 3000;
