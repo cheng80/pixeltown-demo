@@ -2,7 +2,7 @@ import { Room, ServerError } from '@colyseus/core';
 import { randomUUID } from 'node:crypto';
 import { userClient, ZONES } from './config.js';
 import { outbox } from './outbox.js';
-import { getMap, blocked, entryPoint, spreadSpot, touchesStar, MAX_HOP, MOVE_SLACK, MOVE_BURST_MS, STEP_PER_TICK, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS, WORLD } from '../shared/world.js';
+import { getMap, blocked, entryPoint, spreadSpot, touchesStar, MAX_HOP, MOVE_SLACK, MOVE_BURST_MS, STEP_PER_TICK, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS } from '../shared/world.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Outfit shown to everyone comes from the PocketBase profile (written only by the shop hook), never from the client.
 // Outfit and character look (FR-014 avatar indexes) both come from the profile; invalid values fall back to null.

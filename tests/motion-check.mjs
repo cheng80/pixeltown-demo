@@ -5,8 +5,7 @@
 //   JITTER=300 adds an unstable connection in the page: every game message waits 40 ms + random 0–300 ms (in order).
 //   (remote: BASE=https://pixeltown.fastmake.net/ and an account from pocketbase/.local/remote-accounts.json)
 import { chromium } from 'playwright-core';
-import { readFile } from 'node:fs/promises';
-const root = new URL('..', import.meta.url).pathname, BASE = process.env.BASE || 'http://127.0.0.1:5273/';
+const BASE = process.env.BASE || 'http://127.0.0.1:5273/';
 const [email, password] = process.env.ACCOUNT ? process.env.ACCOUNT.split(':') : (() => { throw new Error('ACCOUNT=email:password'); })();
 const browser = await chromium.launch({ ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' }), args: process.env.CHROME_HOST_RULES ? [`--host-resolver-rules=${process.env.CHROME_HOST_RULES}`] : [] });
 try {
@@ -39,7 +38,7 @@ try {
   await page.waitForFunction(() => window.__pixeltown?.state.current.players?.length > 0, null, { timeout: 60000 }); // slow with JITTER
   if (process.env.ZONE) { // e.g. ZONE=오락실: the tab's label
     await page.click(`.tabs button:has-text("${process.env.ZONE}")`);
-    await page.waitForFunction(z => window.__pixeltown?.state.current.zone !== 'lobby' && window.__pixeltown.state.current.players?.some(q => q.id === window.__pixeltown.self.current), null, { timeout: 60000 });
+    await page.waitForFunction(() => window.__pixeltown?.state.current.zone !== 'lobby' && window.__pixeltown.state.current.players?.some(q => q.id === window.__pixeltown.self.current), null, { timeout: 60000 });
   }
   await page.waitForTimeout(1000);
   const result = {};

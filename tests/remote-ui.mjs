@@ -2,7 +2,7 @@
 // Two test accounts from pocketbase/.local/remote-accounts.json log in, see each other, chat; network targets are recorded.
 //   CHROME_PATH=/path/to/chromium node tests/remote-ui.mjs
 import { chromium } from 'playwright-core';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 const root = new URL('..', import.meta.url).pathname, BASE = process.env.BASE || 'http://127.0.0.1:5173/';
 const accounts = JSON.parse(await readFile(root + 'pocketbase/.local/remote-accounts.json', 'utf8'));
 // CHROME_HOST_RULES (e.g. "MAP pixeltown-pb.fastmake.net 104.21.83.7") bypasses a stale local DNS cache after a hostname move.

@@ -15,7 +15,6 @@ try {
   await page.waitForFunction(() => { const t = window.__pixeltown; return t?.state.current.players?.some(q => q.id === t.self.current) && t.state.current.game?.stars?.length; }, null, { timeout: 30000 });
   if (await page.$('.chat-head >> text=접기')) await page.click('.chat-head >> text=접기');
   const wallet = async () => Number((await page.textContent('.wallet-live')).trim());
-  const score = () => page.evaluate(() => { const t = window.__pixeltown; return t.state.current.game.scores?.[t.self.current] || 0; });
   // Walk onto the nearest star by clicking it on screen, until the wallet shows one more (the period score itself
   // resets at each settlement, so it is no signal here).
   const pickOne = async start => {
