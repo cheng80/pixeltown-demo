@@ -96,6 +96,13 @@
 
 ## 7. 인수인계
 
+### 프런트 컴포넌트 분리·중복 정리 (2026-10-04)
+
+- 사용자 요청: 구조·컴포넌트·재사용 로직 검토 후 리팩토링. 동작·DOM·클래스명은 바꾸지 않았다.
+- `main.jsx` 656줄 → App만 남김. 화면 조각은 `game/src/components/`로, 장소 목록은 `zones.js`로 옮겼다. 모달 틀 `Sheet`, 캔버스 훅 `usePixels`, `useStored`(localStorage 상태), `clearRoute`·`stopInput`·`myPos`·`canAct`·`shopPost`로 반복을 묶었다. `render.js`는 그림자·좌우 반전 그리기를 `shadow`·`blit`로 묶었다.
+- 남긴 것: 접속·입력·렌더 effect는 ref 20여 개를 공유하므로 커스텀 훅으로 떼지 않았다. oxlint 경고 15건은 의도된 코드나 스타일이다.
+- 검증: build, `npm --prefix colyseus test` 31/31, 로컬 `ui-check` 8/8(대체 포트, ego lite Chromium). 첫 전체 실행에서 `click_move` 1회 실패했고 단독 재실행은 리팩토링 전·후 각 2/2, 전체 재실행 8/8 PASS였다(기존 간헐 실패로 판단).
+
 ### 클릭 이동 8방향·걷기 들썩임 제거 (2026-10-03, `76cc1e4`)
 
 - 사용자 보고: 마우스 이동 시 한 걸음마다 화면이 떨린다(키보드는 덜함). 일반 걸음도 털린다.
@@ -137,7 +144,7 @@
 
 변경하면 안 되는 경계: 운영 PocketBase·Oracle 작업·외부 브로커·클라우드 인증에는 접근하지 않는다. 개발 launcher는 기본 18090/12567/5173(환경변수로 변경 가능)을 loopback으로만 사용하고 포트 점유 시 시작을 거부한다. 재제작 브랜치 worktree 검증은 5273/18190/12667을 썼다. 병합 후 main 체크아웃은 기본 5173/18090/12567로 실행하고, 통합은 18191/12668을 쓴다. main을 fast-forward한 뒤에는 `npm install && npm --prefix colyseus install`(병합으로 `galmuri` 추가)을 하고 개발 서버를 재시작해야 한다. 구 실행이 남아 있으면 이전 코드를 서비스한다. `.env.local`, `.local`, DB, 다운로드 바이너리와 node_modules를 공개 저장소에 넣지 않는다.
 
-주요 파일은 `shared/world.js`(맵·충돌·미니룸 정본), `shared/catalog.json`(상점 정본), `pocketbase/pb_hooks/shop.pb.js`·`shop_lib.js`, `game/src/main.jsx`, `game/src/render.js`, `game/src/sprites.js`, `colyseus/town.js`, `colyseus/outbox.js`, `pocketbase/pb_hooks/matches.pb.js`, `scripts/init-pocketbase.mjs`, `tests/integration.mjs`, `tests/ui-check.mjs`다. 실제 명령은 루트 README에 있다. 맵을 고치면 `npm --prefix colyseus test`가 연결성·footprint 규칙을 자동 검사한다. Colyseus는 `shared/`를 import하므로 맵 수정 후 서버를 재시작해야 프런트와 판정이 일치한다.
+주요 파일은 `shared/world.js`(맵·충돌·미니룸 정본), `shared/catalog.json`(상점 정본), `pocketbase/pb_hooks/shop.pb.js`·`shop_lib.js`, `game/src/main.jsx`(App·접속·입력·렌더 루프), `game/src/components/`(Chat·Shop·Notebook·CharacterSetup, 공용 `Pixels.jsx`의 Portrait·ItemIcon·Sheet), `game/src/zones.js`, `game/src/render.js`, `game/src/sprites.js`, `colyseus/town.js`, `colyseus/outbox.js`, `pocketbase/pb_hooks/matches.pb.js`, `scripts/init-pocketbase.mjs`, `tests/integration.mjs`, `tests/ui-check.mjs`다. 실제 명령은 루트 README에 있다. 맵을 고치면 `npm --prefix colyseus test`가 연결성·footprint 규칙을 자동 검사한다. Colyseus는 `shared/`를 import하므로 맵 수정 후 서버를 재시작해야 프런트와 판정이 일치한다.
 
 UI에서 `sort:-created` 조회가 400인 문제를 발견했다. 신규 PocketBase collection에 날짜 필드가 없었던 원인으로, seed가 기존/신규 schema의 created/updated autodate를 보완하도록 수정했다. 재seed 후 프로필 조회·기록 패널 오류 0을 확인했다. 이전 실패 증거는 최종 검증의 성공으로 덮어 쓰지 않고 이 원인과 수정을 보존한다.
 

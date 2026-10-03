@@ -70,10 +70,8 @@ function draw(view, sc, f, lc, dc, display) {
     if (it.pet) {
       const q = it.pet, spr = petSprite(q.id, q.frame);
       if (!spr) continue;
-      lc.globalAlpha = 0.25; lc.fillStyle = '#2a2238'; lc.fillRect(Math.floor(q.x) - 4 - cx, Math.floor(q.y) - 1 - cy, 8, 2); lc.globalAlpha = 1;
-      const dx = Math.floor(q.x) - 7 - cx, dy = Math.floor(q.y) - 13 - cy;
-      if (q.flip) { lc.save(); lc.translate(dx + spr.width, dy); lc.scale(-1, 1); lc.drawImage(spr, 0, 0); lc.restore(); }
-      else lc.drawImage(spr, dx, dy);
+      shadow(lc, Math.floor(q.x) - 4 - cx, Math.floor(q.y) - 1 - cy, 8, 2);
+      blit(lc, spr, Math.floor(q.x) - 7 - cx, Math.floor(q.y) - 13 - cy, q.flip);
     } else if (it.p) {
       const p = it.p;
       lc.drawImage(propSprite(p), p.visual.x - 1 - cx, p.visual.y - 1 - cy);
@@ -83,15 +81,12 @@ function draw(view, sc, f, lc, dc, display) {
       }
     } else if (it.s) {
       const s = it.s, bob = Math.round(Math.abs(Math.sin(f.time / 260 + s.x)) * 3);
-      lc.globalAlpha = 0.25; lc.fillStyle = '#2a2238'; lc.fillRect(s.x - 5 - cx, s.y - 1 - cy, 10, 2); lc.globalAlpha = 1;
+      shadow(lc, s.x - 5 - cx, s.y - 1 - cy, 10, 2);
       lc.drawImage(starSprite(), s.x - 7 - cx, s.y - 16 - bob - cy);
     } else {
       const a = it.a;
-      lc.globalAlpha = 0.25; lc.fillStyle = '#2a2238'; lc.fillRect(Math.floor(a.x) - 5 - cx, Math.floor(a.y) - 2 - cy, 10, 3); lc.fillRect(Math.floor(a.x) - 6 - cx, Math.floor(a.y) - 1 - cy, 12, 1); lc.globalAlpha = 1;
-      const spr = avatarSprite(a.look, a.dir === 3 ? 2 : a.dir, a.frame);
-      const dx = Math.floor(a.x) - 9 - cx, dy = Math.floor(a.y) - 30 - cy;
-      if (a.dir === 3) { lc.save(); lc.translate(dx + spr.width, dy); lc.scale(-1, 1); lc.drawImage(spr, 0, 0); lc.restore(); }
-      else lc.drawImage(spr, dx, dy);
+      shadow(lc, Math.floor(a.x) - 5 - cx, Math.floor(a.y) - 2 - cy, 10, 3); shadow(lc, Math.floor(a.x) - 6 - cx, Math.floor(a.y) - 1 - cy, 12, 1);
+      blit(lc, avatarSprite(a.look, a.dir === 3 ? 2 : a.dir, a.frame), Math.floor(a.x) - 9 - cx, Math.floor(a.y) - 30 - cy, a.dir === 3); // left = right mirrored
     }
   }
   for (const p of sc.fg) lc.drawImage(propSprite(p), p.visual.x - 1 - cx, p.visual.y - 1 - cy);
@@ -145,6 +140,13 @@ function draw(view, sc, f, lc, dc, display) {
     if (a.bubble) bubble(dc, sx, top, a.bubble, fs, pad, u);
     else if (a.emote) { dc.font = `${Math.round(18 * dpr)}px Galmuri11, sans-serif`; dc.fillStyle = '#ff5c93'; dc.fillText('♥', sx, top - 4 * u); dc.font = `${fs}px Galmuri11, monospace`; }
   }
+}
+
+const shadow = (lc, x, y, w, h) => { lc.globalAlpha = 0.25; lc.fillStyle = '#2a2238'; lc.fillRect(x, y, w, h); lc.globalAlpha = 1; };
+// Draw a sprite at (x, y), mirrored left-right inside its own box when `flip`.
+function blit(lc, spr, x, y, flip) {
+  if (!flip) { lc.drawImage(spr, x, y); return; }
+  lc.save(); lc.translate(x + spr.width, y); lc.scale(-1, 1); lc.drawImage(spr, 0, 0); lc.restore();
 }
 
 function bubble(dc, x, bottom, text, fs, pad, u) {

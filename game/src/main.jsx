@@ -7,7 +7,13 @@ import g11b from "galmuri/dist/Galmuri11-Bold.woff2";
 import { getMap, stepInput, routeStep, facing, blocked, nearestFree, findPath, portalAt, entryPoint, homeMap, roomProblem, CATALOG, ITEMS, touchesStar, TICK_MS } from "../../shared/world.js";
 import { scene, createView } from "./render.js";
 import { feed, play } from "./playback.js";
-import { avatarSprite, lookFor, petSprite, propSprite } from "./sprites.js";
+import { lookFor } from "./sprites.js";
+import { ZONES } from "./zones.js";
+import { ItemIcon, Portrait, Sheet } from "./components/Pixels.jsx";
+import { Chat } from "./components/Chat.jsx";
+import { Shop } from "./components/Shop.jsx";
+import { Notebook } from "./components/Notebook.jsx";
+import { CharacterSetup } from "./components/CharacterSetup.jsx";
 import "./style.css";
 
 for (const [src, weight] of [[g11, "400"], [g11b, "700"]]) {
@@ -17,30 +23,16 @@ for (const [src, weight] of [[g11, "400"], [g11b, "700"]]) {
 const pb = new PocketBase(import.meta.env.VITE_PB_URL || "http://127.0.0.1:18090");
 pb.autoCancellation(false);
 const client = new Client(import.meta.env.VITE_GAME_URL || "ws://127.0.0.1:12567");
-const ZONES = [
-  ["lobby", "⛲", "광장", "분수 앞에서 만나요. 표지판을 따라 정원·오락실로!"],
-  ["garden", "🌷", "정원", "연못 다리를 건너 온실까지 천천히 산책해요."],
-  ["arcade", "🕹️", "오락실", "오락기 사이사이 숨은 별을 찾아요."],
-  ["home", "🏠", "미니룸", "모은 별로 산 가구로 내 방을 꾸며요."],
-];
-const SLOTS = [["hat", "모자"], ["top", "옷"], ["pet", "펫"], ["furniture", "가구"]];
 const MOVE_KEYS = { w: [0, -1], arrowup: [0, -1], s: [0, 1], arrowdown: [0, 1], a: [-1, 0], arrowleft: [-1, 0], d: [1, 0], arrowright: [1, 0] };
 const load = (key, fallback, ok) => { try { const v = JSON.parse(localStorage.getItem(key)); return ok(v) ? v : fallback; } catch { return fallback; } };
 const save = (key, v) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} };
 const GUEST_KEY = "pixeltown.guest";
 const isTyping = t => ["INPUT", "TEXTAREA", "SELECT"].includes(t?.tagName) || t?.isContentEditable;
-
-function Portrait({ player, scale = 6, className = "portrait" }) {
-  const ref = useRef(null), look = lookFor(player);
-  useEffect(() => {
-    const c = ref.current?.getContext("2d");
-    if (!c) return;
-    c.imageSmoothingEnabled = false; c.clearRect(0, 0, 18 * scale, 31 * scale);
-    c.drawImage(avatarSprite(look, 0, 0), 0, 0, 18 * scale, 31 * scale);
-    const pet = look.pet && petSprite(look.pet, 0);
-    if (pet) c.drawImage(pet, 11 * scale, 19 * scale, 14 * scale * 0.7, 14 * scale * 0.7);
-  }, [look.key, look.pet, scale]);
-  return <div className={className}><canvas ref={ref} width={18 * scale} height={31 * scale} aria-hidden="true" /></div>;
+// useState kept in localStorage (per-viewer convenience: chat panel open, its opacity).
+function useStored(key, fallback, ok) {
+  const [v, setV] = useState(() => load(key, fallback, ok));
+  useEffect(() => save(key, v), [key, v]);
+  return [v, setV];
 }
 
 function App() {
@@ -52,9 +44,9 @@ function App() {
   const [snap, setSnap] = useState({ players: [], game: {} });
   const [messages, setMessages] = useState([]);
   const [chat, setChat] = useState("");
-  const [chatOpen, setChatOpen] = useState(() => load("pixeltown.chatOpen", window.innerWidth >= 900, v => typeof v === "boolean"));
+  const [chatOpen, setChatOpen] = useStored("pixeltown.chatOpen", window.innerWidth >= 900, v => typeof v === "boolean");
   const [unread, setUnread] = useState(0);
-  const [chatOpacity, setChatOpacity] = useState(() => load("pixeltown.chatOpacity", 72, v => Number.isInteger(v) && v >= 20 && v <= 95));
+  const [chatOpacity, setChatOpacity] = useStored("pixeltown.chatOpacity", 72, v => Number.isInteger(v) && v >= 20 && v <= 95);
   const [notebook, setNotebook] = useState(false);
   const [records, setRecords] = useState({ profiles: [], inventory: [], results: [], purchases: [] });
   const [loaded, setLoaded] = useState(false); // records fetched once after login
@@ -101,13 +93,15 @@ function App() {
   mapRef.current = map; profileRef.current = profile;
 
   const notify = setToast;
+  const clearRoute = () => { route.current = []; marker.current = null; };
+  const stopInput = () => { keys.current.clear(); touch.current = { dx: 0, dy: 0 }; };
+  const canAct = local || status === "online";
   const append = m => {
     if (!chatVisible.current && !m.mine) setUnread(n => n + 1);
     setMessages(a => [...a.slice(-79), { ...m, key: `${Date.now()}-${Math.random()}` }]);
     if (m.id) bubbles.current[m.id] = { text: m.text, until: Date.now() + 4000 };
   };
-  useEffect(() => { chatVisible.current = chatOpen; save("pixeltown.chatOpen", chatOpen); if (chatOpen) setUnread(0); }, [chatOpen]);
-  useEffect(() => save("pixeltown.chatOpacity", chatOpacity), [chatOpacity]);
+  useEffect(() => { chatVisible.current = chatOpen; if (chatOpen) setUnread(0); }, [chatOpen]);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(t); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 4000); return () => clearTimeout(t); }, [toast]);
   useEffect(() => {
@@ -154,7 +148,7 @@ function App() {
 
   function goZone(to, via = "default") {
     if (to === zone) return;
-    setEdit(null); entry.current = via; route.current = []; marker.current = null; setZone(to);
+    setEdit(null); entry.current = via; clearRoute(); setZone(to);
   }
 
   // room connection (or local practice)
@@ -163,7 +157,7 @@ function App() {
     let cancelled = false, giveUp = null, joined = null;
     setStatus(local ? "home" : rejoining.current ? "reconnecting" : "connecting");
     persistStatus.current = null; setMessages([]); setUnread(0);
-    picked.current = {}; lastAck.current = { ack: -1, at: 0 }; bubbles.current = {}; emotes.current = {}; keys.current.clear(); touch.current = { dx: 0, dy: 0 };
+    picked.current = {}; lastAck.current = { ack: -1, at: 0 }; bubbles.current = {}; emotes.current = {}; stopInput();
     route.current = []; portalArmed.current = false; pred.current = null; glide.current = null; trails.current = {};
     const via = entry.current; entry.current = "default";
     selfId.current = user.id; early.current = null;
@@ -213,7 +207,7 @@ function App() {
       // 1. Drop: the SDK reconnects into the same server session (kept 15 s), so nothing is lost.
       // 2. That fails (session gone, socket refused) or hangs: join again automatically; the login is still valid.
       // 3. Only if that join fails too (server unreachable) does the dialog show a button.
-      const halt = next => { keys.current.clear(); touch.current = { dx: 0, dy: 0 }; route.current = []; marker.current = null; setStatus(next); };
+      const halt = next => { stopInput(); clearRoute(); setStatus(next); };
       let lost = false;
       const joinAgain = () => {
         if (cancelled || lost) return; lost = true; clearTimeout(giveUp); room.current = null;
@@ -252,18 +246,17 @@ function App() {
     const down = e => {
       if (isTyping(e.target) || (!local && status !== "online" && status !== "connecting")) return;
       const k = e.key.toLowerCase();
-      if (MOVE_KEYS[k]) { e.preventDefault(); keys.current.add(k); route.current = []; marker.current = null; }
+      if (MOVE_KEYS[k]) { e.preventDefault(); keys.current.add(k); clearRoute(); }
       else if (k === " " && e.target.tagName !== "BUTTON") { e.preventDefault(); if (!e.repeat) sendEmote(); }
       else if (k === "enter") { e.preventDefault(); setChatOpen(true); setTimeout(() => chatInput.current?.focus(), 0); }
     };
     const up = e => keys.current.delete(e.key.toLowerCase());
-    const reset = () => { keys.current.clear(); touch.current = { dx: 0, dy: 0 }; };
-    addEventListener("keydown", down); addEventListener("keyup", up); addEventListener("blur", reset); document.addEventListener("visibilitychange", reset);
+    addEventListener("keydown", down); addEventListener("keyup", up); addEventListener("blur", stopInput); document.addEventListener("visibilitychange", stopInput);
     const tick = setInterval(() => {
       const m = local ? mapRef.current : getMap(zone), s = state.current; // this room's own map: mapRef switches to the next zone first
       let dx = touch.current.dx, dy = touch.current.dy, routed = false;
       for (const k of keys.current) if (MOVE_KEYS[k]) { dx += MOVE_KEYS[k][0]; dy += MOVE_KEYS[k][1]; }
-      const me = local ? soloPos.current : pred.current;
+      const me = myPos();
       if (!me) return;
       if (!dx && !dy && route.current.length) {
         // Re-plan from where the avatar really is when it has not moved for half a second (lag or a corner pushed it off the line).
@@ -294,7 +287,7 @@ function App() {
       if (!portal) portalArmed.current = true;
       else if (portalArmed.current && (local || status === "online")) { portalArmed.current = false; goZone(portal.to, portal.entry); }
     }, TICK_MS);
-    return () => { clearInterval(tick); removeEventListener("keydown", down); removeEventListener("keyup", up); removeEventListener("blur", reset); document.removeEventListener("visibilitychange", reset); };
+    return () => { clearInterval(tick); removeEventListener("keydown", down); removeEventListener("keyup", up); removeEventListener("blur", stopInput); document.removeEventListener("visibilitychange", stopInput); };
   }, [entered, user, zone, status, local]);
 
   // render loop
@@ -357,6 +350,7 @@ function App() {
     const at = performance.now(), from = jump ? p : glidePos(at) || p;
     pred.current = { x: p.x, y: p.y }; glide.current = { from, to: pred.current, at };
   }
+  function myPos() { return local ? soloPos.current : pred.current; }
   function mePlayer(pos) {
     const pr = profileRef.current;
     return { id: user.id, name: pr?.name || user.name || "나", color: pr?.color, look: { ...pr?.outfit, ...pr?.avatar }, x: pos.x, y: pos.y };
@@ -370,7 +364,7 @@ function App() {
     if (e.button > 0 || !viewRef.current) return;
     const r = e.currentTarget.getBoundingClientRect(), target = viewRef.current.toWorld(e.clientX - r.left, e.clientY - r.top);
     if (edit) { editAt(target); return; }
-    const me = local ? soloPos.current : pred.current;
+    const me = myPos();
     if (!me) return;
     document.activeElement?.blur?.();
     route.current = findPath(map, me, target); marker.current = route.current.at(-1) || null;
@@ -385,22 +379,20 @@ function App() {
     const problem = roomProblem(next, owned);
     if (problem) notify(problem); else setEdit({ placements: next, sel: null });
   }
-  async function saveRoom() {
-    try { await pb.send("/api/pixeltown/shop/room", { method: "POST", body: { placements: edit.placements } }); await loadRecords(); setEdit(null); notify("미니룸을 저장했어요!"); }
-    catch (e) { notify(e.response?.message || "저장하지 못했어요."); }
+  // Shop hook call: on success reload my records and run `done`, on failure show the hook's message.
+  async function shopPost(path, body, done, failed) {
+    try { await pb.send(`/api/pixeltown/shop/${path}`, { method: "POST", body }); await loadRecords(); done(); }
+    catch (e) { notify(e.response?.message || failed); }
   }
-  async function buy(item) {
-    try { await pb.send("/api/pixeltown/shop/buy", { method: "POST", body: { item: item.id } }); await loadRecords(); notify(`${item.name}을(를) 샀어요!`); }
-    catch (e) { notify(e.response?.message || "구매하지 못했어요."); }
-  }
-  async function wear(item) {
+  const saveRoom = () => shopPost("room", { placements: edit.placements }, () => { setEdit(null); notify("미니룸을 저장했어요!"); }, "저장하지 못했어요.");
+  const buy = item => shopPost("buy", { item: item.id }, () => notify(`${item.name}을(를) 샀어요!`), "구매하지 못했어요.");
+  function wear(item) {
     const next = { hat: outfit.hat || null, top: outfit.top || null, pet: outfit.pet || null };
     next[item.slot] = next[item.slot] === item.id ? null : item.id;
-    try { await pb.send("/api/pixeltown/shop/equip", { method: "POST", body: next }); await loadRecords(); room.current?.send("look"); }
-    catch (e) { notify(e.response?.message || "갈아입지 못했어요."); }
+    return shopPost("equip", next, () => room.current?.send("look"), "갈아입지 못했어요.");
   }
   function sendEmote() {
-    if (!local && status !== "online") return;
+    if (!canAct) return;
     emotes.current[selfId.current] = Date.now() + 2500;
     room.current?.send("emote", {});
   }
@@ -426,9 +418,8 @@ function App() {
   const remaining = Math.max(0, Math.ceil(((game.endsAt || 0) - Date.now()) / 1000)), clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
   const myScore = game.scores?.[selfId.current] || 0;
   const ranking = Object.entries(game.scores || {}).map(([id, score]) => ({ id, score, name: snap.players?.find(p => p.id === id)?.name || (id === selfId.current ? "나" : "이웃") })).sort((a, b) => b.score - a.score);
-  const totalStars = earned;
   const online = snap.players?.length || (local ? 1 : 0);
-  const openShop = () => { setShop(true); loadRecords(); };
+  const openShop = () => { setShop(true); loadRecords(); }, openNotebook = () => { setNotebook(true); loadRecords(); };
   const saving = snap.persistence?.status === "pending";
   const starCard = (
     <section className="star-card" aria-label="별 모으기">
@@ -443,7 +434,7 @@ function App() {
     <main className="page">
       <div className="hompy">
         <aside className="profile paper">
-          <div className="today">TODAY <b>{online}</b> <span>|</span> TOTAL <b>{totalStars + unsaved}</b></div>
+          <div className="today">TODAY <b>{online}</b> <span>|</span> TOTAL <b>{earned + unsaved}</b></div>
           <Portrait player={me} />
           <h2 className="me-name">{me.name}</h2>
           <p className="mood">♪ {zoneInfo[3]}</p>
@@ -451,7 +442,7 @@ function App() {
           {zone !== "home" && starCard}
           <button className="btn wide" onClick={openShop}>🛍 별 상점 · 옷장</button>
           <button className="btn ghost wide" onClick={() => setSetup(true)}>🎨 캐릭터 꾸미기</button>
-          <button className="btn ghost wide" onClick={() => { setNotebook(true); loadRecords(); }}>📒 내 수첩</button>
+          <button className="btn ghost wide" onClick={openNotebook}>📒 내 수첩</button>
         </aside>
         <section className="room paper">
           <header className="room-title">
@@ -473,7 +464,7 @@ function App() {
               </div>
               <div className="row"><button className="btn small" onClick={saveRoom}>저장</button><button className="btn small ghost" onClick={() => setEdit(null)}>취소</button></div>
             </div>}
-            {!edit && <Chat {...{ chatOpen, setChatOpen, unread, chatOpacity, setChatOpacity, messages, chat, setChat, sendChat, chatInput, keys, route, online, canSend: local || status === "online" }} />}
+            {!edit && <Chat {...{ chatOpen, setChatOpen, unread, chatOpacity, setChatOpacity, messages, chat, setChat, sendChat, chatInput, keys, route, online, canSend: canAct }} />}
             <div className="dpad" aria-label="방향 이동" onPointerDown={e => e.stopPropagation()}>
               {[["▲", 0, -1, "위"], ["◀", -1, 0, "왼쪽"], ["▼", 0, 1, "아래"], ["▶", 1, 0, "오른쪽"]].map(([label, dx, dy, name]) => (
                 <button key={name} className={`pad ${name}`} aria-label={`${name}로 이동`}
@@ -484,10 +475,10 @@ function App() {
             {toast && <div className="toast" role="status">{toast}</div>}
           </div>
           <footer className="room-tools">
-            <button className="btn small blue" onClick={sendEmote} disabled={!local && status !== "online"}>♥ 인사</button>
-            {zone === "home" && !edit && <button className="btn small" onClick={() => { setEdit({ placements, sel: null }); route.current = []; marker.current = null; }}>🪑 가구 배치</button>}
+            <button className="btn small blue" onClick={sendEmote} disabled={!canAct}>♥ 인사</button>
+            {zone === "home" && !edit && <button className="btn small" onClick={() => { setEdit({ placements, sel: null }); clearRoute(); }}>🪑 가구 배치</button>}
             <button className="btn small ghost only-compact" onClick={openShop}>🛍 상점</button>
-            <button className="btn small ghost only-compact" onClick={() => { setNotebook(true); loadRecords(); }}>📒 수첩</button>
+            <button className="btn small ghost only-compact" onClick={openNotebook}>📒 수첩</button>
             <span className="hint"><kbd>WASD</kbd> 걷기 · <kbd>클릭</kbd> 이동 · <kbd>Space</kbd> 인사 · <kbd>Enter</kbd> 채팅</span>
           </footer>
         </section>
@@ -495,161 +486,15 @@ function App() {
           {ZONES.map(([id, icon, label]) => <button key={id} aria-pressed={zone === id} onClick={() => goZone(id)}><span aria-hidden="true">{icon}</span>{label}</button>)}
         </nav>
       </div>
-      {(status === "disconnected" || status === "reconnecting") && !local && <div className="sheet-backdrop offline">
-        <div className="notebook paper" role="alertdialog" aria-modal="true" aria-labelledby="offline-title">
+      {(status === "disconnected" || status === "reconnecting") && !local && <Sheet as="div" backdrop="sheet-backdrop offline" className="notebook paper" role="alertdialog" aria-modal="true" aria-labelledby="offline-title">
           <div className="notebook-head"><b id="offline-title">{status === "reconnecting" ? "서버에 다시 연결하는 중…" : "서버 연결이 끊겼어요"}</b></div>
           <p className="notebook-body">연결될 때까지 이동·채팅·장소 이동을 할 수 없어요.</p>
           {status === "disconnected" && <div className="notebook-foot"><button className="btn wide" autoFocus onClick={() => { rejoining.current = true; setJoinTry(n => n + 1); }}>다시 연결</button></div>}
-        </div>
-      </div>}
+      </Sheet>}
       {shop && <Shop {...{ wallet, unsaved, owned, outfit, buy, wear, me, close: () => setShop(false) }} />}
-      {notebook && <Notebook {...{ records, recordError, loadRecords, me, close: () => setNotebook(false) }} />}
+      {notebook && <Notebook {...{ records, earned, recordError, loadRecords, me, close: () => setNotebook(false) }} />}
       {setup && <CharacterSetup profile={profile} userId={user.id} save={saveCharacter} close={() => setSetup(false)} />}
     </main>
-  );
-}
-
-function Chat({ chatOpen, setChatOpen, unread, chatOpacity, setChatOpacity, messages, chat, setChat, sendChat, chatInput, keys, route, online, canSend }) {
-  const end = useRef(null);
-  useEffect(() => { if (chatOpen) end.current?.scrollIntoView({ block: "nearest" }); }, [messages, chatOpen]);
-  if (!chatOpen) return (
-    <button className="chat-fab" aria-expanded="false" onPointerDown={e => e.stopPropagation()} onClick={() => setChatOpen(true)}>
-      💬 채팅 펼치기{unread > 0 && <span className="badge" aria-label={`읽지 않은 메시지 ${unread}개`}>{unread > 99 ? "99+" : unread}</span>}
-    </button>
-  );
-  return (
-    <section className="chat" style={{ backgroundColor: `rgba(255, 250, 252, ${chatOpacity / 100})` }} aria-label="방 채팅">
-      <div className="chat-head" onPointerDown={e => e.stopPropagation()}>
-        <b>마을 이야기 <span>{online}</span></b>
-        <label className="opacity">배경<input type="range" min="20" max="95" step="1" value={chatOpacity} onChange={e => setChatOpacity(Number(e.target.value))} aria-label="채팅 배경 불투명도" /><span>{chatOpacity}%</span></label>
-        <button className="btn tiny ghost" aria-expanded="true" onClick={() => setChatOpen(false)}>접기</button>
-      </div>
-      <div className="chat-log" role="log" aria-live="polite">
-        {messages.length === 0 && <p className="empty">이웃에게 먼저 인사해 보세요. 이 방 모두에게 보여요.</p>}
-        {messages.map(m => <p key={m.key} className={m.mine ? "mine" : ""}><b>{m.name}</b> {m.text}</p>)}
-        <div ref={end} />
-      </div>
-      <form className="chat-form" onSubmit={sendChat} onPointerDown={e => e.stopPropagation()}>
-        <input ref={chatInput} value={chat} maxLength={200} onFocus={() => { keys.current.clear(); route.current = []; }} onChange={e => setChat(e.target.value)} onKeyDown={e => { if (e.key === "Escape") e.currentTarget.blur(); }} placeholder="메시지 입력" aria-label="채팅 메시지" />
-        <button className="btn small" disabled={!chat.trim() || !canSend}>전송</button>
-      </form>
-    </section>
-  );
-}
-
-// Small dot preview for a catalogue item (furniture sprite, pet, or the avatar wearing it).
-function ItemIcon({ item, player }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const c = ref.current?.getContext("2d");
-    if (!c) return;
-    c.imageSmoothingEnabled = false; c.clearRect(0, 0, 64, 64);
-    const worn = item.slot === "hat" || item.slot === "top";
-    const spr = item.slot === "furniture" ? propSprite({ type: item.id }) : item.slot === "pet" ? petSprite(item.id, 0)
-      : avatarSprite(lookFor({ ...player, look: { [item.slot]: item.id } }), 0, 0);
-    // hats show the head, tops the body (2x, cropped); other items fit the box
-    const k = worn ? 2 : Math.max(1, Math.floor(Math.min(64 / spr.width, 64 / spr.height)));
-    const y = item.slot === "hat" ? 2 : item.slot === "top" ? 64 - spr.height * k + 4 : Math.floor((64 - spr.height * k) / 2);
-    c.drawImage(spr, Math.floor((64 - spr.width * k) / 2), y, spr.width * k, spr.height * k);
-  }, [item.id]);
-  return <canvas ref={ref} width={64} height={64} className="item-icon" aria-hidden="true" />;
-}
-
-function Shop({ wallet, unsaved, owned, outfit, buy, wear, me, close }) {
-  const [tab, setTab] = useState("hat"), [busy, setBusy] = useState("");
-  const run = async (id, fn) => { setBusy(id); try { await fn(); } finally { setBusy(""); } };
-  return (
-    <div className="sheet-backdrop" onClick={close}>
-      <aside className="notebook shop paper" role="dialog" aria-label="별 상점" onClick={e => e.stopPropagation()}>
-        <div className="notebook-head"><b>🛍 별 상점 · 옷장</b><span className="stars-badge" title="쓸 수 있는 별">지갑 ★ {wallet}</span><button className="btn tiny ghost" onClick={close} aria-label="상점 닫기">닫기</button></div>
-        {unsaved > 0 && <p className="shop-pending">정산 대기 ★{unsaved}: 3분마다 정산되면 쓸 수 있어요.</p>}
-        <div className="shop-tabs" role="tablist">{SLOTS.map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>)}</div>
-        <div className="notebook-body shop-grid">
-          {CATALOG.items.filter(i => i.slot === tab).map(i => {
-            const have = owned.has(i.id), worn = outfit[i.slot] === i.id;
-            return (
-              <div key={i.id} className={`shop-item${worn ? " worn" : ""}`}>
-                <ItemIcon item={i} player={me} />
-                <b>{i.name}</b>
-                {!have ? <button className="btn tiny" disabled={busy === i.id || wallet < i.price} onClick={() => run(i.id, () => buy(i))}>★ {i.price} 사기</button>
-                  : i.slot === "furniture" ? <span className="muted">보유 · 미니룸에서 배치</span>
-                  : <button className={`btn tiny${worn ? " ghost" : " blue"}`} disabled={busy === i.id} onClick={() => run(i.id, () => wear(i))}>{worn ? "벗기" : i.slot === "pet" ? "데리고 다니기" : "입기"}</button>}
-              </div>
-            );
-          })}
-        </div>
-        <p className="notebook-foot muted">별은 마을 곳곳에서 모아요. 3분마다 정산되면 지갑에 들어와요.</p>
-      </aside>
-    </div>
-  );
-}
-
-function Notebook({ records, recordError, loadRecords, me, close }) {
-  return (
-    <div className="sheet-backdrop" onClick={close}>
-      <aside className="notebook paper" role="dialog" aria-label="내 수첩" onClick={e => e.stopPropagation()}>
-        <div className="notebook-head"><b>📒 나의 미니 수첩</b><button className="btn tiny ghost" onClick={close} aria-label="수첩 닫기">닫기</button></div>
-        <div className="notebook-body">
-          <div className="nb-profile"><Portrait player={me} scale={3} className="portrait small" /><div><h3>{records.profiles[0]?.name || me.name}</h3><p>이 브라우저에 저장된 내 캐릭터</p></div></div>
-          <h4>별 보상 <span>{records.inventory.reduce((n, i) => n + (i.quantity || 0), 0)}개</span></h4>
-          {records.inventory.length ? records.inventory.slice(0, 20).map(i => <div className="record" key={i.id}><span>★ 별 조각</span><b>×{i.quantity ?? 0}</b></div>) : <p className="empty">아직 모은 별이 없어요.</p>}
-          <h4>산 물건 <span>{records.purchases.length}개</span></h4>
-          {records.purchases.length ? <p className="owned-list">{records.purchases.map(p => ITEMS[p.item]?.name || p.item).join(" · ")}</p> : <p className="empty">아직 산 물건이 없어요.</p>}
-          <h4>최근 기록</h4>
-          {records.results.length ? records.results.slice(0, 10).map(r => <div className="record" key={r.id}><span>{({ lobby: "광장", garden: "정원", arcade: "오락실" })[r.zone] || r.zone}<small>{new Date(r.ended_at || r.created).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" })}</small></span><b>{r.score ?? 0}점</b></div>) : <p className="empty">첫 번째 별 모으기에 도전해 보세요.</p>}
-          {recordError && <p className="error" role="alert">{recordError}</p>}
-        </div>
-        <div className="notebook-foot"><button className="btn small ghost" onClick={loadRecords}>새로고침</button></div>
-      </aside>
-    </div>
-  );
-}
-
-// Character set-up (FR-014): nickname, skin, hair colour and style, shirt colour. The PB hook re-checks every value.
-function CharacterSetup({ profile, userId, save, close }) {
-  const A = CATALOG.avatar, cur = profile?.avatar || {};
-  const [name, setName] = useState(profile?.name || "");
-  const [color, setColor] = useState(A.shirts.includes(profile?.color) ? profile.color : A.shirts[0]);
-  const [look, setLook] = useState({ skin: cur.skin ?? 0, hair: cur.hair ?? 0, style: cur.style ?? 0 });
-  const [busy, setBusy] = useState(false), [error, setError] = useState(""), [nameError, setNameError] = useState(""), nameInput = useRef(null);
-  const length = [...name.trim()].length, nameOk = length >= A.nameMin && length <= A.nameMax;
-  async function submit(e) {
-    e.preventDefault(); setBusy(true); setError(""); setNameError("");
-    try { await save({ name: name.trim(), color, avatar: look }); }
-    catch (err) {
-      // A taken nickname comes back as { data: { name: "taken" } }: point at the field so the player picks another name.
-      if (err.response?.data?.name) { setNameError(err.response.message); nameInput.current?.focus(); }
-      else setError(err.response?.message || "저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
-    }
-    finally { setBusy(false); }
-  }
-  const swatches = (label, colors, selected, pick) => (
-    <fieldset className="swatches"><legend>{label}</legend>
-      {colors.map((c, i) => <button type="button" key={c} className="swatch" style={{ background: c }} aria-label={`${label} ${i + 1}`} aria-pressed={selected === i} onClick={() => pick(i)} />)}
-    </fieldset>
-  );
-  return (
-    <div className="sheet-backdrop" onClick={close}>
-      <form className="notebook setup paper" role="dialog" aria-label={close ? "캐릭터 꾸미기" : "캐릭터 만들기"} onSubmit={submit} onClick={e => e.stopPropagation()}>
-        {!userId && <header className="setup-brand"><h1 className="logo">PIXEL TOWN</h1><p className="tagline">미니홈피 속 작은 마을을 걷고, 이웃과 수다 떨고, 별을 모아요 ♥</p></header>}
-        <div className="notebook-head"><b>🎨 {close ? "캐릭터 꾸미기" : "내 캐릭터 만들기"}</b>{close && <button type="button" className="btn tiny ghost" onClick={close}>닫기</button>}</div>
-        <div className="notebook-body setup-body">
-          <Portrait player={{ id: userId || "new-guest", color, look: { ...profile?.outfit, ...look } }} scale={5} />
-          <div className="setup-fields">
-            <label className="field">닉네임<input ref={nameInput} value={name} maxLength={A.nameMax} onChange={e => { setName(e.target.value); setNameError(""); }} aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "name-error" : "name-hint"} autoFocus={!close} /></label>
-            {nameError ? <p id="name-error" className="error" role="alert">{nameError}</p> : <small id="name-hint" className="muted">{A.nameMin}–{A.nameMax}자 · 한글·영문·숫자 · 띄어쓰기·대소문자·_·-만 다른 이름은 같은 이름이에요</small>}
-            {swatches("피부", A.skins, look.skin, i => setLook({ ...look, skin: i }))}
-            {swatches("머리 색", A.hairs, look.hair, i => setLook({ ...look, hair: i }))}
-            <fieldset className="swatches"><legend>머리 모양</legend>
-              {A.styles.map((label, i) => <button type="button" key={label} className="btn tiny ghost" aria-pressed={look.style === i} onClick={() => setLook({ ...look, style: i })}>{label}</button>)}
-            </fieldset>
-            {swatches("옷 색", A.shirts, A.shirts.indexOf(color), i => setColor(A.shirts[i]))}
-            {error && <p className="error" role="alert">{error}</p>}
-          </div>
-        </div>
-        <div className="notebook-foot"><span className="muted">{close ? "모자·옷·펫은 별 상점에서 사요." : userId ? "나중에 언제든 바꿀 수 있어요." : "입장하면 이 브라우저에 내 캐릭터가 저장돼요."}</span><button className="btn" disabled={busy || !nameOk}>{busy ? "저장 중…" : close ? "저장" : "이대로 입장 ▶"}</button></div>
-      </form>
-    </div>
   );
 }
 
