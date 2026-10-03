@@ -7,7 +7,7 @@
 | 항목 | 설정 |
 |---|---|
 | 설치 서버 | 맥미니, macOS Apple Silicon |
-| SSH | `cheng80@100.92.43.82` (Tailscale) |
+| SSH | `cheng80@mac-mini.tailc386bf.ts.net` (Tailscale) |
 | 설치 폴더 | `/Users/cheng80/Servers/pixeltown-zrok` |
 | zrok 버전 | **v1.1.13** |
 | 계정 포털 | https://api-v1.zrok.io/ |
@@ -38,7 +38,7 @@ zrok 공개 중계 (예약 주소 + SSL)
 맥북 터미널에서 실행:
 
 ```sh
-ssh -o BatchMode=yes -o ConnectTimeout=10   -i ~/.ssh/stonematch_macmini_ed25519 cheng80@100.92.43.82
+ssh -o BatchMode=yes -o ConnectTimeout=10   -i ~/.ssh/stonematch_macmini_ed25519 cheng80@mac-mini.tailc386bf.ts.net
 ```
 
 이하 서버 설정 명령은 **SSH 접속한 맥미니에서 실행**한다. 개인키 내용은 복사하거나 출력하지 않는다.

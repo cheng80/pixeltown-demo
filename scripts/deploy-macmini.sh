@@ -5,7 +5,7 @@
 # and restarts only com.fastmake.pixeltown.colyseus.
 # One-time setup (outbox superuser, .env keys, schema, test accounts) is described in SERVER_OPERATIONS.md, not here.
 set -eu
-HOST=${PIXELTOWN_SSH_HOST:-cheng80@100.92.43.82}
+HOST=${PIXELTOWN_SSH_HOST:-cheng80@mac-mini.tailc386bf.ts.net}
 KEY=${PIXELTOWN_SSH_KEY:-$HOME/.ssh/stonematch_macmini_ed25519}
 RT=/Users/cheng80/Servers/pixeltown-colyseus
 PB=/Users/cheng80/Servers/pixeltown

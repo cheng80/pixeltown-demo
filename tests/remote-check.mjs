@@ -243,7 +243,7 @@ try {
 }
 
 function ssh(cmd) {
-  const key = process.env.PIXELTOWN_SSH_KEY || `${process.env.HOME}/.ssh/stonematch_macmini_ed25519`, host = process.env.PIXELTOWN_SSH_HOST || 'cheng80@100.92.43.82';
+  const key = process.env.PIXELTOWN_SSH_KEY || `${process.env.HOME}/.ssh/stonematch_macmini_ed25519`, host = process.env.PIXELTOWN_SSH_HOST || 'cheng80@mac-mini.tailc386bf.ts.net';
   return execFileSync('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-i', key, host, cmd], { encoding: 'utf8' }).trim();
 }
 function setPeriod(line) {

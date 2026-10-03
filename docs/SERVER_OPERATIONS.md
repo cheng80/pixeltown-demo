@@ -13,7 +13,7 @@
 
 | 용도 | 주소 | 인증 / 설명 |
 |---|---|---|
-| Mac mini SSH | `cheng80@100.92.43.82` | Tailscale 연결과 등록된 SSH 키 필요 |
+| Mac mini SSH | `cheng80@mac-mini.tailc386bf.ts.net`(Tailscale MagicDNS, IP 100.92.43.82) | Tailscale 연결과 등록된 SSH 키 필요 |
 | **게임(배포)** | **https://pixeltown.fastmake.net** | Cloudflare Pages 프로젝트 `pixeltown`(GitHub `cheng80/pixeltown-demo` `main` 자동 배포). 기본 주소 https://pixeltown-4x2.pages.dev |
 | PocketBase API | https://pixeltown-pb.fastmake.net | 2026-10-02 `pixeltown.fastmake.net`에서 이전. 일반 게임 사용자는 PocketBase 사용자 인증 |
 | PocketBase 관리자 | https://pixeltown-pb.fastmake.net/_/ | 기존 관리자 계정 |
@@ -95,7 +95,7 @@ Colyseus `ALLOWED_ORIGINS`(2026-10-02 Pages 추가 후): `https://pixeltown.fast
 ```sh
 ssh -o BatchMode=yes -o ConnectTimeout=10 \
   -i /Users/cheng80/.ssh/stonematch_macmini_ed25519 \
-  cheng80@100.92.43.82
+  cheng80@mac-mini.tailc386bf.ts.net
 ```
 
 아래 명령은 Mac mini의 SSH 셸에서 실행한다:

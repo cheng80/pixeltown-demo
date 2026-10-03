@@ -102,6 +102,7 @@
 - `main.jsx` 656줄 → App만 남김. 화면 조각은 `game/src/components/`로, 장소 목록은 `zones.js`로 옮겼다. 모달 틀 `Sheet`, 캔버스 훅 `usePixels`, `useStored`(localStorage 상태), `clearRoute`·`stopInput`·`myPos`·`canAct`·`shopPost`로 반복을 묶었다. `render.js`는 그림자·좌우 반전 그리기를 `shadow`·`blit`로 묶었다.
 - 남긴 것: 접속·입력·렌더 effect는 ref 20여 개를 공유하므로 커스텀 훅으로 떼지 않았다. oxlint 경고 15건은 의도된 코드나 스타일이다.
 - 검증: build, `npm --prefix colyseus test` 31/31, 로컬 `ui-check` 8/8(대체 포트, ego lite Chromium). 첫 전체 실행에서 `click_move` 1회 실패했고 단독 재실행은 리팩토링 전·후 각 2/2, 전체 재실행 8/8 PASS였다(기존 간헐 실패로 판단).
+- 배포(2026-10-04): Pages 자동 배포 후 공개 주소 번들 해시가 로컬 `build:remote`와 일치. 사용자가 `scripts/deploy-macmini.sh` 직접 실행, 원격 `town.js` sha256 일치, 공개 health 4곳 200. SSH 기본 호스트를 MagicDNS `mac-mini.tailc386bf.ts.net`으로 바꿨다(known_hosts에 같은 키로 이름 추가).
 
 ### 클릭 이동 8방향·걷기 들썩임 제거 (2026-10-03, `76cc1e4`)
 
@@ -138,7 +139,7 @@
 - 완료(2026-10-03): 다른 플레이어 표시 완충 자동 조절(걸음 단위 재생). 이전 기록: 측정 도구 `tests/others-check.mjs`(WALKER·WATCHER·JITTER). 큰 JITTER(600·1000)는 핑이 1초를 넘을 때 입장 단계 시간 초과로 측정을 끝내지 못했다.
 - Oracle A1 예약(Mac mini `net.fastmake.pixeltown-a1-retry`)은 매시 0·30분 실행 중이며 2026-10-02 22:30까지 38회 모두 `Out of host capacity`. 읽기만 했고 변경 금지.
 - 테스트 도구(새로 추가): `tests/rollback-check.mjs`(보정 0 기준, ZONE·SECONDS·HOPS·JITTER), `tests/offline-check.mjs`(4경우, STALE_AFTER), `tests/wallet-check.mjs`(SETTLE_MS), `tests/motion-check.mjs`(JITTER·ZONE, 보정·되돌아감 지표), `tests/remote-pickup.mjs`. 배포 주소 측정은 Tester 2 계정(Tester 1은 끊김 검사용)으로 한다.
-- 로컬 개발 서버는 모두 꺼져 있다. 필요하면 10절 명령으로 띄운다. Mac mini 배포는 `scripts/deploy-macmini.sh`, Tailscale 경로가 빠졌으면 `PATH="$PWD/.test-work/bin:$PATH" scripts/deploy-macmini.sh`(`tailscale nc` ssh 래퍼, git 제외). Mac mini: `mac-mini.tailc386bf.ts.net`(100.92.43.82, LAN 192.168.0.204), 이 컴퓨터: `cheng80-macbookair15.tailc386bf.ts.net`(100.105.34.114). MagicDNS 이름은 known_hosts에 없어 IP로 접속한다.
+- 로컬 개발 서버는 모두 꺼져 있다. 필요하면 10절 명령으로 띄운다. Mac mini 배포는 `scripts/deploy-macmini.sh`, Tailscale 경로가 빠졌으면 `PATH="$PWD/.test-work/bin:$PATH" scripts/deploy-macmini.sh`(`tailscale nc` ssh 래퍼, git 제외). Mac mini: `mac-mini.tailc386bf.ts.net`(100.92.43.82, LAN 192.168.0.204), 이 컴퓨터: `cheng80-macbookair15.tailc386bf.ts.net`(100.105.34.114). SSH는 MagicDNS 이름으로 접속한다(2026-10-04 사용자 지시). known_hosts에 이 이름이 있어야 한다(`BatchMode`).
 - 자격증명은 git 밖 0600 파일에만 있다: `pocketbase/.local/remote-accounts.json`(Tester 1·2), `pocketbase/.local/remote-admin.env`(검증용 관리자). 출력·커밋 금지. 원격 SSH 키는 ssh 실행에만 쓰고 내용을 읽지 않는다.
 - 금지 경계: `cheng80@gmail.com` 관리자 비밀번호 재설정, stonematch(8090)·Oracle A1 예약·다른 터널·`cloudflared` 설정, 원격 DB를 로컬 `pb_data`로 덮어쓰기, 공개 터널 부하 테스트. 원격 DB 변경 전에는 SQLite `.backup`으로 백업한다. 실제 방문자가 찍힌 스크린샷은 커밋하지 않는다.
 
