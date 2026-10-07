@@ -97,6 +97,23 @@ test('PocketBase hook accepts score >12 and rejects over-64 total',async()=>{
 });
 
 const C={sessionId:'session'};
+test('all 100 active players can score; churn discards only departed zero scores',()=>{
+  const r=room();
+  for(let n=1;n<100;n++)r.onJoin({sessionId:`s${n}`},{},{id:`p${n}`,name:`P${n}`,look:{}});
+  assert.equal(r.players.size,100);
+  assert.equal(Object.keys(r.game.scores).length,100);
+  const last=r.players.get('s99'),star=r.game.stars[0];Object.assign(last,{x:star.x,y:star.y});
+  assert.equal(r.collectStar({sessionId:'s99'},{id:star.id},1001),true);
+  assert.equal(r.game.scores.p99,1,'100th entrant participates in the current event');
+  r.onLeave({sessionId:'s99'});assert.equal(r.game.scores.p99,1,'earned points survive departure');
+  r.onLeave({sessionId:'s98'});assert.equal('p98' in r.game.scores,false);
+  for(let n=100;n<300;n++){
+    r.onJoin({sessionId:`s${n}`},{},{id:`p${n}`,name:`P${n}`,look:{}});
+    assert.equal(r.game.scores[`p${n}`],0);
+    r.onLeave({sessionId:`s${n}`});
+  }
+  assert.equal(Object.keys(r.game.scores).length,99,'zero-score churn does not grow the ledger');
+});
 test('local-first movement: walking steps are accepted and acknowledged, impossible ones are sent back',()=>{
   const r=room(),p=r.players.get('session');let at={x:p.x,y:p.y},t=1000,seq=0;
   // A client walking a real route (with corner slides) at walking pace is never corrected.
@@ -165,4 +182,3 @@ test('connection stats: a drop that comes back counts as reconnect, one that doe
   const after=connectionSummary();
   assert.deepEqual([after.drop1h-before.drop1h,after.reconnect1h-before.reconnect1h,after.lost1h-before.lost1h],[2,1,1]);
 });
-

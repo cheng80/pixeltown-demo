@@ -253,12 +253,12 @@ async function loadChecks() {
   if (process.env.PIXELTOWN_LOAD_100 === '1') await hundredClientCheck();
 }
 
-// Opt-in (PIXELTOWN_LOAD_100=1): 100 clients into one zone. Rooms hold 32, so filterBy(['zone']) must open
-// extra channel rooms; measures join time, input rate, snapshot flow and in-room chat latency on this machine.
+// Opt-in (PIXELTOWN_LOAD_100=1): 100 clients share one room; the 101st goes to another room.
+// Measures join time, input rate, snapshot flow and in-room chat latency on this machine only.
 async function hundredClientCheck() {
   const N = 100, clients = [], accounts = [];
   await Promise.allSettled([...rooms].map(room => room.leave())); rooms.clear(); await sleep(500); // last test: start from empty rooms
-  await test('hundred_client_local_room_split', async () => {
+  await test('hundred_client_local_single_room_and_overflow', async () => {
     for (let i = 0; i < N; i += 10) accounts.push(...await Promise.all(Array.from({ length: 10 }, (_, k) => createAccount(1000 + i + k))));
     const started = performance.now();
     for (let i = 0; i < N; i += 20) clients.push(...await Promise.all(accounts.slice(i, i + 20).map(a => join(a, 'lobby'))));
@@ -266,14 +266,21 @@ async function hundredClientCheck() {
     for (const s of clients) byRoom.set(s.room.roomId, [...(byRoom.get(s.room.roomId) || []), s]);
     await waitUntil(() => clients.every(s => s.snapshot.players.length === byRoom.get(s.room.roomId).length), 'every client sees exactly its room', 20000);
     const joinedMs = Math.round(performance.now() - started), sizes = [...byRoom.values()].map(r => r.length).sort((a, b) => b - a);
-    assert.equal(byRoom.size, Math.ceil(N / 32), `room split ${sizes}`);
-    assert.ok(sizes.every(n => n <= 32));
+    assert.equal(byRoom.size, 1, `100 clients must share one room: ${sizes}`);
+    assert.deepEqual(sizes, [100]);
+    assert.ok(accounts.every(a => a.id in clients[0].snapshot.game.scores), 'every entrant can score');
+    const overflowAccount = await createAccount(1100);
+    await assert.rejects(gameClient(overflowAccount.token).joinById(clients[0].room.roomId, { zone: 'lobby' }), /full|locked/i);
+    const overflow = await join(overflowAccount, 'lobby');
+    assert.notEqual(overflow.room.roomId, clients[0].room.roomId);
+    assert.equal(overflow.snapshot.players.length, 1);
+    await leave(overflow);
     const countBefore = clients.map(s => s.snapshots.length), latencies = [], durationMs = 3000, workloadStarted = performance.now();
     let sentInputs = 0;
     for (let tick = 0; tick < durationMs / 100; tick++) {
       const tickStarted = performance.now();
       clients.forEach((s, i) => { step(s, accounts[i], { dx: tick % 2 ? -1 : 1, dy: 0 }); sentInputs++; });
-      if (tick % 5 === 0) {
+      if (tick % 10 === 0) {
         const members = [...byRoom.values()][tick / 5 % byRoom.size], text = `load100-${runtime.runId}-${tick}`, sendTime = performance.now();
         members[0].room.send('chat', { text });
         await waitUntil(() => members.every(s => s.messages.some(m => m.type === 'chat' && m.payload.text === text)), 'in-room chat broadcast', 3000);
@@ -284,7 +291,7 @@ async function hundredClientCheck() {
     const snapshotCounts = clients.map((s, i) => s.snapshots.length - countBefore[i]), actualDurationMs = Math.round(performance.now() - workloadStarted);
     assert.ok(snapshotCounts.every(n => n > 5), 'Snapshot broadcast stalled under load');
     const sorted = latencies.sort((a, b) => a - b);
-    report.load100 = { clients: N, rooms: byRoom.size, roomSizes: sizes, joinedMs, sentInputs, durationMs: actualDurationMs, effectiveInputHzPerClient: Number((sentInputs / N / (actualDurationMs / 1000)).toFixed(2)), minimumSnapshots: Math.min(...snapshotCounts), chatBroadcastP95Ms: Math.round(sorted[Math.ceil(sorted.length * .95) - 1]), scope: 'single local machine; players in different channel rooms do not see each other; not an internet or capacity benchmark' };
+    report.load100 = { clients: N, rooms: byRoom.size, roomSizes: sizes, overflowClientInSeparateRoom: true, joinedMs, sentInputs, durationMs: actualDurationMs, effectiveInputHzPerClient: Number((sentInputs / N / (actualDurationMs / 1000)).toFixed(2)), minimumSnapshots: Math.min(...snapshotCounts), chatBroadcastP95Ms: Math.round(sorted[Math.ceil(sorted.length * .95) - 1]), scope: 'single local machine; 100 clients in one room; not an internet or sustained capacity benchmark' };
     return report.load100;
   });
   await Promise.allSettled(clients.map(leave));
@@ -416,6 +423,22 @@ async function setup() {
 try {
   await test('isolated_development_setup', setup);
   if (report.tests[0].status === 'passed') {
+    await test('room_capacity_migrates_existing_32_to_100_idempotently', async () => {
+      const pb=runtime.admin, schema=await pb.collections.getOne('rooms');
+      const before=await pb.collection('rooms').getFullList({sort:'zone'});
+      for(const r of before)await pb.collection('rooms').update(r.id,{max_players:32});
+      await pb.collections.update(schema.id,{fields:schema.fields.map(f=>f.name==='max_players'?{...f,max:32}:f)});
+      const {migrateRoomCapacity}=await import('../scripts/init-pocketbase.mjs');
+      await migrateRoomCapacity(pb);
+      const migrated=await pb.collection('rooms').getFullList({sort:'zone'});
+      assert.ok(migrated.every(r=>r.max_players===100));
+      assert.deepEqual(migrated.map(r=>[r.id,r.zone,r.title]),before.map(r=>[r.id,r.zone,r.title]));
+      const afterSchema=await pb.collections.getOne('rooms');
+      assert.equal(afterSchema.fields.find(f=>f.name==='max_players').max,100);
+      for(const k of ['listRule','viewRule','createRule','updateRule','deleteRule','indexes'])assert.deepEqual(afterSchema[k],schema[k]);
+      await migrateRoomCapacity(pb);
+      assert.deepEqual(await pb.collection('rooms').getFullList({sort:'zone'}),migrated);
+    });
     await functionalChecks();
     await gameChecks();
     await shopChecks();

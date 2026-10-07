@@ -344,3 +344,12 @@ Demo 1이 오락실에 들어가자 시작 버튼 없이 바로 진행 중이었
 
 - 회귀(JITTER 1000): motion-check PASS(튐 0, 보정 0). others-check 튐 0·최대 한 프레임 1.4도트, 멈춘 프레임 82/658(기존 기준 FAIL은 23절과 같은 이유). 걷는 쪽 2.5초 194도트(약 78px/s).
 - 배포 주소(https://pixeltown.fastmake.net, 커밋 `bf0a56c`, 서버 `deploy-macmini.sh` 반영, Tester 2, JITTER 없음): zone-check PASS. 내 아바타 표시 59–93ms, 연결 완료 1359–2490ms, 연결 중 걸음 64도트 유지, 보정 0.
+
+
+## 룸 정원 100명 (2026-10-07)
+
+- 단위 테스트 32/32, 격리된 로컬 PocketBase 0.39.7 통합 테스트 19/19 통과.
+- 기존 `rooms.max_players` 스키마 및 레코드 32 → 100 멱등 변경, ID·제목·접근 규칙 유지 확인.
+- 단일 광장 방 100명 입장, 전원 snapshot·점수 집계 등록, 101번째 동일 방 입장 거부 및 별도 방 배정 확인.
+- 100명 로컬 측정: {"clients": 100, "rooms": 1, "roomSizes": [100], "overflowClientInSeparateRoom": true, "joinedMs": 640, "sentInputs": 3000, "durationMs": 3042, "effectiveInputHzPerClient": 9.86, "minimumSnapshots": 59, "chatBroadcastP95Ms": 45, "scope": "single local machine; 100 clients in one room; not an internet or sustained capacity benchmark"}
+- 운영 환경의 100명 장시간 성능 및 모바일 FPS 검증은 사용자 요청에 따라 후속 작업으로 둔다.
