@@ -2,6 +2,8 @@
 
 조사일: 2026-10-02 (한국 시간). 대상: https://pixel-metaverse.vercel.app/
 
+자료 위치 갱신(2026-10-08): 본문의 과거 `work/` 원본 사본은 현재 [references/local/source-study/](references/local/source-study/)에 있으며, 브라우저 기록은 그 안의 `browser-records/`에 있다. 분류와 재사용 안내는 [개발 참고 자료](references/README.md)를 따른다. 아래 조사 당시 기록과 관찰 한계는 유지한다.
+
 ## 조사 방법과 한계
 
 원본 HTML/CSS/공개 JavaScript를 한 번 내려받아 읽고, 실제 사이트의 캐릭터 설정 화면을 관찰했다. 게임 입장이 공개 MQTT에 상태를 게시하고 기존 메시지를 구독하기 때문에 원 서버에 입장하지 않았다. 원본 HTML의 로컬 임시 사본에서 MQTT를 완전한 무통신 stub으로 대체하여 게임 화면·메뉴를 관찰했다. 이 사본은 분석용 `work/`에만 있고 데모·배포 산출물에 포함하지 않는다. MQTT endpoint 문자열은 확인했지만 브로커의 가용성이나 실제 타 사용자 동기화는 검증하지 않았다. 브로커 메시지 수집·재전송 및 원 서비스 부하 테스트는 수행하지 않았다.

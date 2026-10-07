@@ -24,6 +24,7 @@
 | 미니홈피 UI와 정수배 도트 스케일 | [decisions/ADR-003.md](decisions/ADR-003.md) |
 | 별 지갑·상점 원장과 상시 이벤트 정산 | [decisions/ADR-004.md](decisions/ADR-004.md) |
 | 기존 원본 조사와 관찰 한계 | [analysis.md](analysis.md) — 원문 보존 |
+| 초기 조사 자료 / 제작·검증 스크립트 / 문서 템플릿 / 과거 테스트 데이터 | [references/README.md](references/README.md) — 용도·현재 코드와의 관계·재사용 방법 |
 | 실행 / 설치 / 공개 저장소 사용 안내 | [프로젝트 README](../README.md) — 메인 담당 관리 |
 
 처음 이해할 때는 제품 → 기술 → 작업 흐름을 읽는다. AI 작업 진입과 읽기 순서는 [AGENTS.md](../AGENTS.md)를 따른다. 진행률과 검증 통과 기록은 PROJECT_STATUS에만 모으며 명세의 수용 기준은 실행 결과를 대신하지 않는다.

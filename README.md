@@ -1,23 +1,63 @@
 # 픽셀타운 · 미니홈피 도트 마을 (재제작판)
 
-싸이월드 미니홈피 프레임 안의 작은 도트 마을을 걷고, 이웃과 말풍선으로 수다를 떨고, 마을 곳곳의 별을 모아 옷·펫·가구를 사서 꾸미는 로컬 멀티플레이 게임이다. React/Vite, 자체 Canvas 2D 도트 그래픽, PocketBase, Colyseus를 쓴다. 그래픽은 모두 자체 절차 코드로 그렸고 폰트는 OFL Galmuri11을 로컬 번들한다. 외부 이미지·CDN·MQTT 브로커 없이 플레이한다. 원 서비스의 코드·자산은 포함하지 않았다.
+싸이월드 미니홈피 프레임 안의 작은 도트 마을을 걷고, 이웃과 말풍선으로 수다를 떨고, 마을 곳곳의 별을 모아 옷·펫·가구를 사서 꾸미는 멀티플레이 게임이다. React/Vite, 자체 Canvas 2D 도트 그래픽, PocketBase, Colyseus를 쓴다. 그래픽은 모두 자체 절차 코드로 그렸고 폰트는 OFL Galmuri11을 로컬 번들한다. 외부 이미지·CDN·MQTT 브로커 없이 플레이한다. 게임 코드와 배포물에는 원 서비스의 코드·자산을 포함하지 않는다. 원본 관찰용 사본은 Git에서 제외한 로컬 참고 자료로 분리한다.
 
 ![광장에서 두 이웃이 채팅하는 화면](docs/assets/lobby-two-users-chat.png)
 
 ## 프로젝트 구조
 
 ```text
-pixeltown/
-├── docs/             # 게임기획 · PRD · 기술 명세 · 검증
+pixeltown-demo/
+├── AGENTS.md         # AI 작업 안내
+├── package.json      # 설치 · 실행 · 빌드 명령
+├── start.command     # macOS 로컬 실행
 ├── game/             # React · Canvas 게임
 ├── pocketbase/       # 인증 · 영구 데이터 · DB 훅
 ├── colyseus/         # 방 · 이동 · 미니게임 서버
 ├── shared/           # 게임과 서버가 함께 쓰는 맵 · 충돌 · 경로 정의
 ├── scripts/          # 두 서버와 게임을 함께 실행
-└── tests/            # 실제 서버 통합 검증 · 브라우저 UI 검증
+├── tests/            # 실제 서버 통합 검증 · 브라우저 UI 검증
+├── docs/             # 게임기획 · PRD · 기술 명세 · 검증 · 운영
+│   ├── plans/        # 구현 계획
+│   ├── decisions/    # 설계 결정과 이유
+│   ├── assets/       # 자체 게임 화면과 문서 이미지
+│   └── references/   # 초기 개발 참고 자료
+│       ├── README.md # 자료별 용도와 재사용 방법
+│       ├── templates/ # 문서 · 계획 · ADR 양식
+│       └── local/   # 조사 원본 · 과거 스크립트 · 테스트 자료 (Git 제외)
+└── dist/             # 빌드 결과물 (Git 제외)
 ```
 
 각 구성은 같은 부모 폴더의 형제 디렉터리에 있다. 브라우저→PocketBase 로그인, 브라우저→Colyseus 토큰 입장, Colyseus→PocketBase 검증·결과 저장으로 연결된다. 데이터 위치: `pocketbase/.local/pb_data`, `colyseus/.local/outbox`. 관리자 파일: `pocketbase/.env.local`.
+
+모든 개발 명령은 `package.json`이 있는 프로젝트 루트에서 실행한다. 기존 로컬 경로 `outputs/pixeltown/`은 2026-10-08에 이 루트로 정리했다.
+
+## 문서와 참고 자료
+
+| 찾을 내용 | 문서 |
+|---|---|
+| 전체 문서 지도 | [문서 안내](docs/README.md) |
+| 게임기획 · 제품 요구사항 | [제품 명세](docs/01_PRODUCT_SPEC.md) |
+| 기술 구조 · 데이터 계약 | [기술 명세](docs/02_TECH_SPEC.md) |
+| 현재 작업 · 검증 결과 · 인수인계 | [프로젝트 현황](docs/03_PROJECT_STATUS.md) |
+| 개발 · 문서 갱신 절차 | [작업 흐름](docs/04_WORKFLOW.md) |
+| 서버 배치 · 운영 · 백업 | [서버 운영 안내](docs/SERVER_OPERATIONS.md) |
+| 원본 화면을 조사한 근거와 한계 | [원본 분석](docs/analysis.md) |
+| 초기 조사 · 제작 · 검증 자료와 문서 양식 | [개발 참고 자료](docs/references/README.md) |
+
+`docs/references/templates/`에는 문서 양식을 두고, `docs/references/local/`은 다음 용도로 나눈다.
+
+- `source-study/`: 원본 HTML과 당시 브라우저 관찰 기록
+- `prototype-scripts/`, `ui-checks/`: 초기 제작·화면 검증 스크립트
+- `test-runs/`: 과거 통합 테스트 DB·환경 파일·outbox
+- `tooling/`: 당시 브라우저 설정과 릴리스 조회 자료
+- `provenance/`, `workspace-metadata/`: 자료 보존·이동 기록과 기존 작업 폴더 메타데이터
+
+현재 요구사항·진행 상태는 위 정본 문서를 따른다. 참고 자료의 옛 경로·UI·데이터는 현재 구현과 다를 수 있으므로 [재사용 안내](docs/references/README.md#참고-순서와-재사용-방법)를 확인한다.
+
+### 로컬 데이터 보존
+
+`docs/references/local/`, `pocketbase/.local/`, `pocketbase/.env.local`, `colyseus/.local/`, `.test-work/`는 Git에서 제외한다. 새로 clone한 저장소에는 기존 로컬 참고 자료와 실행 데이터가 없으며, 보존하려면 별도 파일 백업에 포함해야 한다. 과거 테스트 DB와 현재 개발 DB는 각 위치에서 구분해 관리한다. `node_modules/`와 `dist/`는 설치·빌드로 다시 생성할 수 있다.
 
 ## 실행
 
@@ -111,4 +151,4 @@ CHROME_PATH=/path/to/chromium PIXELTOWN_WEB_PORT=5273 PIXELTOWN_PB_PORT=18190 no
 - `tests/`: 실제 서버 통합 검증(`integration.mjs`), 브라우저 UI 검증(`ui-check.mjs`)
 - `docs/analysis.md`: 원본 조사와 근거·한계
 
-100명·PWA·앱 포장은 이후 검토 대상이다. 현재 데모는 단일 개발 머신용이며 외부 배포·TLS·지속 운영은 검증하지 않았다. 호스팅할 때는 방별 delta 전송·관심 영역·DB 백업·로그·배포 환경변수를 먼저 검토한다. 기존 Oracle 작업과 운영 서버를 수정하지 않는다.
+게임 룸 정원은 100명이며, 정원 설정과 실제 운영 환경의 수용 성능은 구분한다. PWA·앱 포장은 이후 검토 대상이다. 로컬 개발과 Mac mini 서버를 사용하는 원격 모드를 지원한다. 배포 구성·백업·운영 절차는 [서버 운영 안내](docs/SERVER_OPERATIONS.md), 검증 범위와 남은 작업은 [프로젝트 현황](docs/03_PROJECT_STATUS.md)을 따른다. 규모를 확장할 때는 방별 delta 전송·관심 영역·DB 백업·로그·배포 환경변수를 검토한다.

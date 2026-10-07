@@ -7,3 +7,6 @@ colyseus/.local/
 .playwright-cli/
 pocketbase/.local/
 .test-work/
+
+# 원본 조사 자료, 과거 테스트 DB·환경 파일, 로컬 작업 기록
+/docs/references/local/

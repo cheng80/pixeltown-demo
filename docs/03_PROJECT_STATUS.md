@@ -2,6 +2,17 @@
 
 갱신일: 2026-10-03 (Asia/Seoul). 최신: 클릭 이동 8방향·걷기 들썩임 제거(7절 맨 위). 직전: 장소 이동 즉시 표시·걷기 속도 80px/s. 기준 리비전 `576b261`(main). 개발은 main 체크아웃에서 계속한다. 최신 작업 PLAN-006(첫 화면 캐릭터 만들기 + 게스트 자동 가입, 로그인·연습 모드 제거). 직전 PLAN-005(캐릭터 만들기). 직전 PLAN-004(Mac mini 서버 이전, Colyseus 0.18). 서버 주소·배치·백업은 [SERVER_OPERATIONS](SERVER_OPERATIONS.md). **배포 주소 https://pixeltown.fastmake.net**(Cloudflare Pages), PB는 https://pixeltown-pb.fastmake.net.
 
+## 로컬 폴더 정리 (2026-10-08)
+
+- 기존 `pixeltown-demo/outputs/pixeltown/`의 전체 내용을 `pixeltown-demo/` 루트로 이동했다. 개발 명령은 새 루트에서 실행한다.
+- `.git`, 환경 파일, 의존성, `pocketbase/.local` DB, `colyseus/.local` outbox, `.test-work`를 보존했다.
+- 초기 `work/`, `.playwright-cli/`, 바깥 폴더의 빈 lockfile·메타데이터는 같은 날 사용자 요청에 따라 프로젝트 내부 `docs/references/`로 최종 정리했다. 임시로 사용한 형제 아카이브 폴더는 자료 이동 후 제거했다. [참고 자료 안내](references/README.md)에 용도·현재 코드와의 관계·재사용 방법을 기록했다.
+- 문서 템플릿은 `docs/references/templates/`, 조사 원본·제작 스크립트·UI 검증 스크립트·과거 테스트 DB·도구 설정·보존 기록은 `docs/references/local/` 아래 용도별 폴더에 있다. `local/`은 Git에서 제외한다. 기존 `AGENTS.md` 템플릿은 실행 지시와 구분하도록 `AGENTS.template.md`로 이름을 바꿨다.
+- 이동 직후 프로젝트 6,120개·초기 자료 30개·브라우저 기록 12개 파일의 내용과 권한, 디렉터리 권한과 심볼릭 링크를 이동 전과 대조해 일치를 확인했다. 원격 배포는 변경하지 않았다.
+- 프로젝트 루트 이동 후 검증: `npm run build` 통과, 새 루트에서 Vite 시작 및 HTML·`/src/main.jsx` HTTP 200 확인, 검증 서버 종료. Git은 새 루트의 `main` 체크아웃을 정상 인식한다. 이번 정리에서는 게임 플레이·백엔드 통합 테스트를 재실행하지 않았다.
+- 참고 자료 재배치 검증: 기존 47개 파일 이동 시 해시·권한 일치, 초기 작업·브라우저 자료 42개는 첫 이동 manifest와 추가 대조했다. 이후 템플릿 README에 안내를 추가했다. 로컬 문서 링크 48개가 유효하며, 로컬 참고 파일 39개가 모두 Git에서 제외되고 안내·템플릿 10개는 관리 가능한 상태임을 확인했다. `git diff --check` 통과.
+- 게시 전 검증(2026-10-08): 원격 `main`의 룸 정원 100명 변경(`05bf66c`)을 fast-forward로 반영하고 문서 작업을 충돌 없이 적용했다. README의 정원 설명을 맞췄으며 문서 템플릿의 줄 끝 공백을 정리했다. `npm run build`, `npm --prefix colyseus test` 32/32, 로컬 문서 링크 58개와 참고 파일 39개의 Git 제외 확인을 통과했다.
+
 ## 1. 로드맵
 
 | 단계 | 마일스톤 | 상태 |
