@@ -6,6 +6,7 @@ export const COLS = 40;
 export const ROWS = 26;
 export const WORLD = { width: COLS * TILE, height: ROWS * TILE };
 export const ZONE_IDS = ['lobby', 'garden', 'arcade'];
+export const ROOM_CAPACITY = 100;
 export const FOOT = { hw: 5, hh: 3 }; // player ground box half extents
 export const STEP_PER_TICK = 4; // px per 50ms server tick (80 px/s)
 export const TICK_MS = 50;

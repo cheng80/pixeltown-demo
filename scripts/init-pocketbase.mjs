@@ -3,6 +3,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { pocketbaseDir, localDir, PB_URL, adminClient, credentials, envFile, pbDataDir } from '../colyseus/config.js';
+import { ROOM_CAPACITY } from '../shared/world.js';
 const version = '0.40.4';
 export async function download() {
   mkdirSync(localDir,{recursive:true,mode:0o700});
@@ -70,7 +71,25 @@ export async function applyAbuseLimits(pb) {
   const excludedIPs = [...new Set([...(rateLimits.excludedIPs || []), '127.0.0.1', '::1'])];
   await pb.settings.update({ trustedProxy: { headers: ['CF-Connecting-IP'], useLeftmostIP: false }, rateLimits: { enabled: true, excludedIPs, rules } });
 }
-// remote: true keeps the existing users collection rules and accounts (Mac mini install) and only adds game schema.
+// Upgrade only the room capacity field and known zone rows. Safe to repeat on an existing database.
+export async function migrateRoomCapacity(pb) {
+  const schema = await pb.collections.getOne('rooms');
+  const capacity = schema.fields.find(f => f.name === 'max_players');
+  if (!capacity || capacity.type !== 'number') throw new Error('Missing rooms.max_players number field');
+  if (capacity.max !== ROOM_CAPACITY) {
+    await pb.collections.update(schema.id, { fields: schema.fields.map(f => f.name === 'max_players' ? { ...f, max: ROOM_CAPACITY } : f) });
+  }
+  for (const [zone, title] of [['lobby', 'Town Lobby'], ['garden', 'Star Garden'], ['arcade', 'Town Arcade']]) {
+    try {
+      const room = await pb.collection('rooms').getFirstListItem(pb.filter('zone={:zone}', { zone }));
+      if (room.max_players !== ROOM_CAPACITY) await pb.collection('rooms').update(room.id, { max_players: ROOM_CAPACITY });
+    } catch (e) {
+      if (e.status !== 404) throw e;
+      await pb.collection('rooms').create({ zone, title, max_players: ROOM_CAPACITY });
+    }
+  }
+}
+// remote: true keeps existing users/rules, adds game schema and upgrades room capacity.
 export async function seed(client, { remote = false } = {}) {
   const target=new URL(client?.baseURL || PB_URL);
   if (!['127.0.0.1','localhost'].includes(target.hostname) || target.protocol!=='http:') throw new Error('Development seed rejects external PB_URL');
@@ -87,7 +106,7 @@ export async function seed(client, { remote = false } = {}) {
     {name:'updated',type:'autodate',onCreate:true,onUpdate:true}
   ];
   const schemas = [
-    {name:'rooms',listRule:"@request.auth.id != ''",viewRule:"@request.auth.id != ''",fields:[...timestamps,{name:'zone',type:'text',required:true},{name:'title',type:'text',required:true,max:80},{name:'max_players',type:'number',required:true,min:1,max:32}],indexes:['CREATE UNIQUE INDEX idx_rooms_zone ON rooms (zone)']},
+    {name:'rooms',listRule:"@request.auth.id != ''",viewRule:"@request.auth.id != ''",fields:[...timestamps,{name:'zone',type:'text',required:true},{name:'title',type:'text',required:true,max:80},{name:'max_players',type:'number',required:true,min:1,max:ROOM_CAPACITY}],indexes:['CREATE UNIQUE INDEX idx_rooms_zone ON rooms (zone)']},
     {name:'profiles',fields:[...timestamps,relation,{name:'name',type:'text',required:true,max:40},{name:'color',type:'text',required:true},{name:'outfit',type:'json',maxSize:2000},{name:'room',type:'json',maxSize:8000},{name:'avatar',type:'json',maxSize:200},{name:'last_seen',type:'date'}],indexes:['CREATE UNIQUE INDEX idx_profiles_user ON profiles (user)',"CREATE UNIQUE INDEX idx_profiles_name_key ON profiles (lower(replace(replace(replace(name, ' ', ''), '_', ''), '-', '')))"]},
     {name:'results',fields:[...timestamps,relation,{name:'match_id',type:'text',required:true},{name:'zone',type:'text',required:true},{name:'score',type:'number',min:0},{name:'ended_at',type:'date',required:true}],indexes:['CREATE UNIQUE INDEX idx_results_match_user ON results (match_id, user)']},
     // Star shop ledger (ADR-004): written only by the shop hook, one row per owned item.
@@ -110,10 +129,7 @@ export async function seed(client, { remote = false } = {}) {
     }
     catch(e) { if(e.status!==404)throw e; await pb.collections.create({...schema,type:'base',listRule:schema.listRule??ownerRule,viewRule:schema.viewRule??ownerRule,createRule:null,updateRule:null,deleteRule:null}); }
   }
-  for(const [zone,title] of [['lobby','Town Lobby'],['garden','Star Garden'],['arcade','Town Arcade']]) {
-    try {await pb.collection('rooms').getFirstListItem(pb.filter('zone={:zone}',{zone}));}
-    catch(e) {if(e.status!==404)throw e;await pb.collection('rooms').create({zone,title,max_players:32});}
-  }
+  await migrateRoomCapacity(pb);
   if (remote) { await applyAbuseLimits(pb); console.log('Game schema and abuse limits ready (existing users and rules kept)'); return; }
   for(let n=1;n<=2;n++) {
     const email = `demo${n}@pixeltown.local`;

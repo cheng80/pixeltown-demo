@@ -37,12 +37,12 @@ npm run test --prefix colyseus   # outbox 재시작/실패 복구와 지형 검�
 
 ## 인증과 데이터
 
-각 접속마다 별도 PB client를 만들고 `users.authRefresh()`로 토큰을 검증한다. `rooms`에서 해당 zone 메타데이터를 조회하고 zone과 `max_players=32`를 확인한다. 초기화는 lobby/garden/arcade 메타데이터를 중복 없이 생성한다. 사용자 ID·이름·색은 검증된 users 및 profiles에서 읽고 클라이언트가 보내는 ID/이름/점수는 받지 않는다. 관리자 client는 저장 작업에만 사용하며 사용자 authStore와 공유하지 않는다.
+각 접속마다 별도 PB client를 만들고 `users.authRefresh()`로 토큰을 검증한다. `rooms`에서 해당 zone 메타데이터를 조회하고 zone과 `max_players=100`를 확인한다. 초기화는 lobby/garden/arcade 메타데이터를 중복 없이 생성한다. 사용자 ID·이름·색은 검증된 users 및 profiles에서 읽고 클라이언트가 보내는 ID/이름/점수는 받지 않는다. 관리자 client는 저장 작업에만 사용하며 사용자 authStore와 공유하지 않는다.
 
 | Collection | 필드 | 조회 규칙 / 고유 키 |
 |---|---|---|
 | `users` | PB auth 필드, `name` | 본인만 조회; 신규 가입 API 비활성 |
-| `rooms` | `zone`, `title`, `max_players=32`, `created`, `updated` | 로그인 사용자 조회; unique `zone`; 일반 사용자 쓰기 금지 |
+| `rooms` | `zone`, `title`, `max_players=100`, `created`, `updated` | 로그인 사용자 조회; unique `zone`; 일반 사용자 쓰기 금지 |
 | `profiles` | `user` relation, `name`, `color` | `user = @request.auth.id`; unique `user` |
 | `results` | `user`, `match_id`, `zone`, `score`, `ended_at` ISO 날짜 | 본인만 조회; unique `(match_id,user)` |
 | `inventory` | `user`, `match_id`, `item` (`star`), `quantity` | 본인만 조회; unique `(match_id,user)` |
@@ -85,7 +85,7 @@ zone은 `lobby` / `garden` / `arcade`; `filterBy(['zone'])`로 분리. zone 변�
 | `collect` | `{id}` | 진행 여부/마감/별 존재/거리 ≤32px를 검증; 별 제거 후 점수 +1 |
 | `emote` | `{}` | 사용자별 1000ms 간격으로 wave 전송 |
 
-발신 `chat`: `{id,name,text,at}`; `emote`: `{id,emote:'wave',at}`; `gameEnded`: `{match_id,zone,ended_at,scores}`. `at`/`endsAt`은 epoch milliseconds. scores 키와 players.id는 PB user ID. 참가자는 나가도 결과 대상에 남으며 진행 중 신규 참가자는 0점으로 추가된다(경기 누적 참가자 최대 64명). 타이머 종료 또는 마지막 참가자 퇴장 시 경기를 완료한다. 별을 모두 수집해도 타이머까지 경기와 생성기를 유지한다.
+발신 `chat`: `{id,name,text,at}`; `emote`: `{id,emote:'wave',at}`; `gameEnded`: `{match_id,zone,ended_at,scores}`. `at`/`endsAt`은 epoch milliseconds. scores 키와 players.id는 PB user ID. 참가자는 나가도 결과 대상에 남으며 진행 중 신규 참가자는 0점으로 추가된다(동시 참가자 최대 100명; 퇴장한 0점 참가자는 제거하고 점수가 있는 참가자는 정산까지 보존). 타이머 종료 또는 마지막 참가자 퇴장 시 경기를 완료한다. 별을 모두 수집해도 타이머까지 경기와 생성기를 유지한다.
 
 world `960×640`, spawn `(480,400)`, 속도 `180px/s`, 경계 여백 16px, 충돌 반경 14px. input은 프런트에서 10Hz 보내며 300ms 동안 새 입력이 없으면 멈춘다. 충돌은 x/y 축별 slide를 적용한다. 건물과 분수 rect `[x,y,w,h]`:
 

@@ -2,7 +2,7 @@ import { Room, ServerError } from '@colyseus/core';
 import { randomUUID } from 'node:crypto';
 import { userClient, ZONES } from './config.js';
 import { outbox } from './outbox.js';
-import { getMap, blocked, entryPoint, spreadSpot, touchesStar, MAX_HOP, MOVE_SLACK, MOVE_BURST_MS, STEP_PER_TICK, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS } from '../shared/world.js';
+import { getMap, blocked, entryPoint, spreadSpot, touchesStar, MAX_HOP, MOVE_SLACK, MOVE_BURST_MS, STEP_PER_TICK, STAR_SPAWN_MS, ITEMS, CATALOG, TICK_MS, ROOM_CAPACITY } from '../shared/world.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 // Outfit shown to everyone comes from the PocketBase profile (written only by the shop hook), never from the client.
 // Outfit and character look (FR-014 avatar indexes) both come from the profile; invalid values fall back to null.
@@ -27,7 +27,7 @@ const settlePeriod=()=>clamp(Number(process.env.GAME_DURATION_MS)||180000,1000,3
 export class Town extends Room {
   onCreate(options) {
     if(!ZONES.includes(options.zone))throw new ServerError(400,'Invalid zone');
-    this.zone=options.zone;this.map=getMap(this.zone);this.maxClients=32;
+    this.zone=options.zone;this.map=getMap(this.zone);this.maxClients=ROOM_CAPACITY;
     // Colyseus closes a client that sends more than this in one second. A connection that stalls delivers the step reports
     // of the stall all at once (20 per second of stall, up to ~90 for the 4.5 s the speed allowance covers): 40 cut those players off.
     this.maxMessagesPerSecond=120;
@@ -115,7 +115,7 @@ export class Town extends Room {
     try {
       const {record}=await pb.collection('users').authRefresh();
       const metadata=await pb.collection('rooms').getFirstListItem(pb.filter('zone={:zone}',{zone:options.zone}));
-      if(metadata.zone!==this.zone || metadata.max_players!==32)throw new Error('Invalid room metadata');
+      if(metadata.zone!==this.zone || metadata.max_players!==ROOM_CAPACITY)throw new Error('Invalid room metadata');
       const profile=await pb.collection('profiles').getFirstListItem(pb.filter('user={:id}',{id:record.id}));
       return {pb,id:record.id,name:profile.name||record.name||'Player',color:profile.color,look:lookOf(profile),title:metadata.title};
     } catch {throw new ServerError(401,'Invalid PocketBase token or profile');}
@@ -130,7 +130,7 @@ export class Town extends Room {
       .find(q=>!blocked(this.map,q.x,q.y)&&![...this.players.values()].some(o=>Math.hypot(o.x-q.x,o.y-q.y)<12))||base;
     this.players.set(client.sessionId,{id:auth.id,name:auth.name,x:at.x,y:at.y,color:auth.color,look:auth.look,fix:0});
     if(!this.game.active)this.startGame();
-    else if(!(auth.id in this.game.scores) && Object.keys(this.game.scores).length<64)this.game.scores[auth.id]=0;
+    else if(!(auth.id in this.game.scores))this.game.scores[auth.id]=0;
     this.snapshot();
   }
   // Local-first movement: the browser moves its own avatar and reports each step ({x,y,seq,fix}). The server accepts a
@@ -195,6 +195,10 @@ export class Town extends Room {
   }
   onLeave(client) {
     if(this.dropped.delete(client.sessionId))noteConnection('lost',client,this);
+    // Keep earned points until settlement, but discard departed zero-score entries.
+    // This admits every active player and bounds the ledger to active players + at most 64 scorers.
+    const id=this.players.get(client.sessionId)?.id;
+    if(id && this.game.scores[id]===0)delete this.game.scores[id];
     this.players.delete(client.sessionId);this.moves.delete(client.sessionId);
     for(const key of this.cooldowns.keys())if(key.startsWith(client.sessionId+':'))this.cooldowns.delete(key);
     if(!this.players.size && this.game.active)this.finish();

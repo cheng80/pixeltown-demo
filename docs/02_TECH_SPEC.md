@@ -36,7 +36,7 @@ React / Canvas
 
 맵·충돌 정본은 `shared/world.js`다(ADR-002). 장소별 40×26 타일(16도트, 월드 640×416) 타일맵, 소품 배치와 정의(`w,h,ax,ay` 그림, `foot` 바닥 충돌, `layer` sort/fg/ground), 입구·출입구, `blocked`·`moveActor`·`findPath`·`starSpots`를 담는다. `game/src/render.js`가 ground(굽기) → 발밑 y 정렬(소품·별·아바타) → fg → 화면 해상도 글자 순서로 그린다. Canvas 보간은 서버 위치 사이를 부드럽게 그릴 뿐 권한 위치를 갱신하지 않는다. `?debug=collision`은 visual bounds(파랑)와 footprint·막힌 타일(빨강)을 겹쳐 그린다. 걷기 프레임은 몸 높이가 같고 다리·팔만 바뀐다(1px 들썩임이 8Hz로 화면을 떨게 했다).
 
-`server.define('town',Town).filterBy(['zone'])`로 장소별 방을 만든다. 각 방 maxClients=32, maxMessagesPerSecond=40이며 메시지 snapshot은 50ms tick마다 전체 상태를 전송한다. 32명 제한은 32명 성능 검증을 의미하지 않는다.
+`server.define('town',Town).filterBy(['zone'])`로 장소별 방을 만든다. 각 방 maxClients=100(`shared/world.js`의 `ROOM_CAPACITY`), maxMessagesPerSecond=120이며 메시지 snapshot은 50ms tick마다 전체 상태를 전송한다. 100명 제한은 운영 환경의 100명 성능 보장을 의미하지 않는다.
 
 ## 3. 인증·권한·보안
 
@@ -59,7 +59,7 @@ seed는 users/profiles/rooms/results/inventory/purchases를 준비한다. rooms�
 | users | PB auth collection, email/password 등 PB 인증 필드, name text max40; 사용자 ID 15자리 |
 | profiles | user relation(users, required, cascadeDelete), name required text max40, color required text, outfit json(max 2000, `{hat,top,pet}`), room json(max 8000, `[{item,c,r}]`), avatar json(max 200, `{skin,hair,style}` 카탈로그 색인), last_seen date(로그인·토큰 갱신 때 1시간에 한 번 갱신); unique(user). outfit/room은 shop 훅, name/color/avatar는 profile 훅만 쓴다. unique `lower(replace(replace(replace(name,' ',''),'_',''),'-',''))`(+ 이전 DB에는 `name COLLATE NOCASE`도 남아 있음) |
 | purchases | user relation, item required text max40, price required number min0; unique(user,item). 일반 사용자 읽기는 본인만, 쓰기는 shop 훅만 |
-| rooms | zone required text unique(zone), title required text max80, max_players required number 1..32; 3개 장소 seed |
+| rooms | zone required text unique(zone), title required text max80, max_players required number 1..100; 3개 장소 seed |
 | results | user relation, match_id required text, zone required text, score number min0, ended_at required date; unique(match_id,user) |
 | inventory | user relation, match_id required text, item required text, quantity number min0; unique(match_id,user) |
 | 공통 | profiles/rooms/results/inventory/purchases에 created autodate(onCreate), updated autodate(onCreate/onUpdate) |
@@ -193,7 +193,7 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 
 테스트 날짜·리비전·결과·미실행 공백은 PROJECT_STATUS와 verification.md에서 관리한다.
 
-20명 smoke는 약 3초 입력 workload·10Hz 목표·단일 로컬 머신 기능 점검이다. `PIXELTOWN_LOAD_100=1`이면 100명을 한 장소에 넣어 `filterBy(['zone'])`·`maxClients=32`에 의한 채널 방 자동 분할(32/32/32/4)과 방별 snapshot·채팅을 추가로 측정한다. 다른 채널 방의 사용자는 서로 보이지 않는다. 인터넷 지연·실제 모바일 FPS·운영 수용량은 보증하지 않는다. 이후 규모 확대는 schema delta/관심 영역, 방 분할, PB 저장량, 네트워크·CPU·모바일 렌더링 측정 후 결정한다. 공개 GitHub source push와 운영 배포를 구분한다.
+20명 smoke는 약 3초 입력 workload·10Hz 목표·단일 로컬 머신 기능 점검이다. `PIXELTOWN_LOAD_100=1`이면 100명을 한 장소에 넣어 `filterBy(['zone'])`·`maxClients=100`에 따른 100명 단일 방 입장·snapshot·채팅 및 101번째 사용자의 별도 방 배정을 측정한다. 다른 채널 방의 사용자는 서로 보이지 않는다. 인터넷 지연·실제 모바일 FPS·운영 수용량은 보증하지 않는다. 이후 규모 확대는 schema delta/관심 영역, 방 분할, PB 저장량, 네트워크·CPU·모바일 렌더링 측정 후 결정한다. 공개 GitHub source push와 운영 배포를 구분한다.
 
 ## 경로 탐색과 이동 보정 (2026-10-02 수정)
 
