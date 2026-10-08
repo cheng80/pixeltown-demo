@@ -11,6 +11,7 @@ const sdkMock = `
 export class Client {
   auth = {};
   async joinOrCreate(name, options) {
+    if (globalThis.__rejectJoin) throw Object.assign(new Error(globalThis.__rejectJoin.message), { code: globalThis.__rejectJoin.code });
     if (name !== 'minimal-town' || options.zone !== 'lobby' || !this.auth.token) throw new Error('Invalid join');
     const handlers = {};
     const snapshot = {zone:'lobby',players:[{id:'minimal-user',name:'산책이',x:56,y:336,ack:0,fix:0},{id:'neighbor',name:'이웃',x:130,y:300,ack:0,fix:0}],game:{id:'round-a',active:true,endsAt:Date.now()+180000,stars:[{id:'star',x:100,y:336}],scores:{'minimal-user':0}}};
@@ -74,6 +75,16 @@ try {
   assert.ok(midX > 130 && midX < 160, `burst replays gradually (x=${midX})`);
   await page.clock.runFor(1000);
   assert.equal(await page.evaluate(()=>window.__qaEngine.others.get('neighbor').x), 170, 'playback reaches the latest accepted step');
+  // Diagonal walking keeps one facing (legacy ec5da17): own avatar and others both show the side view without flipping.
+  await page.keyboard.down('d'); await page.keyboard.down('w');
+  const facings = [];
+  for (let i = 0; i < 16; i++) { await page.clock.runFor(50); facings.push(await page.evaluate(()=>window.__qaEngine.facing)); }
+  await page.keyboard.up('d'); await page.keyboard.up('w');
+  assert.deepEqual([...new Set(facings.slice(1))], [2], `own diagonal facing is steady (${facings})`);
+  await page.evaluate(()=>{const n=window.__mock.snapshot.players[1]; Object.assign(n,{x:n.x+20,y:n.y-20,ack:17}); window.__mock.emit('snapshot',window.__mock.snapshot);});
+  const others = [];
+  for (let i = 0; i < 12; i++) { await page.clock.runFor(40); others.push(await page.evaluate(()=>window.__qaEngine.others.get('neighbor').dir)); }
+  assert.deepEqual([...new Set(others.slice(1))], [2], `other diagonal facing is steady (${others})`);
   // Lag (slow tunnel): no ack or snapshot for 2.5 s must not hold the avatar back; delayed acks then catch up without a fix.
   const lagFrom = await page.evaluate(()=>{ window.__mock.lag = true; return window.__mock.moves.length; });
   await page.keyboard.down('d'); await page.clock.runFor(2500); await page.keyboard.up('d');
@@ -144,10 +155,25 @@ try {
   const stopped = await page.evaluate(()=>window.__mock.moves.length);
   await page.keyboard.down('d'); await page.clock.runFor(1000); await page.keyboard.up('d');
   assert.equal(await page.evaluate(()=>window.__mock.moves.length),stopped,'movement stops while disconnected');
+  assert.equal(await page.getByRole('link',{name:'접속 안내 보기'}).count(),1,'a real outage keeps the outage help');
+  // The same guest already playing in another tab is told apart from an outage; any other 409 is still an outage.
+  const rejoin = async rejection => { await page.evaluate(r=>{ globalThis.__rejectJoin = r; }, rejection); await page.clock.runFor(10000); await page.locator('.cover .primary').click(); await page.clock.runFor(100); };
+  await rejoin({code:409,message:'이미 입장한 사용자입니다.'});
+  await page.getByRole('heading',{name:'다른 탭에서 광장을 열었어요'}).waitFor();
+  assert.ok((await page.locator('.cover').innerText()).includes('다른 탭'));
+  assert.equal(await page.getByRole('link',{name:'접속 안내 보기'}).count(),0,'duplicate tab is not an outage');
+  assert.ok((await page.locator('.presence').innerText()).includes('다른 탭에서 입장 중'));
+  await rejoin({code:409,message:'Other conflict'});
+  await page.getByRole('heading',{name:'잠시 쉬어 가요'}).waitFor();
+  assert.ok((await page.locator('.cover').innerText()).includes('연결하지 못'));
+  await rejoin(null);
+  await page.getByText('함께 있는 이웃 2명').waitFor();
+  assert.equal(await page.locator('.cover').count(),0,'rejoin after closing the other tab plays again');
+  const authBeforeReload = authCalls;
   await page.reload(); await page.waitForFunction(()=>!!window.__mock); await page.clock.runFor(100);
-  assert.equal(guestCalls,1,'reload must not create a new guest'); assert.equal(authCalls,1,'reload authenticates saved guest');
+  assert.equal(guestCalls,1,'reload must not create a new guest'); assert.equal(authCalls,authBeforeReload+1,'reload authenticates saved guest');
   await page.goto('http://minimal.test/unavailable.html'); await page.getByRole('heading',{name:'광장에 잠시 연결할 수 없어요'}).waitFor();
   assert.equal(await page.locator('script').count(),0); assert.equal(await page.locator('a').getAttribute('href'),'./');
   assert.deepEqual(errors,[]);
-  console.log('PASS offline UI: guest/restore, isolated credentials, server spawn, seq/fix, movement, lag-tolerant local movement, paced playback of others, deployment indicator, pending/settlement, wallet failure/429, disconnect, 1280/390 overflow, static fallback');
+  console.log('PASS offline UI: guest/restore, isolated credentials, server spawn, seq/fix, movement, lag-tolerant local movement, paced playback of others, steady diagonal facing, deployment indicator, pending/settlement, wallet failure/429, disconnect, duplicate-tab vs outage, 1280/390 overflow, static fallback');
 } finally { await browser.close(); }

@@ -5,8 +5,10 @@ import { EXT, LINE, FOUNTAIN_BOX, GATE_SIGN, ambience, avatar, backdrop, foregro
 
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const mix = (a, b, t) => a + (b - a) * t;
-// Display-only facing: 0 down, 1 up, 2 right, 3 left.
-const facing = (dx, dy, old = 0) => Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01 ? old : Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
+// Display-only facing: 0 down, 1 up, 2 right, 3 left. As in the legacy game (ec5da17), anything within 2:1 of a diagonal
+// shows the side view; others are judged on a running average of recent frames, so playback jitter cannot flip them.
+const facing = (dx, dy) => Math.abs(dy) > Math.abs(dx) * 2 ? (dy > 0 ? 0 : 1) : (dx > 0 ? 2 : 3);
+const turn = (a, dx, dy) => { a.vx = (a.vx || 0) * 0.75 + dx * 0.25; a.vy = (a.vy || 0) * 0.75 + dy * 0.25; return facing(a.vx, a.vy); };
 export function createEngine() {
   return { connected: false, self: { ...WORLD.spawn }, previous: { ...WORLD.spawn }, seq: 0, fix: 0,
     pending: [], others: new Map(), stars: [], target: null, keys: new Set(), pad: { x: 0, y: 0 },
@@ -78,7 +80,7 @@ export default function WorldCanvas({ engine, ready, controls }) {
       if (!next || !Number.isFinite(next.x) || !Number.isFinite(next.y) || blocked(next.x, next.y)) { engine.target = null; return; }
       if (next.x === old.x && next.y === old.y) { engine.target = null; return; }
       engine.self = { x: next.x, y: next.y };
-      engine.facing = facing(next.x - old.x, next.y - old.y, engine.facing); engine.movedAt = engine.lastTick;
+      engine.facing = facing(next.x - old.x, next.y - old.y); // own steps follow the input exactly; the 2:1 rule alone keeps diagonals steady engine.movedAt = engine.lastTick;
       const movement = { ...engine.self, seq: ++engine.seq, fix: engine.fix };
       engine.pending.push(movement);
       try { engine.send?.(movement); } catch { engine.connected = false; stopMovement(engine); }
@@ -131,7 +133,7 @@ export default function WorldCanvas({ engine, ready, controls }) {
       const dt = lastDraw ? Math.min(1000, now - lastDraw) : 0; lastDraw = now;
       for (const [id, p] of engine.others) {
         const q = play(p.pb, dt), dx = q.x - p.x, dy = q.y - p.y;
-        if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) { p.dir = facing(dx, dy, p.dir); p.movedAt = now; }
+        if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) { p.dir = turn(p, dx, dy); p.movedAt = now; }
         p.x = q.x; p.y = q.y;
         items.push({ y: q.y, x: q.x, kind: 'avatar', id, name: p.name, dir: p.dir, walking: now - p.movedAt < 160 });
       }

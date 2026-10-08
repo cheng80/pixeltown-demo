@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Client } from '@colyseus/sdk';
 import { authenticate, GAME_URL, pb, request, savedGuest } from './api.js';
-import { cleanLedger, failureMessage, pendingTotal, readStored, reconcileLedger, rememberScore, retryDelay, WalletState, writeStored } from './state.js';
+import { cleanLedger, failureMessage, isDuplicateGuest, pendingTotal, readStored, reconcileLedger, rememberScore, retryDelay, WalletState, writeStored } from './state.js';
 import WorldCanvas, { applySnapshot, createEngine, stopMovement } from './WorldCanvas.jsx';
 import './style.css';
 
@@ -12,6 +12,7 @@ function App() {
   const [name, setName] = useState('');
   const [phase, setPhase] = useState('welcome');
   const [notice, setNotice] = useState('');
+  const [otherTab, setOtherTab] = useState(false);
   const [storageNotice, setStorageNotice] = useState('');
   const [retryAt, setRetryAt] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -152,7 +153,7 @@ function App() {
     let disposed = false, joined = null, timeout, staleTimer;
     engine.connected = false; engine.initialized = false; engine.pending = []; engine.others.clear(); engine.stars = [];
     engine.seq = 0; engine.fix = 0; engine.snapshot = null; engine.userId = user.id; stopMovement(engine);
-    setPhase('joining'); setCrowd(0); setGame(null); resetDeployment();
+    setPhase('joining'); setCrowd(0); setGame(null); resetDeployment(); setOtherTab(false);
     const closeRoom = room => {
       if (!room) return;
       room.reconnection.maxRetries = 0;
@@ -162,7 +163,7 @@ function App() {
       if (disposed) return;
       disposed = true; clearTimeout(timeout); clearInterval(staleTimer);
       engine.connected = false; engine.room = null; stopMovement(engine); closeRoom(joined);
-      setPhase('game-error'); setNotice(failureMessage(error, 'game')); setRetryAt(Date.now() + retryDelay(error));
+      setPhase('game-error'); setOtherTab(isDuplicateGuest(error)); setNotice(failureMessage(error, 'game')); setRetryAt(Date.now() + retryDelay(error));
     };
     const client = new Client(GAME_URL);
     if (client.auth.settings) client.auth.settings.key = 'pixeltown.minimal.room-auth';
@@ -227,7 +228,7 @@ function App() {
         <a className="brand" href="./" aria-label="픽셀타운 처음 화면"><Icon map={STAR}/> 픽셀타운</a>
         <span className="place">작은 광장</span>
         {user && ready && release && <Release release={release}/>}
-        {user && <span className={`presence ${ready ? 'online' : ''}`}><i aria-hidden="true"/>{ready ? `함께 있는 이웃 ${crowd}명` : busy ? '입장 준비 중' : '연결 확인 필요'}</span>}
+        {user && <span className={`presence ${ready ? 'online' : ''}`}><i aria-hidden="true"/>{ready ? `함께 있는 이웃 ${crowd}명` : busy ? '입장 준비 중' : otherTab ? '다른 탭에서 입장 중' : '연결 확인 필요'}</span>}
       </header>
       <section className="stage" aria-label="광장">
         <WorldCanvas engine={engine} ready={ready} controls={!!user}/>
@@ -261,9 +262,9 @@ function App() {
         {user && !ready && <div className="overlay cover" role="status">
           <section className="dialog">
             <span className={`cover-icon ${busy ? 'busy' : ''}`} aria-hidden="true"><Icon map={busy ? STAR : CLOUD}/></span>
-            <h2>{busy ? '광장으로 가는 중…' : '잠시 쉬어 가요'}</h2>
+            <h2>{busy ? '광장으로 가는 중…' : otherTab ? '다른 탭에서 광장을 열었어요' : '잠시 쉬어 가요'}</h2>
             <p>{busy ? '이웃과 별을 불러오고 있어요.' : notice || '연결 상태를 확인해 주세요.'}</p>
-            {!busy && <><button className="primary" disabled={waiting > 0} onClick={enter}>{waiting ? `${waiting}초 후 다시 입장` : '다시 입장하기'}</button><a className="help-link" href="/unavailable.html">접속 안내 보기</a></>}
+            {!busy && <><button className="primary" disabled={waiting > 0} onClick={enter}>{waiting ? `${waiting}초 후 다시 입장` : otherTab ? '여기서 다시 입장하기' : '다시 입장하기'}</button>{!otherTab && <a className="help-link" href="/unavailable.html">접속 안내 보기</a>}</>}
           </section>
         </div>}
       </section>

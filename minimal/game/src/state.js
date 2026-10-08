@@ -51,11 +51,15 @@ export function cleanLedger(value) {
 }
 export function pendingTotal(ledger) { return Object.values(ledger).reduce((sum, row) => sum + row.score, 0); }
 export function errorStatus(error) { return Number(error?.status || error?.code || error?.response?.code || 0); }
+export function isDuplicateGuest(error) {
+  return errorStatus(error) === 409 && error?.message === '이미 입장한 사용자입니다.';
+}
 export function retryDelay(error) {
   return errorStatus(error) === 429 ? Math.max(60000, Number(error.retryAfterMs) || 0) : 10000;
 }
 export function failureMessage(error, area) {
   const status = errorStatus(error);
+  if (area === 'game' && isDuplicateGuest(error)) return '다른 탭에서 이 게스트로 광장에 들어가 있어요. 그 탭을 닫고 여기서 다시 입장해 주세요.';
   if (status === 429) return '요청이 잠시 몰렸어요. 잠시 기다린 뒤 다시 시도해 주세요.';
   if (area === 'wallet') return status === 401 || status === 403
     ? '별 저장 내역을 확인하려면 다시 입장해 주세요.'

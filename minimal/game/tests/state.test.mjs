@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WalletState, rememberScore, reconcileLedger, pendingTotal, failureMessage, retryDelay } from '../src/state.js';
+import { WalletState, rememberScore, reconcileLedger, pendingTotal, failureMessage, retryDelay, isDuplicateGuest } from '../src/state.js';
 const wallet = (balance, ids = []) => ({ balance, settledMatchIds: ids, profile: { name: '이웃' } });
 
 test('a failed wallet request retains its last successful value as unconfirmed', () => {
@@ -43,4 +43,13 @@ test('rate limits show a wait rather than a server outage and honor Retry-After'
   assert.match(failureMessage(error, 'guest'), /기다린/);
   assert.doesNotMatch(failureMessage(error, 'game'), /연결하지 못/);
   assert.equal(retryDelay(error), 120000);
+});
+test('a duplicate guest tab is distinguished from an unrelated conflict or outage', () => {
+  const duplicate = { code: 409, message: '이미 입장한 사용자입니다.' };
+  assert.equal(isDuplicateGuest(duplicate), true);
+  assert.match(failureMessage(duplicate, 'game'), /다른 탭/);
+  assert.doesNotMatch(failureMessage(duplicate, 'game'), /연결하지 못/);
+  assert.equal(isDuplicateGuest({ code: 409, message: 'Other conflict' }), false);
+  assert.equal(isDuplicateGuest({ code: 503, message: duplicate.message }), false);
+  assert.match(failureMessage({ code: 409, message: 'Other conflict' }, 'game'), /연결하지 못/);
 });
