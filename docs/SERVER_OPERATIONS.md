@@ -278,6 +278,6 @@ PB hooks 배포는 최소 app에서 `python3 scripts/deploy-minimal-pb.py --hook
 
 화면·리소스는 Cloudflare Pages에서 제공한다. 승인된 게시 작업에서 루트의 `npm run deploy:minimal:frontend`를 사용한다. 새 버전을 빌드하며 공개 이전 release 파일을 내려받아 해시를 검사해 함께 보존한다. Pages만 변경하고 PB·Colyseus·Tunnel·서버 worker는 재시작하거나 교체하지 않는다.
 
-열린 브라우저는 호환되는 월드 렌더러·CSS·이미지·글꼴을 준비한 뒤 전환한다. 최초 도입 전에 열린 탭은 한 번 새로고침해야 한다. [계약과 제한](handoffs/2026-10-08-frontend-live-update.md)을 따른다. 이번 운영 결과물은 미커밋 작업의 직접 게시이므로 승인된 다음 코드 게시에 해당 소스·빌드 스크립트를 포함해야 Git 자동 배포에서도 유지된다.
+열린 브라우저는 호환되는 월드 렌더러·CSS·이미지·글꼴을 준비한 뒤 전환한다. 최초 도입 전에 열린 탭은 한 번 새로고침해야 한다. [계약과 제한](handoffs/2026-10-08-frontend-live-update.md)을 따른다. 초기 운영 검증은 미커밋 작업에서 직접 게시했다. 이후 PR #2를 main에 병합해 해당 소스·빌드 스크립트를 포함했고 Git 자동 Pages 게시 성공을 확인했다. 현재 공개 화면 버전은 `c72da755`다.
 
 2026-10-08 18:15:25 KST, 사용자 요청으로 운영 최소 게임 label만 bootout했다. 포트 13620은 응답하지 않으며 PB 18820·Tunnel·기존 게임·로컬 개발 서버는 유지한다. plist와 DB·outbox는 보존했다. 자동 health 워크플로의 최소 game/ready 실패는 이 요청된 종료와 구분한다. 재기동 승인 후 `launchctl bootstrap gui/501 ~/Library/LaunchAgents/com.fastmake.pixeltown.minimal.colyseus.plist`로 시작하고 내부 ready·공개 health와 outbox를 확인한다. 합성 85명과 자동 worker 배포는 다시 시작하지 않는다.

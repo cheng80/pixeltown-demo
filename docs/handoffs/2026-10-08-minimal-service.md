@@ -81,7 +81,7 @@ PB 단독 배포 중 연결 유지는 [PB 배포 인계](2026-10-08-pb-deploymen
 
 월드 렌더러·도트 그림·CSS·글꼴·이미지를 버전별로 나누고 플레이 중 교체하는 기능을 운영에 반영했다. [설명 그림](../diagrams/frontend-live-update.html)과 [파일·배포 계약](2026-10-08-frontend-live-update.md)을 따른다. React 화면 구성·인증·입력/충돌 규칙은 자동 교체 범위가 아니다. 사용자 승인을 받아 이번 통합 변경은 Codex가 직접 했다.
 
-현재 운영은 미커밋 코드의 직접 Pages 배포다. 다음 승인된 commit/push에 소스·빌드·게시 스크립트를 같이 포함해야 한다. 이전 Git 자동 빌드가 다시 게시되면 기능이 사라질 수 있다. 최종 화면 버전은 `2ca05cdd`다.
+초기 운영 검증은 미커밋 코드의 직접 Pages 배포였다. 이후 사용자 승인으로 [PR #2](https://github.com/cheng80/pixeltown-demo/pull/2)를 main에 병합했다(`08884d6`). 소스·빌드·게시 스크립트가 Git에 포함됐으며 자동 Pages 빌드와 공개 화면 버전 `c72da755`를 확인했다. 두 번 교체 검증 당시 버전 `2ca05cdd`도 보존한다.
 
 이전 화면 파일은 `.local/minimal/frontend-releases/`와 Pages의 `/visual/releases/`에 보존한다. `.test-work/frontend-history-from-public/`은 새 CI 환경의 이전 버전 복원 검사 자료다. 실 서비스 이전 때 CDN 위치·보관 기간·삭제 조건·여러 CI의 게시 경쟁 제한·장시간 ES module 메모리를 정한다. 현재 검사 자료·release·백업·계정은 자동 삭제하지 않는다.
 
