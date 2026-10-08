@@ -116,7 +116,8 @@ try {
   c.room.send('move',{x:me.x,y:me.y,seq:++c.seq,fix:1});
   await until(()=>c.snapshot.players.find(p=>p.id===c.id).ack===c.seq,'corrected seq after deployment');
   }
-  report.tests.push('active sessions: no drops, unexpected fixes or lost input; deliberate fix/seq survives deployment');
+  report.tests.push('active sessions: no drops, unexpected fixes or lost input');
+  if(!swarmOnly)report.tests.push('deliberate fix/seq survives deployment');
   observed=false;
   await Promise.all(clients.map(c=>c.room.leave()));
   await until(async()=>{const h=await health();return h.players===0&&h.persistence.pending===0;},'all final settlements');

@@ -25,4 +25,4 @@
 
 ## 확인과 인계
 
-같은 방에서 실제 worker 교체로 단계·버전 변경을 확인한다. `onDrop/onLeave/onError`, 장애 cover, 이동 입력 중단, 예상 밖 fix는 모두 0이어야 한다. 기존 서버에는 이 표시 계약이 아직 로드되지 않았으므로 문서만으로 운영 구현 완료라고 보고하지 않는다. 화면 완료 결과·검증·변경 파일은 `minimal/game/FRONTEND_HANDOFF_RESULT.md`에 추가한다. commit/push·서버 종료·세션 종료는 Codex 담당 범위에 둔다.
+같은 방에서 실제 worker 교체로 단계·버전 변경을 확인한다. `onDrop/onLeave/onError`, 장애 cover, 이동 입력 중단, 예상 밖 fix는 모두 0이어야 한다. 미니멀 전용 서버와 공개 화면에 이 계약을 반영했다. 이전 로컬 프로세스는 보존했으므로 새 계약을 제공하지 않을 수 있다. 화면 완료 결과·검증·변경 파일은 `minimal/game/FRONTEND_HANDOFF_RESULT.md`에 추가한다. commit/push·서버 종료·세션 종료는 Codex 담당 범위에 둔다.
