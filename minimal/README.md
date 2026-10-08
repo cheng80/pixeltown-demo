@@ -18,6 +18,8 @@ npm run dev:all
 
 포트를 쓰는 프로세스가 있으면 시작을 거절한다. 기존 프로세스를 종료하지 않는다. 정상 종료 시 게임의 정산 처리 후 PocketBase를 종료한다. 관리자 값·DB·정산 파일은 `.local/minimal/`에만 생성하고 Git에서 제외한다. 기존 DB나 연결된 경로를 지정하면 초기화 전에 거절한다. 관리자 파일은 `0600`이다.
 
+PB와 게임은 각각 `npm run start:minimal:pb`, `npm run start:minimal:game`으로 실행할 수 있다. 최초에는 PB를 먼저 준비한다. `dev:all`도 두 실행기를 따로 관리해 PB가 종료되면 PB만 복구한다. PB 중단 중 기존 플레이는 계속되며 새 입장·지갑 조회는 실패할 수 있다. 정산은 디스크에 남았다가 복구 후 저장한다. [PB 단독 배포와 운영 서비스 분리](../docs/handoffs/2026-10-08-pb-deployment.md)
+
 다른 최소 환경은 서로 다른 상태 폴더와 포트 세 개를 지정한다.
 
 ```sh
@@ -51,6 +53,7 @@ npm run test:minimal:unit
 npm run test:minimal
 npm run test:minimal:swap # 별도 18122/12622, 실제 100명 활동·반복 교체
 npm run test:minimal:ui # Chrome 설치 또는 CHROME_PATH 실행기 지정
+npm run test:minimal:pb-restart # 별도 18125/12625, PB 배포·종료·실패 복구 중 실제 연결 유지
 npm run build
 ```
 
@@ -81,3 +84,11 @@ CHROME_PATH=~/Library/Caches/ms-playwright/chromium-1193/chrome-mac/Chromium.app
 런처는 worker 소스 4개를 SHA-256 버전별 폴더로 저장하고 고정 링크 `worker-current`를 선택한다. 실행 중에는 호스트/PB를 재시작하지 않고 `npm run deploy:minimal:worker`를 호출한다. 완성된 release를 선택한 뒤 기존 호스트에 교체를 요청한다. 후보 거절은 이전 링크를 선택한다. HTTP 응답 유실은 health로 결과를 확인하며, 결과가 불명확하면 재시작이나 무조건 이전 링크 복원을 하지 않는다. 같은 버전은 교체를 건너뛴다. 호스트 코드·DB 훅·맵·입력 규칙 변경은 이 명령의 무중단 대상이 아니다.
 
 배포 상태 표시 계약은 [Claude 요청](../docs/handoffs/2026-10-08-deployment-indicator.md)에 있다. 공개 경로에서는 배포 제어 요청과 PB 초기화 확인이 거절된다. 공개 게스트 발급은 방문자 IP당 시간당 20회이며 시험용 계정은 내부 관리 경로에서 별도로 준비한다.
+
+## 플레이 중 화면 코드·리소스 교체
+
+`WorldCanvas.jsx`는 입력과 이동을 계속 처리하고 `visual-release.js`의 그림만 교체한다. `art.js`, CSS, 글꼴·이미지도 버전별로 준비한다. 화면 코드·그림을 수정한 뒤 승인된 범위에서 `npm run deploy:minimal:frontend`로 Pages에 게시한다. `npm run build:remote`만 실행하면 게시하지 않는다. 이전 공개 파일을 해시 대조해 다음 빌드에도 포함한다. 최초 한 번 기능을 받은 뒤에는 브라우저가 15초마다 확인해 새 화면으로 전환한다.
+
+인증·접속·이동·충돌·React 화면 구성 변경은 열린 탭에 자동 적용하지 않는다. [쉽게 보는 그림](../docs/diagrams/frontend-live-update.html), [파일 계약·배포와 정리](../docs/handoffs/2026-10-08-frontend-live-update.md)를 따른다. `npm run test:minimal:visual`은 기존 로컬 PB/game을 유지한 실제 화면 교체·리소스 누락·오류 복구 검사다. `test:minimal:ui`는 SDK를 대체한 회귀 검사이며 실제 팔·다리 그림의 순환과 정지 복귀도 대조한다.
+
+85명 관찰 도구는 `MINIMAL_DEPLOYMENT_PAUSED=1`로 시작하면 자동 worker 배포 없이 이동만 한다. 실행 폴더에 `PAUSE_DEPLOYMENTS` 파일을 만들면 배포만 중지한다. 지시 후 이 파일을 제거하면 3분 뒤부터 재개한다. `STOP`은 전체 시험 접속 종료와 자신이 배포한 worker의 조건부 원본 복구다. 두 제어를 혼동하지 않는다. 현재 실행과 사고 기록은 PROJECT_STATUS 7절을 따른다.

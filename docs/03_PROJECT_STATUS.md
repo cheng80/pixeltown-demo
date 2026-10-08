@@ -2,9 +2,17 @@
 
 갱신일: 2026-10-08 (Asia/Seoul). 미니멀 게임의 worker 무중단 교체·동기화·상단 배포 표시를 구현하고 공개 화면에 게시했다. 사용자 게임 주소는 `https://pixeltown.fastmake.net` 그대로이며, 기존 운영 서버를 유지하고 미니멀 전용 서버(PB 18820/game 13620)를 도입했다. 구현 게시 commit은 `68d4ca8`이다.
 
-공개 100명/30분 검사에서 3,533,031 입력·30회 교체를 통과했다. 합성 98명과 실제 브라우저 2개가 있는 정원 100명에서도 6회 교체, 이동 유지, 상단 표시를 확인했다. 로컬 100명/30분 검사와 Claude의 화면 검사도 통과했다. 상세 결과는 최신 7절을 따른다.
+현재 실행: **85명 시험 접속·자동 worker 배포·운영 미니멀 게임 서버를 사용자 요청으로 종료**했다. 합성 접속 종료 18:14:16 KST, 미확인 입력 0. 게임 서비스 종료 18:15:25 KST, 종료 직전 players 0·generation 23·outbox 0/0. PB·Tunnel·기존 게임 서비스·로컬 개발 서버는 유지했다. 검사 제어 오류와 85명 복구/종료의 상세 기록은 7절을 따른다. 사용자 승인으로 이번 변경의 문서·커밋·푸시·main 병합을 진행한다.
 
-남은 실 서비스 작업과 나중에 정리할 자원은 [인계 문서](handoffs/2026-10-08-minimal-service.md)에 있다. 접속 서버 자체 재시작·PB 업데이트·호스트 재부팅은 이번 무중단 범위 밖이다. 과거 절의 운영 미착수 기록은 당시 상태다.
+화면 코드·리소스 교체도 공개 반영했다. 최초 한 번 기능을 받은 뒤에는 렌더러·CSS·글꼴·이미지를 새로고침 없이 바꾼다. 최종 화면 버전 `2ca05cdd`, 공개 두 번 교체의 끊김·입력 차단 0. dot이 발견한 걷기 시각 대입의 주석 포함 오류도 복구하고 실제 걷기 그림을 확인했다. [그림](diagrams/frontend-live-update.html), [계약과 배포 방법](handoffs/2026-10-08-frontend-live-update.md). 이번 소스는 미커밋 상태이며 이전 자동 Git 빌드가 덮어쓰지 않도록 다음 승인된 코드 게시에 포함해야 한다.
+
+반복 검사 중지 기록: 사용자 요청으로 **85명 합성 접속과 3분 주기 worker 배포를 2026-10-08 15:34:59 KST에 중지**했다. 중지 당시 시험 접속은 0명, 원본 worker 복원 후 generation 21, 정산 대기/실패는 0/0이었다. 실제 접속자 1명과 게임 서버는 유지했다. 이후 PB 서비스 분리 과정에서 게임 프로세스를 새로 시작해 분리 직후 generation은 1이었다. 아래 중지 기록 이후 사용자 재개 지시를 받아 현재 반복 검사를 실행 중이다.
+
+PB 배포 중 플레이 유지: 운영 서비스를 PB와 게임으로 분리했다. 공개 경로에서 PB hooks 교체·원본 복구 중 SDK 1개와 실제 브라우저 1개의 연결·이동이 유지됐다. 게임 PID와 room/session은 그대로였고, 끊김·재접속 안내는 0건이었다. [계약과 절차](handoffs/2026-10-08-pb-deployment.md), 상세 결과는 7절을 따른다.
+
+초기 구현의 공개 100명/30분 검사에서 3,533,031 입력·30회 교체를 통과했다. 합성 98명과 실제 브라우저 2개가 있는 정원 100명에서도 6회 교체, 이동 유지, 상단 표시를 확인했다. 이 성공 기록을 이후 프런트 변경의 장시간 검증으로 확대하지 않는다. 검사별 코드와 결과는 최신 7절과 Claude 인계 결과를 따른다.
+
+남은 실 서비스 작업과 나중에 정리할 자원은 [인계 문서](handoffs/2026-10-08-minimal-service.md)에 있다. 접속 서버 자체 재시작·호스트 재부팅은 연결을 끊는다. PB 단독 코드 배포는 기존 플레이를 유지하지만, 비호환 DB 변경·실행 파일 업그레이드는 별도 검증이 필요하다. 과거 절의 운영 미착수 기록은 당시 상태다.
 
 ## 프런트 재제작 인계 (2026-10-08)
 
@@ -163,6 +171,72 @@
 4. PWA·앱 포장은 웹 핵심 플레이 검증 후 별도 계획으로 다룬다.
 
 ## 7. 인수인계
+
+### 사용자 요청에 따른 시험·게임 서비스 종료와 코드 게시 준비 (2026-10-08, Codex)
+
+- 복구한 85명 이동 검사를 사용자 요청으로 18:14:16 KST에 정상 종료했다. `.test-work/minimal-live-2IhLNh/status.json`은 stopped·connected 0·410,224 입력·pendingAfterDrain 0·끊김/error/fix 0·배포 0회다. 정산 결과/원장 624/624와 사용자 100개를 대조했다. 실제 사용자와 서버는 이 단계에서 유지했다.
+- 이어 게임 서버 종료 지시를 받아 18:15:25 KST에 운영 `com.fastmake.pixeltown.minimal.colyseus`만 launchctl bootout했다. 종료 직전 players 0·generation 23·outbox 대기/실패 0/0, 종료 후 loopback 13620 listener 없음·PB 18820 health 200 확인. 자료는 원격 app의 `.test-work/game-user-shutdown-20261008.json`이다. Pages·PB·Tunnel·기존 게임·로컬 5270/18120/12620·개발 세션은 보존했다. 게임 서비스 재시작은 별도 사용자 요청에 따른다. 이후 공개 game health/ready 실패는 이 종료 상태와 구분해 읽는다.
+- 인계 HTML·화면 계약·TECH_SPEC·실 서비스 정리 문서를 마무리했다. 윤문 기록은 `_workspace/2026-10-08-003/`에 보존하며 원문과 검토 자료는 Git에서 제외한다. 스타일 수정 2곳·글자 기준 1.26%이며 이후 구현/검증 사실 추가는 윤문 변경률에 넣지 않았다. 이전 문서 윤문 자료도 보존한다.
+- 최종 게시 전 검사: 최소 단위 21/21·오프라인 걷기 회귀·원격 빌드·Postman 5/5 통과. HTML 3개 self-check와 변경 문서의 로컬 링크 119개를 확인했다. Ego의 데스크톱 검사를 남겼으며 작업 공간이 사라져 최종 1280/390px 검사는 허용 Chromium 1193으로 완료했다. 페이지 넘침·브라우저 오류 0, 작은 화면의 그림 내부 스크롤만 허용한다. 자료는 `.test-work/frontend-live-source/`다. 공개 코드의 비밀정보 패턴 검사도 통과했고 `_workspace/`는 Git에서 제외했다.
+- 게시 검사에서 `engine.js` 끝의 빈 줄만 정리했다. 실행 코드는 동일하지만 파일 해시가 바뀌어 게시 빌드의 화면/호환성은 `c72da755`/`bd6f0b65`다. 실제 공개 두 번 교체 검증은 정리 전 `2ca05cdd`/`c4294810`의 기록으로 유지한다. 새 CI 빌드는 과거 공개 버전 4개와 새 버전을 보존하며, 이 호환성 변경은 열린 구버전 탭에 강제 적용하지 않는다.
+- 사용자가 commit/push/main 병합을 승인했다. 기존 dirty main을 유지하면서 별도 게시 브랜치에서 PB 서비스 분리·화면 교체·실제 검사·인계를 게시한다. 브랜치/worktree 삭제·개발 세션 종료는 하지 않는다. 병합 결과는 게시 후 아래에 기록한다.
+
+### 화면·리소스 교체 완료와 자동 배포 중지 (2026-10-08, Codex)
+
+- 사용자 요청으로 main의 대각선 방향 수정을 포함한 화면 교체 구조를 구현하고 직접 Pages에 게시했다. 사용자 게임 주소는 유지했다. 사용자는 이번 일회 작업의 직접 프런트 수정을 허용했다. Claude 로그인 완료·대기 상태를 확인했고 기존 세션과 main 변경을 보존했다. commit/push는 하지 않았다.
+- `engine.js`/`WorldCanvas.jsx`에 상태·입력·이동 타이머를 남기고 `visual-release.js`로 그리기를 분리했다. `visual-update.js`가 15초마다 같은 origin의 버전 목록을 읽는다. 코드·CSS·이미지 decode·글꼴 load와 복제 상태의 첫 그리기 확인을 마친 뒤 기존 rAF에서 전환한다. 준비 오류는 기존 화면 유지, 전환 후 그리기 오류는 직전 버전 복구다. 상단에 서버 worker와 별도의 화면 버전을 표시한다. 인증·room·seq/fix·내 좌표·점수·입력 대기열은 다시 만들지 않는다.
+- 범위: 월드 렌더러·도트 그림·CSS·글꼴·이미지. React 화면 구성·인증·연결·이동/충돌 규칙 변경은 호환성 값이 달라져 열린 탭에 적용하지 않는다. 기능 도입 전 탭은 최초 한 번 새로고침이 필요하다. 음원은 구현·검사 대상이 아니다. 타인 표시는 현재 `playback.js`의 확인된 걸음 재생을 유지했다. 초기 100ms 보간 구현으로 설명하지 않는다.
+- 빌드/게시: 공개 버전별 파일과 SHA-256 목록을 보존한다. 새 로컬 저장소에서도 공개 이전 버전 4개를 내려받아 해시를 대조한 뒤 `build:remote`에 포함하는 검사를 통과했다(`.test-work/frontend-history-from-public/`). 포인터 no-store, 버전 파일 immutable, 누락 404. Pages 전용 잠금과 빌드 전후 공개 버전 대조를 추가했다. 여러 컴퓨터/CI의 최종 게시 경쟁은 CI 동시 실행 제한이 후속 작업이다.
+- 공개 게시: 초기 `2ca05cdd` → 호환 후보 `ea9d28b8` → 원본 렌더러 복구 `2ca05cdd`. 마지막 Pages 배포 `baa68ba8.pixeltown-4x2.pages.dev`, 호환성 `c4294810`. 후보는 실제 JS 파일 내용이 달라지는 같은 동작의 표현 변경이며 그림 디자인 변경은 하지 않았다. PB·Colyseus·Tunnel 재시작과 게임 worker 제어 없이 Pages만 게시했다. 현재 운영은 미커밋 작업에서 게시됐으므로 다음 승인된 Git 코드 게시에 관련 파일을 함께 포함해야 한다.
+- 실제 로컬 화면 교체 **PASS**: `.test-work/minimal-visual-X9a6dw/report.json`. 기존 18120/12620 서버에 실제 SDK/Chromium 접속, 5270 파일 제공만 검사 내 라우팅했다. 새 renderer·실제 SVG 이미지 픽셀 `[18,52,239,255]`·CSS `rgb(222,240,255)`·글꼴 두 개 적용을 확인했다. 누락 이미지·잘못된 renderer·전환 후 draw 오류·비호환 manifest도 검사했다. draw 오류 복구 1회, 같은 room/session, 1,798개 입력 전부 ack·pending 0·1,752개 snapshot·최대 간격 76.30ms. 끊김/error/장애 덮개/fix 0. 1280/390px 확인. 이는 공개 CDN 파일 교체 검사와 구분한다.
+- 실제 공개 두 번 교체 **PASS**: `.test-work/minimal-visual-public-GpRvI3/report.json`. 운영 주소의 실제 JS/CSS/글꼴과 WebSocket을 사용했다. 같은 room/session에서 5,175개 입력 전부 ack·pending 0, 5,155개 snapshot·최대 간격 515.6ms. 끊김/error/장애 덮개/fix/준비 실패 0, navigation은 최초 1회뿐이었다. 각 전환 시 누른 키와 타인 86명 표시를 유지했다. 이 짧은 브라우저 성공을 85명 전체의 장시간 무장애 기록으로 확대하지 않는다.
+- dot의 걷기 결함: 머지된 `WorldCanvas.jsx`에서 `engine.movedAt = engine.lastTick`이 주석에 포함된 것을 확인해 별도 실행 줄로 복구했다. UI 검사에 캐릭터 canvas의 실제 픽셀 비교를 추가했다. 공개 검사 `.test-work/minimal-walking-public-q2Eonc/report.json` **PASS**: 걷기 그림 0/1/3을 41/15/21프레임에서 확인했고 정지 뒤 서 있는 그림 39프레임만 확인했다. 실제 이동 시각/seq 증가·같은 session·fix 유지·장애 덮개 없음도 대조했다.
+- 회귀: 최소 단위 **21/21**, 오프라인 UI **PASS**(실제 걷기 그림·정지 복귀 추가), 최종 공개 Postman 화면 계약 **5요청·5단언 PASS**. 원격 Postman workspace에 게시하지 않았다. 도식 self-check·문서 링크·모바일 렌더 결과는 아래 최종 검사 기록을 따른다.
+- 자동 배포 중지와 사고: 사용자가 3분 배포만 중지하도록 요청했다. 18:07:38 KST에 기존 검사 PID 23626의 배포 예약만 해제했으나, 이어 임시 inspector를 닫으려던 Codex 처리에서 `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`이 발생해 검사 프로세스가 종료됐다. 합성 사용자 85개가 함께 사라졌으며 이는 게임 worker 교체 실패가 아닌 **검사 제어 실수**다. 사용자에게 원인과 책임을 즉시 알렸다. 원본 worker 복구·서버 재시작은 수행하지 않았고 generation 23을 유지했다.
+- 복구: 같은 계정으로 배포를 끈 새 검사 PID 17065를 시작했다(`.test-work/minimal-live-2IhLNh/`, `MINIMAL_DEPLOYMENT_PAUSED=1`). 18:10:57 KST 표본에서 85개 연결·106,895개 입력·drops/error/fix 0, 자동 배포 0회·다음 예약 null. 공개 health는 사용자 1명 포함 players 86·generation 23·outbox 0/0이었다. 기존 게임/PB/Tunnel PID 78495/78579/965와 로컬 5270/18120/12620을 보존했다. 새 도구는 `PAUSE_DEPLOYMENTS` 파일로 배포만 중지하므로 임시 debugger를 다시 사용하지 않는다. 현재 marker를 제거해 재개하거나 STOP을 만들어 전체 종료하는 것은 사용자 지시에 따른다.
+- 장시간 검사에서 남은 문제: 이전 실행은 22회 worker 교체 후 총 6,255,740개 입력까지 기록했다. 검사 제어 사고 **이전** 18:04:44~18:07:00 KST에 서로 다른 7개 접속에서 code 1006이 발생했고 모두 재입장했다. snapshot 나이 440~640ms, 해당 시점 서비스 PID 유지·outbox 0/0·추가 관련 서버 로그 없음. 한 건은 교체 후 약 2.9초였고 나머지는 교체 사이에도 발생했다. 네트워크·Tunnel·클라이언트/서버 원인을 아직 확정하지 않았으며 최초 기록과 재입장/검사 종료를 합쳐 성공으로 지우지 않는다. `.test-work/minimal-live-Bb63BB/`의 events/진단/최종 실패 상태를 보존한다. **장시간 안정성 원인 분석은 미완료**다.
+- 남은 작업: 승인 후 코드 commit/push와 Git 자동 빌드 반영, 위 1006 원인 분석, 여러 CI 게시 경쟁 제한·CDN/이전 버전 보관/장시간 탭 메모리·실제 모바일/지역 검사. 비호환 DB/상태 이행, PB 실행 파일 업그레이드, 접속 계층 자체 교체와 호스트 재부팅은 별도다. [화면 인계](handoffs/2026-10-08-frontend-live-update.md)와 [실 서비스 정리 목록](handoffs/2026-10-08-minimal-service.md)을 따른다.
+
+### 85명·3분 주기 worker 교체 재개와 끊김 추적 (2026-10-08, Codex)
+
+- 사용자 재개 지시에 따라 공개 미니멀 서버에 시험 계정 85개를 다시 접속시켰다. 새 계정을 발급하지 않고 이전 private 계정을 재사용했다. 17:00:42 KST에 85개 접속을 확인했다. 무작위 이동 80명·별 추적 5명이며 중지 지시까지 180000ms마다 호환 worker만 교체한다. PB·Colyseus 접속 프로세스·Tunnel은 재시작하지 않는다.
+- 실행 소유 PID 23626, 도구 `tests/minimal-live-observe.mjs`, 실시간 자료 `.test-work/minimal-live-Bb63BB/status.json`과 `events.jsonl`이다. 중지는 사용자의 중지 지시를 받은 뒤 해당 폴더에 `STOP` 파일을 만드는 방식이다. 도구는 입력 ack를 최대 5초 확인하고 시험 연결만 종료한다. 마지막으로 자신이 배포한 worker가 활성인 경우 원본으로 복구하며 다른 배포가 활성이라면 보존한다. 정산 원장을 대조하고 결과를 기록한다.
+- 끊김 기록을 보강했다. 연결별 room/session·마지막 snapshot 시각·이동 seq/ack/fix·위치·미확인 입력·배포 단계, raw WebSocket close/error, 서버 health를 기록한다. 재입장은 16초 뒤 별도로 기록하며 최초 끊김을 지우지 않는다. 이동 타이머 지연과 검사 프로세스 RSS도 기록한다. 중지 중에도 ack를 수집하도록 고쳐 이전 중지 보고서의 `pending:189` 계측 문제를 반복하지 않도록 했다.
+- `tests/minimal-live-diagnostics.py`를 최소 app의 `.test-work/live-diagnostics.py`에 준비했다. 30초마다, 배포 전후와 끊김/error 발생 때 내부 health·서비스 PID·새 로그를 수집한다. 게임/PB 로그와 공유 Tunnel의 기반 오류·최소 경로 관련 로그만 읽는다. 계정·토큰을 출력하지 않으며 JWT·인증·암호·이메일·URL 쿼리를 가린 기록을 `diagnostics-*.json`(0600)에 보존한다. 기준 PID는 게임 78495/PB 78579/Tunnel 965다. PID 유지 여부로 프로세스 재시작을 구분하며 로그가 없다는 이유로 원인을 단정하지 않는다.
+- 사전 확인: 공개 Postman 계약 4요청·4단언 통과(health 200, 제어 공개 거절 403). 원격 workspace에 게시하지 않았다. 로비 0명·hotSwap true·outbox 0/0, 원본 Simulation 소스 일치, 세 서비스 정상과 로그 읽기 권한을 확인했다. JS/Python 문법·`git diff --check` 통과. 로컬 5270/18120/12620과 기존 개발 작업·세션을 보존했다. commit/push 없음.
+- 첫 교체 **완료**: 17:03:43 KST, generation 1→2, 준비 45.81ms·권한 전환 0.15ms. 17:03:53 KST 표본에서 85개 연결·332,730 입력·별 획득 48건, 끊김/error/fix/연속성 오류 0이었다. 교체 전후 게임/PB/Tunnel PID는 78495/78579/965로 같았고 새 오류 로그·outbox 대기/실패는 없었다. 다음 교체 예정은 17:06:42 KST다. 앞선 97명 검사에서 기록된 1006/4003의 최초 끊김 원인은 아직 확정하지 않았다. 동일 연결의 SDK 콜백 중복은 끊긴 접속자 수에 중복 합산하지 않는다. 이번 기록은 원인을 구분하기 위한 것이며 짧은 첫 주기를 장시간 안정성 통과로 보고하지 않는다.
+
+### 배포 인계 문서 윤문·상태 갱신 (2026-10-08, Codex)
+
+- HTML 두 문서와 기술 설명·PB 배포·실 서비스 인계 Markdown 세 문서의 표현을 다듬었다. worker는 Colyseus 안의 게임 계산 스레드이며 PB는 별도 프로그램임을 설명했다. Colyseus 접속 서버·게임 worker·PB를 수정할 때의 반영 방법과 연결 유지 범위를 구분했다. [상세 그림](diagrams/worker-hot-swap.html), [도입 전/현재 비교](diagrams/zero-downtime.html), [기술 문서](architecture/zero-downtime.md).
+- 오래된 “운영 미반영”, “PB 분리 대기”를 서비스 분리·공개 PB 배포 검사 완료로 갱신했다. 도입 전 그림과 초기 검증 수치는 과거 기록으로 구분했다. 현재 타인 표시는 `playback.js`의 걸음 재생이며 초기 100ms 보간 검사와 구분했다.
+- 윤문 두 차례에서 59곳을 수정했다. 수치·인용·코드·링크·HTML 태그·CSS·SVG 좌표/연결은 윤문 전후 대조에서 같았다. 글자 기준 변경률은 HTML별 5.19%/9.20%다. 검토 기록과 원문은 `_workspace/2026-10-08-002/`, 최종 수정 목록은 `03_rewrite_diff_v2.json`에 있다. 진행 상태 갱신과 윤문 대조는 구분해 기록했다.
+- 검증: 두 HTML self-check 통과. 허용 Chromium 1193으로 1280/390px 네 렌더를 확인했으며 페이지 넘침·깨진 내부 목차·외부 리소스 요청·브라우저 오류는 0이었다. 변경한 11개 문서의 로컬 파일 링크 96개와 `git diff --check`도 통과했다. 그림 자체는 작은 화면에서 가로 스크롤한다. 렌더와 화면 자료는 위 윤문 폴더의 `browser/`에 있다.
+- 운영 검사가 남긴 임시 hooks는 원본으로 복구했다. 최종 공개 health는 players 0·outbox 0/0·hotSwap true·candidate false·idle이었다. 85명·3분 반복 배포는 재개하지 않았다. 로컬 PB/game/Vite PID 31654/31655/31666, 미커밋 프런트 작업과 개발 세션을 보존했다. 문서 윤문 과정에서는 화면 소스를 수정하지 않았고 commit/push도 하지 않았다.
+- 남은 일: 현재 프런트의 장시간 동기화 재검증, 실 서비스의 DB 이행·PB 버전 업그레이드·새 입장 재시도 안내·기기/지역별 검사. 접속 서버 자체 교체와 호스트 재부팅까지 연결을 유지하는 구조는 별도다. 시험 계정·백업·원문 자료는 정리 지시 전까지 보존한다.
+
+### PB 배포 중 기존 플레이 유지 (2026-10-08, Codex)
+
+- 구현: PB 전용 `scripts/minimal-pocketbase.mjs`와 게임 전용 `scripts/start-minimal-game.mjs`를 분리했다. `dev-minimal.mjs`는 PB 종료 때 PB만 재기동한다. 게임이 입장을 받기 시작했지만 런처 기동 확인은 끝나지 않은 경계에서도 PB 종료가 게임 종료로 이어지지 않도록 수정했다. 전체 런처를 명시 종료할 때는 게임 정산 후 PB 종료 순서를 유지한다.
+- 운영 도구: 신규 설치는 두 launchd label을 만든다. 기존 설치 전환은 `scripts/split-minimal-services.py --apply`이며 건강한 빈 로비·outbox 0/0을 전환 직전에 다시 확인한다. `scripts/deploy-minimal-pb.py`는 DB online 백업·PB 단독 종료·완성된 hooks 배치·PB 단독 시작·게임 PID 대조를 수행한다. 시작 실패는 이전 hooks로 복구한다. DB 자동 덮어쓰기와 기존 서비스 재시작은 하지 않는다.
+- 계약: 기존 WebSocket·room/session·50ms snapshot·이동 seq/fix를 유지한다. PB 중단 중 새 게스트 발급·입장은 실패할 수 있다. 지갑은 마지막 성공값을 미확인으로 표시하고 정산은 디스크 outbox에 보관했다가 복구 후 저장한다. `/health`는 정상 호스트이면 200, `/ready`는 PB 불가 시 503이다. API payload와 프런트 화면 파일은 이번 PB 작업에서 변경하지 않았다. [인계](handoffs/2026-10-08-pb-deployment.md), [ADR-006](decisions/ADR-006.md).
+- 실제 로컬 PB + SDK + Chromium 1193: `.test-work/minimal-pb-restart-sOETqN/report.json` **PASS**. 계획된 hooks 교체·PB 강제 종료·잘못된 hooks 거절/복구의 3회 중단을 각각 13.11/12.12/12.35초 동안 재현했다. 총 753개 SDK 입력·808개 snapshot, 끊김/예상 밖 fix 0. snapshot p95 51.79ms·최대 129.62ms. 브라우저는 동일 room/session으로 ack 751, 장애 덮개/끊김/error/fix 0, snapshot 최대 66.30ms. 마지막 입력 ack 일치도 확인했다. PB 중단 중 별 정산 1건을 outbox에서 확인하고 복구 후 지갑 잔액 1과 매치 ID를 대조했다. PB 중단 중 worker 교체도 통과했다.
+- 로컬 `dev:all`의 PB 단독 재기동·같은 방 유지도 위 검사에서 통과했다. 최초 검사 `.test-work/minimal-pb-restart-Bii1Lb/report.json`은 기동 완료 경계에서 전체 런처가 종료되어 **FAIL**이었다. 해당 경계를 수정한 뒤 위 최종 검사를 재실행했다. 최초 Postman 검사 `minimal-pb-restart-kZkxvs`는 `--output`의 로그인 요구로 시작을 끝내지 못했다. 로그인 요구 옵션을 제거하고 CLI 결과를 로컬 파일로 보존했다. 최종 Postman은 PB 정상/중단/복구 각각 2개 단언, 총 **6/6** 통과했고 원격 workspace에 게시하지 않았다.
+- 실제 macOS launchd 배포 도구: `.test-work/minimal-services-Siw2Vw/report.json` **PASS**. 시험 전용 label·18127/12627·새 DB로 접속자 있는 최초 분리 거절, 빈 로비 최초 분리, 실제 PB hooks 교체, 시작 실패 뒤 이전 hooks 복구를 실행했다. 기존 room/session·게임 PID 유지, 610개 이동 입력·613개 snapshot, 끊김/fix 0, snapshot 최대 68.03ms. 시험 label과 프로세스는 종료했고 자료·DB·백업은 보존했다.
+- 회귀: 최소 단위 **19/19**, 실제 PB/Colyseus 통합 **6/6**(`minimal-integration-advBh0`), worker 배포 통합 **5개 동작 그룹**(`minimal-deployment-BMs76O`) 통과. 수정한 다이어그램 self-check와 1280/390px 렌더에서 넘침·깨진 내부 목차·외부 리소스 요청 0, `git diff --check` 통과.
+- 운영 서비스 분리 **완료**: 최초 읽기 전용 검사는 접속자 1명으로 거절됐다. 이후 사용자가 초기 끊김을 허용해 `--apply --allow-connected`로 전환했으며, 실제 전환 시점에는 접속자 0명·outbox 0/0이었다. 기존 통합 label을 종료하고 `.pocketbase`/`.colyseus` 두 label을 적용했다. 백업은 `.backups/service-split-20261008T071325795235Z`, 코드 백업은 `.backups/service-code-20261008T071324Z`다. 전후 private 보고서 `app/.test-work/service-split-before.json`/`service-split-after.json`에서 사용자/프로필/결과/원장/관리자 106/106/156/156/1개 기존 행 내용이 모두 같았고 `/ready` 200이었다. 기존 8091/2567·다른 서비스·Tunnel은 재시작하지 않았다.
+- 공개 경로 PB 단독 배포 **PASS**: `.test-work/minimal-pb-public-a0dqvT/report.json`. SDK 1개와 Chromium 1193 브라우저 1개가 이동하는 동안 임시 loopback 전용 읽기 hooks를 배포해 revision 2를 확인하고 원래 hooks로 복구했다. 두 번 모두 게임 PID·worker generation 1·같은 room/session을 유지했다. SDK 입력 238개·snapshot 254개, 끊김/fix 0, snapshot 최대 142.44ms. 브라우저 입력 ack 167·snapshot 182개, 최종 pending 0, 장애 안내/끊김/error/fix 0, snapshot 최대 141.40ms. 이 검사는 소수 접속의 짧은 PB 코드 배포 확인이며 100명 장시간 검사·DB 이행·PB 버전 업그레이드 검증이 아니다.
+- 공개 검사 정리: 원래 hooks의 바이트 일치와 outbox 0/0을 확인했고 시험 소켓·브라우저만 종료했다. PB 배포 백업은 `.backups/pb-deploy-20261008T071850534951Z`와 `pb-deploy-20261008T071852848278Z`다. 첫 공개 검사 `minimal-pb-public-u5Lofy`는 인증된 게스트의 자동 입장 뒤 없는 버튼을 기다려 실패했으며 PB 배포는 시작하지 않았다. 자동 입장에 맞춰 검사 도구를 고친 뒤 위 검사를 통과했다. 85명·3분 반복 배포는 재개하지 않는다.
+- 보존: 로컬 5270/18120/12620과 PID 31653 런처·기존 DB·main 미커밋 작업·개발 세션을 유지했다. `main.jsx` 등 Claude의 기존 미커밋 변경은 보존했고 이번 PB 작업으로 수정하지 않았다. commit/push는 하지 않았다.
+
+### 85명 활동·3분 주기 배포 중지 (2026-10-08, Codex)
+
+- 사용자 요청으로 합성 85명(무작위 이동 80명·별 추적 5명)을 접속시키고, 3분마다 호환 게임 worker를 교체했다. Colyseus와 PB 프로세스의 재시작은 하지 않았다. 전체 서버 재배포와 구분한다.
+- 15:31:27 KST에 85명이 모두 접속했고, 15:34:28에 첫 교체를 완료했다(generation 20). 중지 전까지 입력 356,339개·별 획득 58개, 연결 종료/보정/연속성 오류 0을 기록했다. 짧은 실행 결과이며 장시간 안정성을 보장하지 않는다.
+- 사용자 중지 지시를 받고 15:34:51에 STOP을 전달했다. 시험 소유 연결 85개를 종료하고 원본 worker `0f9aad1911f4cb6b070452d7dbfa6756935614f745eca82dc124c3bb8aca0220`을 복원했다(generation 21). 15:34:59에 실행이 종료됐고 PID 3024의 종료를 확인했다. 다음 예약 시각은 더 이상 실행되지 않는다.
+- 종료 후 공개 health: `ok:true`, `players:1`, `candidate:false`, `persistence.pending:0`, `persistence.failed:0`. 실제 접속자 연결은 종료하지 않았다. 시험 사용자 지갑 100개·원장 138건·결과 138건 대조를 완료했다. 계정·원장·DB와 실행 자료는 보존했다.
+- 근거: `.test-work/minimal-live-KytYyv/status.json`, `events.jsonl`, `STOP`. 종료 시 수집기의 ack 추적이 먼저 멈춰 `pending:189`가 남았다. 이 값으로 실제 입력 유실 여부를 판정하지 않으며, 이번 실행에서 최종 미확인 입력 0을 검증했다고 보고하지 않는다.
+- 이후 지시 전에는 합성 접속·반복 배포를 재개하지 않는다. 로컬 5270/18120/12620, 운영 게임 서비스, main 미커밋 작업과 개발 세션을 유지하고 대기한다. 이번 중지 처리에서는 commit/push를 하지 않았다.
 
 ### 미니멀 구조 도입·운영 검증 (2026-10-08)
 

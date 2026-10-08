@@ -4,6 +4,7 @@ import { Client } from '@colyseus/sdk';
 import { authenticate, GAME_URL, pb, request, savedGuest } from './api.js';
 import { cleanLedger, failureMessage, isDuplicateGuest, pendingTotal, readStored, reconcileLedger, rememberScore, retryDelay, WalletState, writeStored } from './state.js';
 import WorldCanvas, { applySnapshot, createEngine, stopMovement } from './WorldCanvas.jsx';
+import VisualStatus from './VisualStatus.jsx';
 import './style.css';
 
 function App() {
@@ -228,6 +229,7 @@ function App() {
         <a className="brand" href="./" aria-label="픽셀타운 처음 화면"><Icon map={STAR}/> 픽셀타운</a>
         <span className="place">작은 광장</span>
         {user && ready && release && <Release release={release}/>}
+        <VisualStatus/>
         {user && <span className={`presence ${ready ? 'online' : ''}`}><i aria-hidden="true"/>{ready ? `함께 있는 이웃 ${crowd}명` : busy ? '입장 준비 중' : otherTab ? '다른 탭에서 입장 중' : '연결 확인 필요'}</span>}
       </header>
       <section className="stage" aria-label="광장">

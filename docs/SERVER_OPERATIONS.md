@@ -251,7 +251,8 @@ PocketBase는 `pb_hooks` 파일이 바뀌면 스스로 재시작하며, 그동�
 | 최소 PB | `https://pixeltown-minimal-pb.fastmake.net` → Mac mini loopback 18820 |
 | 최소 game | `wss://pixeltown-minimal-rt.fastmake.net` → loopback 13620 |
 | 코드 | `~/Servers/pixeltown-minimal/app` |
-| 실행 서비스 | `com.fastmake.pixeltown.minimal`, `scripts/dev-minimal.mjs`, backend only |
+| PB 실행 서비스 | `com.fastmake.pixeltown.minimal.pocketbase`, `scripts/minimal-pocketbase.mjs` |
+| 게임 실행 서비스 | `com.fastmake.pixeltown.minimal.colyseus`, `scripts/start-minimal-game.mjs` |
 | 환경 | `~/Servers/pixeltown-minimal/.env`, 0600 |
 | 상태 | app의 `.local/minimal/`: PB DB·관리자·outbox·버전별 worker·제어 토큰 |
 | 게시 빌드 | `npm run build:remote` → 최소 프런트 `dist/`; `.env.minimal-remote`는 공개 주소만 포함 |
@@ -267,4 +268,16 @@ PocketBase는 `pb_hooks` 파일이 바뀌면 스스로 재시작하며, 그동�
 
 기존 `scripts/deploy-macmini.sh`는 기존 게임용이며 이 최소 worker 배포에 사용하지 않는다. 호스트 코드·PB 훅·맵·입력 규칙 변경은 위 worker 교체의 무중단 대상이 아니다. 최초 서버 설정 조정은 새 최소 서버에 일반 접속자가 없는 시점에만 했다. 기존 8091/2567·다른 게임·Tunnel 연결은 재시작하지 않았다.
 
+2026-10-08에 통합 최소 서비스를 위 두 서비스로 전환했다. 전환 시 접속자는 0명, outbox는 0/0이었다. 이전 plist·DB·환경 백업은 `~/Servers/pixeltown-minimal/.backups/service-split-20261008T071325795235Z`에 있다. 전환 전 계정·프로필·결과·원장·관리자 행 내용이 그대로임을 대조했다.
+
+PB hooks 배포는 최소 app에서 `python3 scripts/deploy-minimal-pb.py --hooks-source /완성된/최소/hooks`로 실행한다. PB만 재시작하며 게임 PID를 대조한다. 시작 실패 시 이전 hooks로 복구하지만 DB를 자동 복원하지 않는다. [PB 계약·운영 절차](handoffs/2026-10-08-pb-deployment.md)를 따른다.
+
 공개 터널 경로는 기존 다섯 개를 유지하고 최소 PB/game 두 개만 추가했다. 공개 health는 제공하지만 worker 제어와 PB 초기화 확인은 forwarding header가 있으면 403이다. 게스트 발급은 방문자 IP당 시간당 20회다. 부하 검사 계정은 내부 관리 경로에서 준비한다.
+
+## 미니멀 프런트만 게시하기 (2026-10-08)
+
+화면·리소스는 Cloudflare Pages에서 제공한다. 승인된 게시 작업에서 루트의 `npm run deploy:minimal:frontend`를 사용한다. 새 버전을 빌드하며 공개 이전 release 파일을 내려받아 해시를 검사해 함께 보존한다. Pages만 변경하고 PB·Colyseus·Tunnel·서버 worker는 재시작하거나 교체하지 않는다.
+
+열린 브라우저는 호환되는 월드 렌더러·CSS·이미지·글꼴을 준비한 뒤 전환한다. 최초 도입 전에 열린 탭은 한 번 새로고침해야 한다. [계약과 제한](handoffs/2026-10-08-frontend-live-update.md)을 따른다. 이번 운영 결과물은 미커밋 작업의 직접 게시이므로 승인된 다음 코드 게시에 해당 소스·빌드 스크립트를 포함해야 Git 자동 배포에서도 유지된다.
+
+2026-10-08 18:15:25 KST, 사용자 요청으로 운영 최소 게임 label만 bootout했다. 포트 13620은 응답하지 않으며 PB 18820·Tunnel·기존 게임·로컬 개발 서버는 유지한다. plist와 DB·outbox는 보존했다. 자동 health 워크플로의 최소 game/ready 실패는 이 요청된 종료와 구분한다. 재기동 승인 후 `launchctl bootstrap gui/501 ~/Library/LaunchAgents/com.fastmake.pixeltown.minimal.colyseus.plist`로 시작하고 내부 ready·공개 health와 outbox를 확인한다. 합성 85명과 자동 worker 배포는 다시 시작하지 않는다.

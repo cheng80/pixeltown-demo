@@ -9,7 +9,7 @@ import { stepToward } from '../minimal/shared/world.js';
 const root=process.cwd(), fixture=mkdtempSync(resolve(root,'.test-work/minimal-deployment-'));
 for(const path of ['colyseus/minimal','minimal/shared','pocketbase/minimal','scripts'])mkdirSync(resolve(fixture,path),{recursive:true});
 for(const path of ['colyseus/minimal','minimal/shared','pocketbase/minimal'])cpSync(resolve(root,path),resolve(fixture,path),{recursive:true});
-for(const file of ['dev-minimal.mjs','minimal-pocketbase.mjs','minimal-release.mjs','deploy-minimal-worker.mjs'])cpSync(resolve(root,'scripts',file),resolve(fixture,'scripts',file));
+for(const file of ['dev-minimal.mjs','minimal-process.mjs','start-minimal-game.mjs','minimal-pocketbase.mjs','minimal-release.mjs','deploy-minimal-worker.mjs'])cpSync(resolve(root,'scripts',file),resolve(fixture,'scripts',file));
 writeFileSync(resolve(fixture,'package.json'),'{"type":"module"}');
 symlinkSync(resolve(root,'node_modules'),resolve(fixture,'node_modules'),'dir');
 symlinkSync(resolve(root,'colyseus/node_modules'),resolve(fixture,'colyseus/node_modules'),'dir');

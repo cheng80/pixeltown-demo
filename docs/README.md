@@ -22,6 +22,7 @@
 | 최소 게임 / 활동 중 배포 / 접속 불가 안내 구현 계획 | [plans/PLAN-007.md](plans/PLAN-007.md) — 최소 게임·worker 교체 로컬 구현/검증 |
 | 게임 로직 무중단 배포 인계 | [architecture/zero-downtime.md](architecture/zero-downtime.md) — 동작 설명·용어·구현·배포 절차 |
 | 무중단 배포 구조와 교체 순서 | [diagrams/worker-hot-swap.html](diagrams/worker-hot-swap.html) — 브라우저에서 보는 HTML/SVG 그림 |
+| 새로고침 없이 화면 코드·리소스 반영 | [diagrams/frontend-live-update.html](diagrams/frontend-live-update.html), [계약·배포·한계](handoffs/2026-10-08-frontend-live-update.md) |
 | 도입 전 / 현재 배포 구조 비교 | [diagrams/zero-downtime.html](diagrams/zero-downtime.html) |
 | 최소 게임 실행·API / 기존 게임 보존 | [minimal/README.md](../minimal/README.md), [legacy/README.md](../legacy/README.md) |
 | 여러 계층에 걸친 구현과 확인 계획 | [plans/PLAN-004.md](plans/PLAN-004.md) Mac mini 서버 이전·Colyseus 0.18, [plans/PLAN-003.md](plans/PLAN-003.md) 별 상점·상시 이벤트, [plans/PLAN-002.md](plans/PLAN-002.md) 재제작 (이전: [PLAN-001](plans/PLAN-001.md)) |
@@ -42,4 +43,5 @@
 충돌을 판단할 때 현재 실행 코드·테스트, 결정 문서·기술 계약, 제품 명세, 현황·계획, 과거 기록 순으로 근거를 확인하되 사용자 요구를 임의로 축소하지 않는다. 코드가 요구를 충족하지 못하면 `DOC-CODE-MISMATCH`로 남겨 구현 담당에게 전달한다.
 
 - [미니멀 픽셀타운 → 실 서비스 인계·정리 조건](handoffs/2026-10-08-minimal-service.md)
+- [PB 단독 배포: 기존 플레이 유지·실행·복구](handoffs/2026-10-08-pb-deployment.md)
 - [상단 배포 상태 표시 계약](handoffs/2026-10-08-deployment-indicator.md)
