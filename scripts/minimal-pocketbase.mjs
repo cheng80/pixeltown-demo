@@ -226,8 +226,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const stop = () => { void stopChild(child).catch(() => { process.exitCode = 1; }); };
     process.on('SIGINT', stop);
     process.on('SIGTERM', stop);
-    child.once('exit', code => { if (code) process.exitCode = 1; });
-    console.log(`Minimal PocketBase ready at ${PB_URL} (localhost development only)`);
+    let stopping = false;
+    process.on('SIGINT', () => { stopping = true; });
+    process.on('SIGTERM', () => { stopping = true; });
+    child.once('exit', code => { if (!stopping) process.exitCode = code || 1; });
+    console.log(`Minimal PocketBase ready at ${PB_URL} (isolated loopback service)`);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

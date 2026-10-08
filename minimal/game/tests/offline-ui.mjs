@@ -30,6 +30,8 @@ const bundle = await build({ entryPoints: [path.join(root, 'src/main.jsx')], bun
   plugins: [{ name: 'offline-room', setup(builder) { builder.onResolve({ filter: /^@colyseus\/sdk$/ }, () => ({ path: 'room', namespace: 'mock' })); builder.onLoad({ filter: /.*/, namespace: 'mock' }, () => ({ contents: sdkMock, loader: 'js' })); } }],
 });
 const assets = Object.fromEntries(bundle.outputFiles.map(file => [path.basename(file.path), file.contents]));
+const walkingProbe = await build({ entryPoints: [path.join(root, 'tests/walking-probe.js')], bundle: true, write: false, format: 'esm' });
+assets['walking-probe.js'] = walkingProbe.outputFiles[0].contents;
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' });
 try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, serviceWorkers: 'block' });
@@ -75,12 +77,20 @@ try {
   assert.ok(midX > 130 && midX < 160, `burst replays gradually (x=${midX})`);
   await page.clock.runFor(1000);
   assert.equal(await page.evaluate(()=>window.__qaEngine.others.get('neighbor').x), 170, 'playback reaches the latest accepted step');
+  await page.evaluate(async()=>{const {observeWalking}=await import('/walking-probe.js');window.__walkingProbe=observeWalking(window.__qaEngine);});
+  const movedBefore = await page.evaluate(()=>window.__qaEngine.movedAt);
   // Diagonal walking keeps one facing (legacy ec5da17): own avatar and others both show the side view without flipping.
   await page.keyboard.down('d'); await page.keyboard.down('w');
   const facings = [];
   for (let i = 0; i < 16; i++) { await page.clock.runFor(50); facings.push(await page.evaluate(()=>window.__qaEngine.facing)); }
   await page.keyboard.up('d'); await page.keyboard.up('w');
   assert.deepEqual([...new Set(facings.slice(1))], [2], `own diagonal facing is steady (${facings})`);
+  const walkingFrames = await page.evaluate(()=>window.__walkingProbe.read());
+  assert.deepEqual(Object.keys(walkingFrames).sort(), ['0','1','3'], `drawn arms and legs must cycle (${JSON.stringify(walkingFrames)})`);
+  assert.ok(await page.evaluate(()=>window.__qaEngine.movedAt)>movedBefore,'movement timestamp advances while walking');
+  await page.clock.runFor(200); await page.evaluate(()=>window.__walkingProbe.clear()); await page.clock.runFor(650);
+  assert.deepEqual(Object.keys(await page.evaluate(()=>window.__walkingProbe.read())), ['0'], 'released keys return the drawn avatar to standing');
+  await page.evaluate(()=>window.__walkingProbe.dispose());
   await page.evaluate(()=>{const n=window.__mock.snapshot.players[1]; Object.assign(n,{x:n.x+20,y:n.y-20,ack:17}); window.__mock.emit('snapshot',window.__mock.snapshot);});
   const others = [];
   for (let i = 0; i < 12; i++) { await page.clock.runFor(40); others.push(await page.evaluate(()=>window.__qaEngine.others.get('neighbor').dir)); }

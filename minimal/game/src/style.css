@@ -167,3 +167,5 @@ kbd { padding: 1px 5px; border: 2px solid var(--line); border-bottom-width: 3px;
   .fine-print { margin-top: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
+.visual-version { font-size: 10px; line-height: 1.5; pointer-events: none; }
+@media (max-width: 760px) { .visual-version { flex-basis: 100%; order: 4; } }

@@ -1,0 +1,26 @@
+{
+  "info": {
+    "name": "Minimal PB lifecycle contract",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "game_url", "value": "http://127.0.0.1:12625" },
+    { "key": "expected_ready", "value": "200" }
+  ],
+  "item": [
+    {
+      "name": "Game stays live",
+      "request": { "method": "GET", "url": "{{game_url}}/health" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Game remains live', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().ok).to.eql(true); });"
+      ] } }]
+    },
+    {
+      "name": "Admission readiness",
+      "request": { "method": "GET", "url": "{{game_url}}/ready" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Admission readiness reflects PB availability', () => pm.response.to.have.status(Number(pm.variables.get('expected_ready'))));"
+      ] } }]
+    }
+  ]
+}

@@ -1,45 +1,45 @@
 import { spawn } from 'node:child_process';
-import { createServer } from 'node:net';
 import { ROOT, PB_PORT, PB_URL, GAME_PORT, WEB_PORT, STATE_DIR } from '../colyseus/minimal/config.js';
-import { startMinimalPocketBase } from './minimal-pocketbase.mjs';
-import { prepareRelease, selectRelease, managedEntry, deploymentToken } from './minimal-release.mjs';
+import { assertFree, waitReady, stopChild } from './minimal-process.mjs';
 
-const children = []; let stopping = false;
+const services = []; let stopping = false, starting = true;
 async function stop(code = 0) {
   if (stopping) return; stopping = true;
   // Colyseus gets a chance to commit before the database is stopped.
-  for (const child of [...children].reverse()) {
-    if (child.exitCode !== null || child.signalCode) continue;
-    await new Promise(resolve => { child.once('exit', resolve); child.kill('SIGTERM'); });
-  }
+  for (const service of services) clearTimeout(service.retry);
+  for (const service of [...services].reverse()) await stopChild(service.child);
   process.exit(code);
 }
 process.on('SIGINT', () => void stop()); process.on('SIGTERM', () => void stop());
-const own = child => {
-  children.push(child); child.once('error', error => { console.error(error.message); void stop(1); });
-  child.once('exit', code => { if (!stopping) void stop(code || 1); }); return child;
-};
-async function assertFree(port) {
-  await new Promise((resolve, reject) => {
-    const probe = createServer(); probe.once('error', () => reject(new Error(`포트 ${port}가 사용 중입니다. 기존 서버는 그대로 둡니다.`)));
-    probe.listen(port, '127.0.0.1', () => probe.close(resolve));
-  });
+const env = { ...process.env, MINIMAL_STATE_DIR: STATE_DIR, VITE_MINIMAL_PB_URL: PB_URL, VITE_MINIMAL_GAME_URL: `ws://127.0.0.1:${GAME_PORT}` };
+function launch(service) {
+  service.startedAt = Date.now();
+  const child = spawn(process.execPath, service.args, { cwd: ROOT, env, stdio: 'inherit' });
+  service.child = child;
+  let handled = false;
+  const exited = () => {
+    if (handled || stopping) return; handled = true;
+    // Once the host starts it can already accept a player, even before this
+    // launcher prints ready. PB failing in that window must not kill the host.
+    if (starting && !services.some(s => s.name === 'game')) return void stop(1);
+    // Restart only the failed component. In particular PB must not stop the game.
+    service.backoff = Date.now() - service.startedAt > 30000 ? 1000 : Math.min(30000, (service.backoff || 500) * 2);
+    console.error(`Minimal ${service.name} stopped; restarting only this component in ${service.backoff}ms`);
+    service.retry = setTimeout(() => launch(service), service.backoff);
+  };
+  child.once('error', exited); child.once('exit', exited);
+  return child;
 }
-async function ready(url, child) {
-  for (let n = 0; n < 100; n++) {
-    if (child.exitCode !== null) throw new Error('Minimal server exited before ready');
-    try { if ((await fetch(url, { signal: AbortSignal.timeout(500) })).ok) return; } catch {}
-    await new Promise(r => setTimeout(r, 100));
-  }
-  throw new Error('Minimal server readiness timed out');
+function service(name, args) {
+  const value = { name, args }; services.push(value); return launch(value);
 }
 try {
-  for (const port of [PB_PORT, GAME_PORT, WEB_PORT]) await assertFree(port);
-  const release = prepareRelease(); selectRelease(release.directory);
-  const { child } = await startMinimalPocketBase(); own(child);
-  const env = { ...process.env, MINIMAL_STATE_DIR: STATE_DIR, MINIMAL_WORKER_ENTRY: managedEntry, MINIMAL_SWAP_TOKEN: deploymentToken(), VITE_MINIMAL_PB_URL: PB_URL, VITE_MINIMAL_GAME_URL: `ws://127.0.0.1:${GAME_PORT}` };
-  const game = own(spawn(process.execPath, ['colyseus/minimal/server.js'], { cwd: ROOT, env, stdio: 'inherit' }));
-  await ready(`http://127.0.0.1:${GAME_PORT}/ready`, game);
-  if (process.env.MINIMAL_BACKEND_ONLY !== '1') own(spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--config', 'vite.minimal.config.js'], { cwd: ROOT, env, stdio: 'inherit' }));
+  for (const port of [PB_PORT, GAME_PORT, ...(process.env.MINIMAL_BACKEND_ONLY === '1' ? [] : [WEB_PORT])]) await assertFree(port);
+  const pb = service('PB', ['scripts/minimal-pocketbase.mjs']);
+  await waitReady(`${PB_URL}/api/health`, pb);
+  const game = service('game', ['scripts/start-minimal-game.mjs']);
+  await waitReady(`http://127.0.0.1:${GAME_PORT}/ready`, game);
+  if (process.env.MINIMAL_BACKEND_ONLY !== '1') service('web', ['node_modules/vite/bin/vite.js', '--config', 'vite.minimal.config.js']);
+  starting = false;
   console.log(process.env.MINIMAL_BACKEND_ONLY === '1' ? `Minimal backend ready on loopback ports ${PB_PORT}/${GAME_PORT}` : `최소 게임: http://127.0.0.1:${WEB_PORT} — 기존 게임과 데이터가 분리되어 있습니다.`);
 } catch (error) { console.error(error.message); await stop(1); }

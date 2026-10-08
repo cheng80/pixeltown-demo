@@ -13,3 +13,6 @@ minimal/game/.qa/
 
 # 원본 조사 자료, 과거 테스트 DB·환경 파일, 로컬 작업 기록
 /docs/references/local/
+
+# 문서 윤문 원문·검토와 로컬 화면 기록
+_workspace/

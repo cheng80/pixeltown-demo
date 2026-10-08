@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PixelTown · 플레이 중 화면과 리소스 교체</title>
+<style>
+:root{color:#2d3142;background:#f5f5f5;font-family:'Geist','Apple SD Gothic Neo','Malgun Gothic',sans-serif;line-height:1.75}*{box-sizing:border-box}body{margin:0}main{max-width:1100px;padding:48px 32px;margin:auto}h1{font-family:'Instrument Serif','AppleMyungjo',serif;font-size:36px;line-height:1.35;font-weight:400;margin:8px 0 20px}h2{font-size:24px;margin:40px 0 12px}p{max-width:840px;margin:12px 0}.eyebrow,code{font-family:'Geist Mono',monospace}.eyebrow{color:#4f5d75;font-size:12px}a{color:#2e5aa8}svg{width:100%;height:auto;display:block}svg text{fill:#2d3142;font-family:'Geist','Apple SD Gothic Neo','Malgun Gothic',sans-serif}svg .sub{font-family:'Geist Mono',monospace;fill:#4f5d75}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;border-bottom:1px solid #d9dadd;padding:12px;vertical-align:top}.notice{border-left:4px solid #eb6c36;padding:8px 20px;background:#fff}footer{margin-top:48px;border-top:1px solid #d9dadd;padding-top:16px;color:#4f5d75;font-size:12px}@media(max-width:600px){main{padding:28px 16px}h1{font-size:28px}table{font-size:12px}th,td{padding:8px}svg{min-width:720px}.figure{overflow:auto}}
+</style>
+<main>
+<p class="eyebrow">PIXELTOWN / 인계 문서 / 2026-10-08</p>
+<h1>플레이를 계속하면서<br>화면 코드와 리소스를 바꾸는 방법</h1>
+<p>접속과 이동을 처리하는 코드는 계속 실행합니다. 새 그림·스타일·그리기 코드를 뒤에서 준비하고, 준비가 끝나면 다음 화면 프레임부터 사용합니다. 준비에 실패하면 기존 화면으로 계속 플레이합니다.</p>
+<div class="figure">
+<svg viewBox="0 0 960 472" role="img" aria-labelledby="frontend-live-title frontend-live-desc">
+<title id="frontend-live-title">브라우저 연결과 게임 상태를 유지하는 화면 교체 구조</title>
+<desc id="frontend-live-desc">브라우저의 접속과 입력 처리는 게임 서버와 계속 통신하며, Pages에서 받은 새 화면 버전은 준비를 마친 뒤 기존 렌더러를 교체합니다.</desc>
+<defs><marker id="frontend-arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#4f5d75"/></marker><marker id="frontend-accent" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#eb6c36"/></marker></defs>
+<rect width="960" height="472" fill="#f5f5f5"/>
+<rect x="24" y="208" width="912" height="200" rx="8" fill="rgba(45,49,66,.02)" stroke="#c4c7ce" stroke-dasharray="4 4"/>
+<text x="48" y="232" font-size="16">사용자 브라우저 · 주소는 그대로</text>
+<path d="M168 248 V144" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#frontend-arrow)"/>
+<rect x="184" y="172" width="140" height="24" fill="#f5f5f5"/><text x="192" y="188" font-size="12">연결·입력 계속 처리</text>
+<path d="M488 144 V248" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#frontend-arrow)"/>
+<rect x="504" y="172" width="160" height="24" fill="#f5f5f5"/><text x="512" y="188" font-size="12">15초마다 새 버전 확인</text>
+<path d="M608 296 H688" fill="none" stroke="#eb6c36" stroke-width="1.2" marker-end="url(#frontend-accent)"/>
+<rect x="624" y="272" width="48" height="16" fill="#f5f5f5"/><text x="648" y="284" text-anchor="middle" font-size="12">교체</text>
+<path d="M168 344 V380 Q168 388 176 388 H792 Q800 388 800 380 V344" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#frontend-arrow)"/>
+<rect x="384" y="364" width="224" height="16" fill="#f5f5f5"/><text x="496" y="376" text-anchor="middle" font-size="12">같은 게임 상태로 화면을 계속 그림</text>
+<rect x="48" y="48" width="240" height="96" rx="8" fill="#fff" stroke="#2d3142"/><text x="168" y="88" text-anchor="middle" font-size="20">게임 서버</text><text class="sub" x="168" y="116" text-anchor="middle" font-size="12">Colyseus + game worker</text>
+<rect x="368" y="48" width="240" height="96" rx="8" fill="#fff" stroke="#2d3142"/><text x="488" y="88" text-anchor="middle" font-size="20">화면 배포 파일</text><text class="sub" x="488" y="116" text-anchor="middle" font-size="12">Cloudflare Pages</text>
+<rect x="48" y="248" width="240" height="96" rx="8" fill="#fff" stroke="#2d3142"/><text x="168" y="280" text-anchor="middle" font-size="20">계속 실행하는 부분</text><text x="168" y="308" text-anchor="middle" font-size="16">접속 · 이동 · 입력 · 점수</text><text class="sub" x="168" y="332" text-anchor="middle" font-size="12">room / engine / seq / fix</text>
+<rect x="368" y="248" width="240" height="96" rx="8" fill="#fff" stroke="#2d3142"/><text x="488" y="280" text-anchor="middle" font-size="20">새 버전 준비</text><text x="488" y="308" text-anchor="middle" font-size="16">코드 · 이미지 · 글꼴 · CSS</text><text class="sub" x="488" y="332" text-anchor="middle" font-size="12">load / decode / preview</text>
+<rect x="688" y="248" width="224" height="96" rx="8" fill="#fff0e8" stroke="#eb6c36"/><text x="800" y="280" text-anchor="middle" font-size="20">교체하는 부분</text><text x="800" y="308" text-anchor="middle" font-size="16">월드를 그리는 코드</text><text class="sub" x="800" y="332" text-anchor="middle" font-size="12">createRenderer / draw</text>
+<line x1="24" y1="432" x2="936" y2="432" stroke="#d9dadd"/><text x="48" y="456" font-size="12">흰 상자: 계속 실행하거나 준비하는 부분</text><text x="488" y="456" font-size="12">주황 상자: 준비 후 교체하는 렌더러</text>
+</svg>
+</div>
+<h2>worker와 화면 배포는 다른 일입니다</h2>
+<table><thead><tr><th>구성 요소</th><th>맡은 일</th><th>이번 교체와의 관계</th></tr></thead><tbody>
+<tr><td>Colyseus</td><td>사용자의 WebSocket 접속과 방을 관리합니다.</td><td>계속 실행합니다. 다시 시작하면 접속이 끊깁니다.</td></tr>
+<tr><td>게임 worker</td><td>서버에서 이동·별 획득·정산을 판정하는 실행 단위입니다. Colyseus 프로세스 안의 별도 스레드입니다.</td><td>서버 반복 배포 시험의 교체 대상입니다. 자동 배포는 현재 중지했습니다. 브라우저 화면 코드를 바꾸지는 않습니다.</td></tr>
+<tr><td>PocketBase(PB)</td><td>게스트 인증과 저장된 별·정산 원장을 담당합니다.</td><td>화면 배포 때 수정하거나 재시작하지 않습니다.</td></tr>
+<tr><td>브라우저 렌더러</td><td>위치와 점수 같은 게임 상태를 받아 그림으로 보여 줍니다.</td><td>이번에 새로고침 없이 교체하도록 분리한 부분입니다.</td></tr>
+</tbody></table>
+<h2>어디까지 바꿀 수 있나요?</h2>
+<p>캐릭터 방향·애니메이션·도트 그림·스타일과 글꼴·이미지가 대상입니다. 이미지와 글꼴은 사용할 준비가 끝난 뒤 전환합니다. 맵의 충돌 영역, 이동 규칙, 인증·접속 처리, React 화면 구성까지 바뀌면 같은 방식으로 교체하지 않습니다. 열린 탭은 기존 버전을 유지하고 다음 입장 때 새 코드를 받습니다. 현재 미니멀 게임에는 음원이 없으며 음원 교체는 이번 검사 범위에 포함하지 않았습니다.</p>
+<p class="notice">이 기능을 받기 전에 열린 탭은 처음 한 번 새로고침해야 합니다. 이후 호환되는 화면 버전은 자동으로 받습니다. 서버 worker 교체는 프런트 새로고침과 관계없이 연결을 유지합니다.</p>
+<h2>업데이트에 실패하면?</h2>
+<p>새 파일을 받지 못하거나 첫 그리기가 실패하면 기존 화면을 유지합니다. 적용 후 그리기 오류가 나면 직전 렌더러로 돌아갑니다. 접속과 입력 처리는 계속 실행합니다. 상단의 “화면” 표시는 현재 화면 버전이며, 기존 worker 버전·회차 표시와 구분합니다.</p>
+<h2>다음 담당자가 확인할 곳</h2>
+<p><a href="../handoffs/2026-10-08-frontend-live-update.md">파일 계약·빌드·공개 절차</a> · <a href="../03_PROJECT_STATUS.md">실제 검증 결과와 남은 작업</a> · <a href="worker-hot-swap.html">서버 worker 교체 도식</a></p>
+<h2>확인한 결과와 남은 일</h2>
+<p>운영 주소에서 화면 버전을 두 번 바꾸는 동안 같은 연결을 유지했고 이동 입력 5,175개의 서버 확인을 받았습니다. 새로고침이나 접속 장애 안내는 없었습니다. 걷기 그림이 멈춰 있던 오류도 고쳐 팔·다리 그림이 바뀌는 것을 확인했습니다. 상세 수치는 아래 진행 문서를 따릅니다.</p>
+<p>사용자 요청으로 자동 배포와 합성 사용자 85명의 접속을 종료했고, 운영 미니멀 게임 서버도 종료했습니다. PB와 Tunnel은 유지합니다. 앞선 장시간 검사에서 개별 연결 끊김 7건이 남아 있어 원인 확인이 필요합니다. Git 코드 게시, 여러 CI의 동시 게시 제어, 오래된 리소스의 보관·삭제 기준도 후속 작업입니다.</p>
+<footer>미니멀 PixelTown의 인계 자료입니다. 새 버전 준비·전환을 구현했으며 검증 수치와 운영 반영 여부는 PROJECT_STATUS 7절을 따릅니다. 기본 도식 색상과 로컬 글꼴 대체를 사용하며 외부 파일을 요청하지 않습니다.</footer>
+</main></html>

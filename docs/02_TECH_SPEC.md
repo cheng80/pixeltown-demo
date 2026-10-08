@@ -30,11 +30,19 @@
 
 활성 worker 오류/1.5초 무응답은 최신 **확정** 상태와 처리 중 이벤트를 마지막으로 검증된 활성 artifact의 실제 경로로 재생한다. 다음 후보를 가리키는 managed link를 복구 파일로 사용하지 않는다. 연속 복구 실패 시 health/ready 503으로 실제 장애를 표시한다. 이는 접속 프로세스·호스트·메모리 손실 복구 보장이 아니다. `GET /health`는 `hotSwap:true`와 worker의 generation/sequence/revision/교체 통계를 제공한다. health 200은 전체 정산 성공을 뜻하지 않으며 `persistence.pending/failed`도 확인한다.
 
-`POST /internal/worker/swap`: loopback 전용 서버, Origin 및 CF-Connecting-IP/X-Forwarded-For/Forwarded 요청 거절, 별도 32자 이상 `MINIMAL_SWAP_TOKEN` Bearer 인증, 요청 경로 입력 없음. 시작 시 고정한 `MINIMAL_WORKER_ENTRY`를 새 worker에서 읽는다. 준비·전환 성공은 200(revision/generation/sequence/replayed/시간), 후보 실패·동시 교체·로비 없음은 409, 인증 거절은 403. 클라이언트에는 배포 메시지를 추가하지 않는다. 기존 50ms snapshot·100ms 타인 보간·seq/fix·장애 콜백·재시도 0 설정을 유지한다.
+`POST /internal/worker/swap`: loopback 전용 서버, Origin 및 CF-Connecting-IP/X-Forwarded-For/Forwarded 요청 거절, 별도 32자 이상 `MINIMAL_SWAP_TOKEN` Bearer 인증, 요청 경로 입력 없음. 시작 시 고정한 `MINIMAL_WORKER_ENTRY`를 새 worker에서 읽는다. 준비·전환 성공은 200(revision/generation/sequence/replayed/시간), 후보 실패·동시 교체·로비 없음은 409, 인증 거절은 403. 배포 상태는 아래 별도 표시 계약으로 제공한다. 50ms snapshot·seq/fix·장애 콜백·재시도 0 설정을 유지한다. 현재 프런트는 `6e7134b`부터 타인의 확인된 걸음을 `playback.js`로 재생하며, 초기 100ms 보간 검사와 구분한다.
 
 `deployment` 메시지와 `snapshot.deployment`는 `{phase,eventSeq,updatedAt,revision,generation}`을 제공한다. phase는 idle/preparing/catching-up/applied/cancelled이고 방 안에서 eventSeq가 증가한다. 상태 표시만을 위한 정보이며 이동 seq/fix·상태 hash·게임 입력과 독립이다. 준비/추격 동안 revision은 활성 버전이며 승격 뒤 새 버전을 노출한다. [상단 표시 계약](handoffs/2026-10-08-deployment-indicator.md)을 따른다.
 
 [무중단 배포 인계](architecture/zero-downtime.md), [구조와 교체 순서](diagrams/worker-hot-swap.html), [Claude 전달 계약](handoffs/2026-10-08-worker-contract.md), [배포 도식](diagrams/zero-downtime.html), [실행 절차](../minimal/README.md)를 참조한다. 같은 상태/이동 규칙/wire protocol을 유지하는 게임 로직 교체만 대상이며, 맵·속도·브라우저 입력 계약 변경은 버전을 올리고 별도 이행해야 한다. 최초 접속 계층 도입·접속 프로세스 재시작은 별도 전환이다. 초기 검증은 별도 12622에서 진행했다. 이전 로컬 프로세스가 사라진 뒤 기존 DB의 행 내용 일치를 확인하고 12620에 새 구조를 시작했다. 기존 운영 서버는 유지하고 최소 서버는 13620/PB 18820에 따로 도입했다. 현재 실행 상태와 검증 결과는 PROJECT_STATUS를 따른다.
+
+### 미니멀 화면·리소스 교체 계약 (2026-10-08)
+
+`GET /visual/current.json`(인증 없음, no-store)은 `{schema:1,revision,compatibility,entry,styles,fonts,images,files}`를 제공한다. SHA-256 버전 경로는 같은 origin의 `/visual/releases/<revision>/` 아래이며 내용을 덮어쓰지 않는다. `/visual/releases.json`과 각 manifest의 파일 해시 목록으로 다음 빌드에도 과거 버전을 보존한다. 버전 파일은 immutable, 누락 파일은 404다.
+
+브라우저는 15초마다 확인하고 같은 compatibility일 때만 renderer·CSS·글꼴·이미지를 준비한다. `createRenderer({canvas,engine,view,fontFamily,resources})`의 draw를 기존 rAF에서 교체한다. room·입력 타이머·seq/fix·내 위치·점수·보류 입력을 초기화하지 않는다. 첫 그리기를 복제 상태로 확인한다. 준비 실패는 기존 화면 유지, 전환 후 draw 실패는 직전 화면 복구이며 입력 차단을 만들지 않는다.
+
+React 화면 구성·인증·이동/충돌 계약 변경은 호환성 값을 바꿔 열린 탭에 적용하지 않는다. 기능 도입 전 탭은 처음 한 번 새로고침이 필요하다. 서버 worker의 배포와 화면 revision은 독립이다. 상세 소스 경계·게시·리소스 계약은 [화면 교체 인계](handoffs/2026-10-08-frontend-live-update.md), 설명 그림은 [HTML](diagrams/frontend-live-update.html), 실제 결과와 한계는 PROJECT_STATUS 7절을 따른다.
 
 ## 1. 기술 스택과 파일 경계
 
@@ -297,4 +305,15 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 - 측정 도구의 지연 흉내(`JITTER`, rollback·motion·others-check)는 보낼 데이터를 즉시 복사한다. SDK가 인코딩 버퍼를 재사용해, 늦게 보낸 메시지가 나중 메시지 내용으로 덮여 입장 확인이 사라졌다(이전 인계의 "큰 JITTER 입장 시간 초과" 원인).
 
 
-공개 최소 실시간 전송은 WebSocket permessage-deflate를 사용한다. 작은 입력은 압축하지 않고, 1024byte 이상 메시지에 level 1·동시 zlib 4개·context takeover 없음으로 적용한다. 50ms snapshot과 100ms 보간·이동 payload는 바꾸지 않는다. 압축은 host 설정이며 worker 교체 대상이 아니다.
+공개 최소 실시간 전송은 WebSocket permessage-deflate를 사용한다. 작은 입력은 압축하지 않고, 1024byte 이상 메시지에 level 1·동시 zlib 4개·context takeover 없음으로 적용한다. 50ms snapshot과 이동 payload는 유지한다. 타인 표시는 현재 `playback.js`의 걸음 재생이며, 초기 100ms 보간 검증과 구분한다. 압축은 host 설정이며 worker 교체 대상이 아니다.
+
+## 최소 게임: PB 배포와 게임 연결의 분리 (2026-10-08)
+
+- PB는 `scripts/minimal-pocketbase.mjs`, Colyseus는 `scripts/start-minimal-game.mjs`로 각각 실행한다. 운영 launchd label도 `.pocketbase`와 `.colyseus`로 분리한다. 로컬 `dev:all`은 PB 종료 시 PB만 재기동한다. 전체 런처 종료는 게임 정산 후 PB 종료 순서다.
+- PB 중단은 기존 WebSocket·room/session·이동 `seq/fix`·snapshot·worker 교체를 종료하지 않는다. 위치와 진행 점수는 살아 있는 접속 호스트에서 유지한다. 정산은 기존 단일 디스크 outbox에 기록하고 PB 복구 후 같은 매치 ID로 재전송한다.
+- 지갑 조회 실패는 마지막 성공 잔액을 미확인으로 유지한다. PB 저장 확인 없이 정산 대기를 제거하거나 저장 완료로 표시하지 않는다. 게임 장애 덮개와 이동 차단을 유발하지 않는다.
+- 새 게스트 발급·입장은 PB 인증을 요구하므로 중단 중 실패할 수 있다. PB 불가 시 게임 `/health`는 호스트가 정상이면 200, `/ready`는 503이다. ready 503을 이미 연결된 플레이어 퇴장 조건으로 사용하지 않는다.
+- PB hooks의 자동 감지와 자동 migration은 계속 끈다. 호환 hooks만 `scripts/deploy-minimal-pb.py --hooks-source <완성된 디렉터리>`로 배포한다. DB online 백업·PB 단독 종료·hooks 배치·PB 단독 시작을 수행하고 게임 PID 유지 여부를 확인한다. 실패 시 이전 hooks로 복구하며 DB를 자동 덮어쓰지 않는다.
+- 기존 통합 서비스의 최초 분리는 기본적으로 정상 상태의 빈 로비·outbox 0/0에서 실행한다. 초기 끊김을 사용자가 허용한 경우에만 `--allow-connected`를 사용한다. 기존 서버·DB·로컬 개발 실행은 건드리지 않는다. 비호환 DB 변경, PB 실행 파일 업그레이드, Colyseus 프로세스 교체·호스트 재부팅의 무중단은 별도 범위다.
+
+절차와 한계는 [PB 배포 인계](handoffs/2026-10-08-pb-deployment.md), 실제 로컬·공개 검증과 운영 적용 여부는 PROJECT_STATUS 7절을 따른다.
