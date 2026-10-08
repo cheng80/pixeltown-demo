@@ -17,9 +17,10 @@ const state = mkdtempSync(resolve(root, '.test-work/minimal-hotswap-'));
 const soakMs = Number(process.env.MINIMAL_SOAK_MS || 1800000);
 const count=Number(process.env.MINIMAL_OPERATIONAL_CLIENTS || 100);assert(Number.isInteger(count)&&count>0&&count<=100);
 const swarmOnly=process.env.MINIMAL_SWARM_ONLY==='1';
+const randomWalk=process.env.MINIMAL_RANDOM_WALK==='1';
 assert(soakMs >= 60000 && soakMs <= 3600000);
 const base = 'https://pixeltown-minimal-rt.fastmake.net', pbUrl = 'https://pixeltown-minimal-pb.fastmake.net';
-const children = [], clients = [], report = { production: true, stateDirectory: state, swaps: [], tests: [], settings: { clients: count, tickMs: 50, settleMs: 180000, spawnMs: 6000, soakMs } };
+const children = [], clients = [], report = { production: true, stateDirectory: state, swaps: [], tests: [], settings: { clients: count, randomWalk: process.env.MINIMAL_RANDOM_WALK==='1', tickMs: 50, settleMs: 180000, spawnMs: 6000, soakMs } };
 const { execFileSync } = await import('node:child_process');
 const ssh = ['-o','BatchMode=yes','-o','ConnectTimeout=10','-i',process.env.HOME+'/.ssh/stonematch_macmini_ed25519','cheng80@mac-mini.tailc386bf.ts.net'];
 const remote = action => JSON.parse(execFileSync('ssh',[...ssh, 'cd /Users/cheng80/Servers/pixeltown-minimal/app && /Users/cheng80/Servers/pixeltown-colyseus/runtime/bin/node --env-file=../.env .test-work/operational-control.mjs '+action],{encoding:'utf8',maxBuffer:4000000,timeout:120000}));
@@ -42,6 +43,7 @@ try {
   writeFileSync(resolve(state,'accounts.json'),JSON.stringify(accounts),{mode:0o600});
   assert.equal((await fetch(base+'/internal/worker/swap',{method:'POST'})).status,403);
   report.tests.push('public deployment control denied');
+  report.externalPlayers=(await health()).players; // real visitors already in the room stay after the test
   for(const account of accounts.slice(0,count)) {
     const sdk=new Client(base.replace('https:','wss:'),{fetchFn:async(url,options)=>{try{return await fetch(url,options);}catch(error){console.log(JSON.stringify({networkError:error.cause?.code,message:error.cause?.message}));throw error;}}}); sdk.auth.token=account.token;
     let room;
@@ -72,6 +74,16 @@ try {
       if(i===0) {
         c.goal = c.snapshot.game.stars.find(s => s.id === c.goal?.id) || c.snapshot.game.stars.slice().sort((a,b)=>Math.hypot(a.x-c.pos.x,a.y-c.pos.y)-Math.hypot(b.x-c.pos.x,b.y-c.pos.y))[0];
         target = waypoint(c.pos, c.goal || {x:320,y:340});
+      } else if (randomWalk) {
+        // Random destinations around the fountain, with occasional short pauses.
+        const now=performance.now();
+        if(now<(c.restUntil||0))continue;
+        if(!c.goal||Math.hypot(c.goal.x-c.pos.x,c.goal.y-c.pos.y)<1||now>c.goalUntil){
+          if(c.goal&&Math.random()<.3){c.goal=null;c.restUntil=now+500+Math.random()*2500;continue;}
+          do c.goal={x:16+Math.random()*608,y:16+Math.random()*384}; while(blocked(c.goal.x,c.goal.y));
+          c.goalUntil=now+15000;
+        }
+        target=waypoint(c.pos,c.goal);
       } else {
         const baseX=32+(i%25)*24, y=320+Math.floor(i/25)*20;
         target={x:baseX+(Math.floor(c.seq/3)%2?0:12),y};
@@ -120,7 +132,7 @@ try {
   if(!swarmOnly)report.tests.push('deliberate fix/seq survives deployment');
   observed=false;
   await Promise.all(clients.map(c=>c.room.leave()));
-  await until(async()=>{const h=await health();return h.players===0&&h.persistence.pending===0;},'all final settlements');
+  await until(async()=>{const h=await health();return h.players<=report.externalPlayers&&h.persistence.pending===0;},'all final settlements');
   report.ledger=remote('verify');
   report.tests.push('operational ledger equals per-user wallet, no duplicate match rows');
   report.health=await health();

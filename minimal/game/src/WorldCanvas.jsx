@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { WORLD, TICK_MS, blocked, stepToward, stepDirection } from '../../shared/world.js';
+import { feed, play } from './playback.js';
 import { EXT, LINE, FOUNTAIN_BOX, GATE_SIGN, ambience, avatar, backdrop, foreground, fountain, fountainWater, ground, lookFor, star } from './art.js';
 
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
@@ -34,12 +35,10 @@ export function applySnapshot(engine, data, userId) {
   for (const player of data.players) {
     if (player.id === userId || !Number.isFinite(player.x) || !Number.isFinite(player.y)) continue;
     ids.add(player.id);
-    const old = engine.others.get(player.id);
-    const t = old ? clamp((now - old.at) / 100, 0, 1) : 1;
-    const from = old ? { x: mix(old.from.x, old.to.x, t), y: mix(old.from.y, old.to.y, t) } : player;
-    const moved = old && (Math.abs(player.x - old.to.x) > 0.01 || Math.abs(player.y - old.to.y) > 0.01);
-    engine.others.set(player.id, { from, to: player, at: now, name: player.name,
-      dir: moved ? facing(player.x - old.to.x, player.y - old.to.y, old.dir) : old?.dir ?? 0, movedAt: moved ? now : old?.movedAt ?? 0 });
+    // Others replay their accepted steps at walking pace (playback.js), so network bursts do not look like teleports.
+    const other = engine.others.get(player.id) || { pb: {}, x: player.x, y: player.y, dir: 0, movedAt: 0 };
+    feed(other.pb, player, now); other.name = player.name;
+    engine.others.set(player.id, other);
   }
   for (const id of engine.others.keys()) if (!ids.has(id)) engine.others.delete(id);
   engine.snapshot = data;
@@ -66,9 +65,11 @@ export default function WorldCanvas({ engine, ready, controls }) {
     const dc = canvas.getContext('2d');
     const low = document.createElement('canvas'), lc = low.getContext('2d');
     const looks = new Map(), lookOf = id => looks.get(id) || looks.set(id, lookFor(id)).get(id);
-    let frame = 0, pops = [], lastStars = [], lastGame = null, lastScore = 0;
+    let frame = 0, lastDraw = 0, pops = [], lastStars = [], lastGame = null, lastScore = 0;
     const tick = setInterval(() => {
-      if (!engine.connected || !engine.initialized || document.hidden || Date.now() - engine.lastSnapshot > 3000 || engine.pending.length >= 20) return;
+      // Local-first (ADR-005): lag never holds the avatar back. Unacknowledged steps stay pending; the server only checks them,
+      // and a refused step comes back as a fix. Real outages are still caught by the 8 s stale check in main.jsx.
+      if (!engine.connected || !engine.initialized || document.hidden) return;
       const dx = Number(engine.keys.has('ArrowRight') || engine.keys.has('d')) - Number(engine.keys.has('ArrowLeft') || engine.keys.has('a')) + engine.pad.x;
       const dy = Number(engine.keys.has('ArrowDown') || engine.keys.has('s')) - Number(engine.keys.has('ArrowUp') || engine.keys.has('w')) + engine.pad.y;
       const old = engine.self;
@@ -127,9 +128,12 @@ export default function WorldCanvas({ engine, ready, controls }) {
       // y-sorted layer: fountain, stars and avatars by foot y
       const items = [{ y: FOUNTAIN_BOX.y + FOUNTAIN_BOX.h - 4, kind: 'fountain' }];
       for (const s of engine.stars) items.push({ y: s.y, kind: 'star', s });
+      const dt = lastDraw ? Math.min(1000, now - lastDraw) : 0; lastDraw = now;
       for (const [id, p] of engine.others) {
-        const k = clamp((now - p.at) / 100, 0, 1);
-        items.push({ y: mix(p.from.y, p.to.y, k), x: mix(p.from.x, p.to.x, k), kind: 'avatar', id, name: p.name, dir: p.dir, walking: now - p.movedAt < 160 });
+        const q = play(p.pb, dt), dx = q.x - p.x, dy = q.y - p.y;
+        if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) { p.dir = facing(dx, dy, p.dir); p.movedAt = now; }
+        p.x = q.x; p.y = q.y;
+        items.push({ y: q.y, x: q.x, kind: 'avatar', id, name: p.name, dir: p.dir, walking: now - p.movedAt < 160 });
       }
       if (engine.initialized) items.push({ ...self, kind: 'avatar', id: engine.userId, name: engine.name, dir: engine.facing, walking: now - engine.movedAt < 120, mine: true });
       items.sort((a, b) => a.y - b.y);

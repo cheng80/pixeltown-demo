@@ -113,3 +113,16 @@
 
 - 같은 방에서 실제 worker를 교체하며 단계와 버전 변경을 확인하는 일은 Codex가 진행 중이다. Codex는 `tests/minimal-hotswap.mjs`·`tests/minimal-hotswap-browser.mjs`를 고치고 별도 fixture(18126/12626/5272)를 띄워 실제 브라우저로 검증한다. Claude는 이 테스트 파일과 fixture를 수정하거나 종료하지 않았다. 5270 기존 서버도 보존했다. 그 검증에서 `onDrop/onLeave/onError`, 장애 화면, 이동 입력 중단, 예상 밖 fix가 모두 0인지 확인해야 한다. 이 검증 전에는 운영 완료로 보고하지 않는다.
 - 회차 표시는 서버 `generation`을 그대로 쓴다. 활성 worker 장애 복구로도 `generation`이 오르므로, 그 경우 배포 단계 없이 회차 숫자만 바뀔 수 있다.
+
+## 지연에도 내 캐릭터가 멈추지 않게 — 2026-10-08 추가
+
+- 원인: 공개 주소는 Cloudflare LA 구간을 거쳐 서버 확인(ack)이 p95 0.6초, 최대 2~4초까지 늦었다. 그런데 `src/WorldCanvas.jsx`의 이동 틱은 확인 안 된 입력이 20개(1초) 쌓이거나 snapshot이 3초 끊기면 이동 예측과 전송을 멈췄다. 그래서 지연이 생길 때마다 내 캐릭터가 섰다.
+- 기존 게임은 ADR-005(로컬 우선 이동)에서 같은 대기 장치(`MAX_QUEUED_INPUTS - 4`)를 제거했다. TECH_SPEC "로컬 우선 이동"에 따르면 지연이 아바타를 붙잡지 않고, 서버는 걸음을 검사만 한다.
+- 수정: 두 대기 조건을 제거했다. 내 캐릭터는 브라우저 계산으로 바로 움직인다. 서버는 기존처럼 한 걸음 거리·막힘·속도 허용량(1.5배, 최대 3초 저축)을 검사하고, 거절하면 `fix`로 되돌린다. 별 줍기와 정산은 서버가 받아들인 위치 기준 그대로다.
+- 보존: 8초 무응답 장애 처리, `onDrop/onLeave/onError`, `maxRetries=0`, seq/fix, 서버 코드는 바꾸지 않았다.
+- 한계: 서버 허용량이 4.5초 분량이므로 그보다 긴 정체 뒤에 몰려 도착한 걸음은 거절되어 보정될 수 있다(기존 게임과 같다).
+- 검증: `npm run build`, `npm run test:minimal:unit` 18/18, `npm run test:minimal:ui` 통과. 추가 단언: ack와 snapshot이 2.5초 멈춰도 계속 걷는다(전송 45개 이상), 장애 화면이 없다, 늦은 ack가 도착한 뒤 보정이 없다.
+- 다른 사람 표시: 원래는 snapshot마다 100ms 보간이라, 지연된 묶음이 오면 순간이동처럼 보였다. 기존 게임의 `game/src/playback.js`를 `src/playback.js`로 옮겼다(가져오는 경로만 바꿈. 알고리즘 테스트는 `colyseus/test/playback.test.js`).
+  - 서버가 받아들인 걸음(`ack`, 1걸음 = 50ms)을 걷는 속도로 순서대로 다시 걷는다. 묶음이 오면 한 번 기다린 뒤 그만큼 뒤에서 따라간다. 너무 밀리면 최대 3배로 따라잡고, 60걸음 넘게 밀리면 건너뛴다. 서버가 위치를 바꾸면 바로 그 자리에 그린다.
+  - 추가 단언: 10걸음 묶음이 한 번에 와도 150ms 뒤 중간 위치에 있고, 1초 뒤 마지막 위치에 닿는다.
+  - 영향: `tests/minimal-hotswap-browser.mjs`(Codex 소유)는 엔진 내부의 `others.from/to/at`으로 100ms 보간 프레임을 세고 `interpolationFrames>60`을 확인한다. 이 필드가 없어졌으므로 그 단언은 playback 기준으로 바꿔야 한다. Claude는 그 파일을 수정하지 않았다.

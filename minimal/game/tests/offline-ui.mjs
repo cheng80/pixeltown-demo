@@ -16,11 +16,11 @@ export class Client {
     const snapshot = {zone:'lobby',players:[{id:'minimal-user',name:'산책이',x:56,y:336,ack:0,fix:0},{id:'neighbor',name:'이웃',x:130,y:300,ack:0,fix:0}],game:{id:'round-a',active:true,endsAt:Date.now()+180000,stars:[{id:'star',x:100,y:336}],scores:{'minimal-user':0}}};
     const emit = (type, data) => handlers[type]?.(structuredClone(data));
     const room = { reconnection:{}, onMessage:(type,cb)=>{handlers[type]=cb}, onDrop:cb=>{handlers.drop=cb}, onLeave:cb=>{handlers.leave=cb}, onError:cb=>{handlers.error=cb},
-      send(type, move){ if(type !== 'move') throw new Error('Wrong movement contract'); window.__mock.moves.push({...move}); Object.assign(snapshot.players[0],move,{ack:move.seq}); },
+      send(type, move){ if(type !== 'move') throw new Error('Wrong movement contract'); window.__mock.moves.push({...move}); if(!window.__mock.lag) Object.assign(snapshot.players[0],move,{ack:move.seq}); },
       async leave(){ clearInterval(timer); }
     };
     window.__mock = {snapshot,emit,moves:[],room};
-    const timer = setInterval(()=>emit('snapshot',snapshot),50);
+    const timer = setInterval(()=>{ if(!window.__mock.lag) emit('snapshot',snapshot); },50);
     return room;
   }
 }`;
@@ -66,6 +66,21 @@ try {
   await page.evaluate(()=>{const mock=window.__mock; Object.assign(mock.snapshot.players[0],{x:80,y:336,fix:1,ack:mock.moves.at(-1).seq}); mock.emit('snapshot',mock.snapshot)});
   await page.keyboard.down('s'); await page.clock.runFor(100); await page.keyboard.up('s');
   assert.equal(await page.evaluate(()=>window.__mock.moves.at(-1).fix),1);
+  // Others: a burst of 10 accepted steps plays back at walking pace instead of jumping.
+  await page.evaluate(()=>{const canvas=document.querySelector('canvas');let f=canvas[Object.keys(canvas).find(k=>k.startsWith('__reactFiber'))];while(f&&!f.memoizedProps?.engine)f=f.return;window.__qaEngine=f.memoizedProps.engine;});
+  await page.evaluate(()=>{const n=window.__mock.snapshot.players[1]; Object.assign(n,{x:n.x+40,ack:10}); window.__mock.emit('snapshot',window.__mock.snapshot);});
+  await page.clock.runFor(150);
+  const midX = await page.evaluate(()=>window.__qaEngine.others.get('neighbor').x);
+  assert.ok(midX > 130 && midX < 160, `burst replays gradually (x=${midX})`);
+  await page.clock.runFor(1000);
+  assert.equal(await page.evaluate(()=>window.__qaEngine.others.get('neighbor').x), 170, 'playback reaches the latest accepted step');
+  // Lag (slow tunnel): no ack or snapshot for 2.5 s must not hold the avatar back; delayed acks then catch up without a fix.
+  const lagFrom = await page.evaluate(()=>{ window.__mock.lag = true; return window.__mock.moves.length; });
+  await page.keyboard.down('d'); await page.clock.runFor(2500); await page.keyboard.up('d');
+  assert.ok(await page.evaluate(()=>window.__mock.moves.length) - lagFrom >= 45, 'avatar keeps walking while acks are late');
+  assert.equal(await page.getByRole('heading',{name:'잠시 쉬어 가요'}).count(),0,'2.5 s lag is not a connection failure');
+  await page.evaluate(()=>{ const mock = window.__mock, last = mock.moves.at(-1); mock.lag = false; Object.assign(mock.snapshot.players[0], {x:last.x, y:last.y, ack:last.seq}); mock.emit('snapshot', mock.snapshot); });
+  assert.equal(await page.evaluate(()=>window.__minimal.snapshot.players[0].fix), await page.evaluate(()=>window.__mock.moves.at(-1).fix), 'no correction after late acks');
   // Deployment status: old servers send none; steps are display-only and never stop movement.
   assert.equal(await page.locator('.release').count(),0,'no deployment field means no indicator');
   const release = () => page.locator('.release').innerText();
@@ -134,5 +149,5 @@ try {
   await page.goto('http://minimal.test/unavailable.html'); await page.getByRole('heading',{name:'광장에 잠시 연결할 수 없어요'}).waitFor();
   assert.equal(await page.locator('script').count(),0); assert.equal(await page.locator('a').getAttribute('href'),'./');
   assert.deepEqual(errors,[]);
-  console.log('PASS offline UI: guest/restore, isolated credentials, server spawn, seq/fix, movement, deployment indicator, pending/settlement, wallet failure/429, disconnect, 1280/390 overflow, static fallback');
+  console.log('PASS offline UI: guest/restore, isolated credentials, server spawn, seq/fix, movement, lag-tolerant local movement, paced playback of others, deployment indicator, pending/settlement, wallet failure/429, disconnect, 1280/390 overflow, static fallback');
 } finally { await browser.close(); }
