@@ -240,3 +240,31 @@ PocketBase는 `pb_hooks` 파일이 바뀌면 스스로 재시작하며, 그동�
 - 검증용 관리자 `verify-admin@pixeltown.local`: 자격증명은 이 컴퓨터 `pocketbase/.local/remote-admin.env`(0600, git 제외)에만 있다. `tests/remote-check.mjs`가 관리자 Monitor 화면·API 200, 다른 Origin 403을 확인한다. 기존 소유자 관리자는 그대로다. 폐기하려면 이 superuser를 지우고 로컬 파일도 지운다.
 - `msgpackr-extract`: 미리 빌드된 `@msgpackr-extract/msgpackr-extract-darwin-arm64`를 이미 네이티브로 쓰고 있다. npm 경고는 쓰지 않는 소스 빌드(`node-gyp rebuild`)가 막혔다는 뜻이라 조치하지 않는다.
 
+
+## 13. 미니멀 픽셀타운 별도 도입 (2026-10-08)
+
+이 구성은 게임 로직 교체를 검증하는 최소 게임용이다. 기존 게임 서버·데이터는 유지한다. 실 서비스 제작·이관·정리 기준은 [인계 문서](handoffs/2026-10-08-minimal-service.md), 최신 검증·게시 결과는 PROJECT_STATUS를 따른다.
+
+| 구성 | 위치 |
+|---|---|
+| 사용자 게임 주소 | `https://pixeltown.fastmake.net` 유지 |
+| 최소 PB | `https://pixeltown-minimal-pb.fastmake.net` → Mac mini loopback 18820 |
+| 최소 game | `wss://pixeltown-minimal-rt.fastmake.net` → loopback 13620 |
+| 코드 | `~/Servers/pixeltown-minimal/app` |
+| 실행 서비스 | `com.fastmake.pixeltown.minimal`, `scripts/dev-minimal.mjs`, backend only |
+| 환경 | `~/Servers/pixeltown-minimal/.env`, 0600 |
+| 상태 | app의 `.local/minimal/`: PB DB·관리자·outbox·버전별 worker·제어 토큰 |
+| 게시 빌드 | `npm run build:remote` → 최소 프런트 `dist/`; `.env.minimal-remote`는 공개 주소만 포함 |
+| 기존 화면 복구용 빌드 | `npm run build:legacy:remote` |
+
+최초 설치 도구는 `scripts/install-minimal-macmini.py`다. 기존 최소 설치나 사용 중인 포트를 만나면 종료하며 기존 서비스를 덮어쓰거나 멈추지 않는다. Node/PB 실행기는 기존 설치를 읽기 전용으로 재사용한다. DB는 새로 만들며 기존 게임 DB를 복사하지 않는다.
+
+게임 worker 소스가 호환될 때만 최소 app에 파일을 준비하고 그 폴더에서 아래 명령으로 교체한다. 사용자 연결을 유지하는 호스트와 PB를 재시작하지 않는다.
+
+```sh
+/Users/cheng80/Servers/pixeltown-colyseus/runtime/bin/node --env-file=../.env scripts/deploy-minimal-worker.mjs
+```
+
+기존 `scripts/deploy-macmini.sh`는 기존 게임용이며 이 최소 worker 배포에 사용하지 않는다. 호스트 코드·PB 훅·맵·입력 규칙 변경은 위 worker 교체의 무중단 대상이 아니다. 최초 서버 설정 조정은 새 최소 서버에 일반 접속자가 없는 시점에만 했다. 기존 8091/2567·다른 게임·Tunnel 연결은 재시작하지 않았다.
+
+공개 터널 경로는 기존 다섯 개를 유지하고 최소 PB/game 두 개만 추가했다. 공개 health는 제공하지만 worker 제어와 PB 초기화 확인은 forwarding header가 있으면 403이다. 게스트 발급은 방문자 IP당 시간당 20회다. 부하 검사 계정은 내부 관리 경로에서 준비한다.

@@ -1,0 +1,80 @@
+{
+  "info": {
+    "name": "Minimal public contract",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Game health",
+      "request": {
+        "method": "GET",
+        "url": "https://pixeltown-minimal-rt.fastmake.net/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Game health', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "PB health",
+      "request": {
+        "method": "GET",
+        "url": "https://pixeltown-minimal-pb.fastmake.net/api/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PB health', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public swap denied",
+      "request": {
+        "method": "POST",
+        "url": "https://pixeltown-minimal-rt.fastmake.net/internal/worker/swap"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Public swap denied', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public readiness denied",
+      "request": {
+        "method": "GET",
+        "url": "https://pixeltown-minimal-pb.fastmake.net/api/minimal/ready"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Public readiness denied', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

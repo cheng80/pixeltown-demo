@@ -1,4 +1,27 @@
-# 픽셀타운 · 미니홈피 도트 마을 (재제작판)
+# 픽셀타운 · 최소 게임과 배포 기반
+
+현재 기본 개발 대상은 **메인 로비·이동·별 획득/정산만 남긴 최소 게임**이다. 기존 게임의 소스와 데이터는 보존하고 실행 경로·포트·DB·브라우저 인증을 분리했다.
+
+```sh
+npm run setup
+npm run dev:all    # 최소 게임 http://127.0.0.1:5270
+npm run build      # 최소 게임 dist-minimal/
+npm run dev:legacy # 기존 게임 http://127.0.0.1:5173
+```
+
+- [최소 게임 실행·API·검증](minimal/README.md)
+- [무중단 배포 도식](docs/diagrams/zero-downtime.html): 현재 구현과 목표 구조를 구분
+- [기존 게임 보존·격리 경계](legacy/README.md)
+- [기능 조사](docs/reviews/2026-10-08-game-state-audit.md)와 [구현 계획](docs/plans/PLAN-007.md)
+
+최소 게임은 Node.js 22.13 이상과 PocketBase 실행기가 필요하다. 현재 로컬 실행기를 재사용하거나 `MINIMAL_PB_BINARY`로 지정한다([설치 조건](minimal/README.md#실행)).
+
+새 DB는 `.local/minimal/pb_data/`, 정산 대기열은 `.local/minimal/outbox/`다. 기존 계정과 별을 자동 이전하지 않는다. 게임 worker 교체를 구현했다. `build:remote`는 최소 프런트를 기존 게임 주소에 게시하는 빌드이며, 백엔드는 미니멀 전용 경로를 사용한다. 기존 원격 화면 빌드는 `build:legacy:remote`로 보존했다. 기존 Mac mini 배포 스크립트는 기존 게임용이므로 최소 서버에 사용하지 않는다. 최신 검증·게시 결과는 [PROJECT_STATUS](docs/03_PROJECT_STATUS.md), 향후 실 서비스 작업과 정리 대상은 [인계 문서](docs/handoffs/2026-10-08-minimal-service.md)를 따른다.
+
+## 기존 게임 설명과 운영 참고
+
+아래는 보존한 기존 게임의 설명이다. 실행은 `dev:legacy`, 빌드는 `build:legacy`를 사용한다.
+
 
 싸이월드 미니홈피 프레임 안의 작은 도트 마을을 걷고, 이웃과 말풍선으로 수다를 떨고, 마을 곳곳의 별을 모아 옷·펫·가구를 사서 꾸미는 멀티플레이 게임이다. React/Vite, 자체 Canvas 2D 도트 그래픽, PocketBase, Colyseus를 쓴다. 그래픽은 모두 자체 절차 코드로 그렸고 폰트는 OFL Galmuri11을 로컬 번들한다. 외부 이미지·CDN·MQTT 브로커 없이 플레이한다. 게임 코드와 배포물에는 원 서비스의 코드·자산을 포함하지 않는다. 원본 관찰용 사본은 Git에서 제외한 로컬 참고 자료로 분리한다.
 
@@ -11,9 +34,11 @@ pixeltown-demo/
 ├── AGENTS.md         # AI 작업 안내
 ├── package.json      # 설치 · 실행 · 빌드 명령
 ├── start.command     # macOS 로컬 실행
-├── game/             # React · Canvas 게임
-├── pocketbase/       # 인증 · 영구 데이터 · DB 훅
-├── colyseus/         # 방 · 이동 · 미니게임 서버
+├── minimal/          # 새 최소 게임 프런트 · 공용 규칙
+├── legacy/           # 기존 게임 보존 안내 · 원본 해시
+├── game/             # 기존 React · Canvas 게임
+├── pocketbase/       # 기존 DB 훅 + minimal/ 전용 훅
+├── colyseus/         # 기존 서버 + minimal/ 전용 서버
 ├── shared/           # 게임과 서버가 함께 쓰는 맵 · 충돌 · 경로 정의
 ├── scripts/          # 두 서버와 게임을 함께 실행
 ├── tests/            # 실제 서버 통합 검증 · 브라우저 UI 검증
@@ -25,7 +50,8 @@ pixeltown-demo/
 │       ├── README.md # 자료별 용도와 재사용 방법
 │       ├── templates/ # 문서 · 계획 · ADR 양식
 │       └── local/   # 조사 원본 · 과거 스크립트 · 테스트 자료 (Git 제외)
-└── dist/             # 빌드 결과물 (Git 제외)
+├── dist-minimal/     # 최소 게임 빌드 결과물 (Git 제외)
+└── dist/             # Pages 게시용 빌드 결과물 (Git 제외)
 ```
 
 각 구성은 같은 부모 폴더의 형제 디렉터리에 있다. 브라우저→PocketBase 로그인, 브라우저→Colyseus 토큰 입장, Colyseus→PocketBase 검증·결과 저장으로 연결된다. 데이터 위치: `pocketbase/.local/pb_data`, `colyseus/.local/outbox`. 관리자 파일: `pocketbase/.env.local`.
@@ -57,7 +83,7 @@ pixeltown-demo/
 
 ### 로컬 데이터 보존
 
-`docs/references/local/`, `pocketbase/.local/`, `pocketbase/.env.local`, `colyseus/.local/`, `.test-work/`는 Git에서 제외한다. 새로 clone한 저장소에는 기존 로컬 참고 자료와 실행 데이터가 없으며, 보존하려면 별도 파일 백업에 포함해야 한다. 과거 테스트 DB와 현재 개발 DB는 각 위치에서 구분해 관리한다. `node_modules/`와 `dist/`는 설치·빌드로 다시 생성할 수 있다.
+`.local/minimal/`, `docs/references/local/`, `pocketbase/.local/`, `pocketbase/.env.local`, `colyseus/.local/`, `.test-work/`는 Git에서 제외한다. 새로 clone한 저장소에는 기존 로컬 참고 자료와 실행 데이터가 없으며, 보존하려면 별도 파일 백업에 포함해야 한다. 과거 테스트 DB와 현재 개발 DB는 각 위치에서 구분해 관리한다. `node_modules/`와 `dist/`는 설치·빌드로 다시 생성할 수 있다.
 
 ## 실행
 
@@ -66,7 +92,7 @@ Node.js 22 이상, macOS 또는 Linux, `curl`과 `unzip`이 필요하다.
 ```sh
 npm install
 npm --prefix colyseus install
-npm run dev:all
+npm run dev:legacy
 ```
 
 http://127.0.0.1:5173 을 연다. macOS에서는 `start.command`를 더블클릭해도 된다. 첫 실행에 공식 PocketBase 0.40.4 바이너리를 다운로드하고 checksum을 검증하며, 개발용 DB와 두 계정을 만든다. 패키지·바이너리를 한 번 설치하면 실행·게임에는 외부 인터넷이 필요 없다.
@@ -76,7 +102,7 @@ http://127.0.0.1:5173 을 연다. macOS에서는 `start.command`를 더블클릭
 서버는 `127.0.0.1`에만 바인딩한다. 사용할 포트가 이미 사용 중이면 시작을 거부한다. 기존 프로세스를 강제로 종료하거나 기존 PocketBase 데이터에 연결하지 않는다. 다른 체크아웃이 기본 포트를 쓰고 있으면 포트를 바꿔 나란히 실행한다.
 
 ```sh
-PIXELTOWN_PB_PORT=18190 PIXELTOWN_GAME_PORT=12667 PIXELTOWN_WEB_PORT=5273 npm run dev:all
+PIXELTOWN_PB_PORT=18190 PIXELTOWN_GAME_PORT=12667 PIXELTOWN_WEB_PORT=5273 npm run dev:legacy
 # → http://127.0.0.1:5273
 ```
 
@@ -132,7 +158,7 @@ npm run test:integration   # 기본 포트가 사용 중이면 PIXELTOWN_TEST_PB
 PIXELTOWN_LOAD_100=1 npm run test:integration   # 선택: 100명 채널 방 분할 측정 추가
 node tests/remote-check.mjs  # 선택: Mac mini 원격 2유저 기능 검증(약 4분)
 npm --prefix colyseus test # 맵 연결성·깊이·충돌·별 상한 단위 테스트
-npm run build
+npm run build:legacy
 # 브라우저 검증: dev 서버 실행 중에 (Chromium 경로 지정)
 CHROME_PATH=/path/to/chromium PIXELTOWN_WEB_PORT=5273 PIXELTOWN_PB_PORT=18190 node tests/ui-check.mjs
 ```

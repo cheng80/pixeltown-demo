@@ -2,6 +2,40 @@
 
 기준: 2026-10-02 재제작(PLAN-002) 로컬 소스. 아래 계약은 실제 코드에서 추출했다. 제품 요구는 [PRODUCT_SPEC](01_PRODUCT_SPEC.md)의 FR/BR를 참조한다. 실행 결과·현재 문제·인수인계는 메인 담당이 PROJECT_STATUS에 기록한다.
 
+## 최소 게임 계약 (2026-10-08)
+
+기본 로컬 실행은 기존 게임과 격리된 최소 게임이다. 아래 1절 이후는 **기존 게임 계약**으로 보존하며, 최소 게임에는 아래 계약을 적용한다.
+
+| 경계 | 최소 게임 계약 |
+|---|---|
+| 화면·맵 | `minimal/game/`, `minimal/shared/world.js`; `vite.minimal.config.js` → `dist-minimal/` |
+| 실시간 | `colyseus/minimal/server.js` 접속 계층 + `WorkerHost`/`simulation-worker.js`; 단일 `minimal-town` 로비, 정원 100 |
+| 저장 | `pocketbase/minimal/pb_hooks/`; `users`, `profiles`, `results`, `inventory`만 사용 |
+| 환경 | localhost 5270 / Colyseus 12620 / PB 18120, `.local/minimal/`에 전용 DB·관리자·outbox |
+| 계정 | `POST /api/minimal/guest`; 별도 `pixeltown.minimal.*` 인증·게스트·대기 저장소 |
+| 지갑 | 인증 사용자 `GET /api/minimal/wallet`; 한 트랜잭션에서 `{balance, settledMatchIds, profile:{name}}` |
+| 정산 | 관리자 `POST /api/minimal/commit-match`; 양수 점수만·합계≤64, 전체 매치 동일 재전송만 성공 |
+| 입력 | `move {x,y,seq,fix}`; 서버 이동 거리·충돌 검사, 50ms `snapshot` |
+| 통지 | `gameEnded`는 outbox 기록 완료. 개인 DB 저장 완료는 wallet의 매치 ID로 확인 |
+| 보류 | 상점·옷장·펫·외형 변경·미니룸·채팅·장소 이동. 변경 API 거절, 메시지는 안내 후 연결 유지 |
+| 장애 | 지갑 실패 시 마지막 값·미확인 표시, 정적 `/unavailable.html`은 PB/Colyseus 요청 없음 |
+
+[최소 게임 실행/API](../minimal/README.md)에 설정과 상세 계약을 둔다. 기존 `.env`의 원격 PB/Colyseus 설정을 새 서버 설정으로 해석하지 않는다. 기존 데이터 이관·삭제는 하지 않는다. 최소 서버는 별도 DB와 주소로 도입하며 최신 운영 검증은 PROJECT_STATUS를 따른다. PB의 localhost rate-limit 제외는 격리 시험용이며 공용 IP 운영 입장 제한 해결의 검증이 아니다. 공개 최소 모드는 trusted proxy의 CF-Connecting-IP를 방문자 IP로 사용하고 게스트 발급을 IP당 20회/시간으로 제한한다. 내부 초기화 확인은 forwarding header를 거절한다. 공개 API 상태/제어 거절 계약은 `tests/contracts/minimal-public.postman_collection.json`으로 검사한다.
+
+정산 파일은 디스크 기록을 마친 뒤 통지하고 파일별로 재시도한다. 실패 매치는 증거를 남기며 다음 매치를 막지 않는다. 전체 매치의 사용자·점수·시각·원장 행 일치를 검사해 재전송 중복 지급을 막는다. 일반 사용자의 계정/원장 쓰기는 잠그고 자동 계정 삭제를 두지 않는다.
+
+`Simulation`은 Node worker thread에서 실행한다. 접속 계층은 room/session/WebSocket·입력 순서·최신 확정 상태·단일 outbox를 보유한다. worker의 시각·난수 seed·UUID는 접속 계층의 순서 이벤트로 결정한다. schema 1 체크포인트에는 players, 이동 예산/시각, ack/fix, 퇴장자 점수, 별/카운터/다음 생성 시각, matchId/endsAt, pendingMatch와 timing을 포함한다.
+
+후보는 체크포인트 이후 이벤트를 재생한다. 같은 순서의 상태·정산 제안·입장 결과 hash가 일치하고, 최소 1개 이벤트를 추격한 틱 경계이며 활성 응답이 처리 중이 아닐 때만 권한을 전환한다. 후보 실패/불일치/3초 추격 제한 초과는 기존 worker를 유지한다. 이전 worker의 늦은 응답은 인스턴스 권한과 순서로 차단한다. 정산 제안은 접속 계층이 디스크에 기록한 뒤 매치 ID로 한 번 통지하며, 다음 이벤트의 확인으로 worker가 판을 진행한다. 디스크 실패는 pendingMatch를 유지한다.
+
+활성 worker 오류/1.5초 무응답은 최신 **확정** 상태와 처리 중 이벤트를 마지막으로 검증된 활성 artifact의 실제 경로로 재생한다. 다음 후보를 가리키는 managed link를 복구 파일로 사용하지 않는다. 연속 복구 실패 시 health/ready 503으로 실제 장애를 표시한다. 이는 접속 프로세스·호스트·메모리 손실 복구 보장이 아니다. `GET /health`는 `hotSwap:true`와 worker의 generation/sequence/revision/교체 통계를 제공한다. health 200은 전체 정산 성공을 뜻하지 않으며 `persistence.pending/failed`도 확인한다.
+
+`POST /internal/worker/swap`: loopback 전용 서버, Origin 및 CF-Connecting-IP/X-Forwarded-For/Forwarded 요청 거절, 별도 32자 이상 `MINIMAL_SWAP_TOKEN` Bearer 인증, 요청 경로 입력 없음. 시작 시 고정한 `MINIMAL_WORKER_ENTRY`를 새 worker에서 읽는다. 준비·전환 성공은 200(revision/generation/sequence/replayed/시간), 후보 실패·동시 교체·로비 없음은 409, 인증 거절은 403. 클라이언트에는 배포 메시지를 추가하지 않는다. 기존 50ms snapshot·100ms 타인 보간·seq/fix·장애 콜백·재시도 0 설정을 유지한다.
+
+`deployment` 메시지와 `snapshot.deployment`는 `{phase,eventSeq,updatedAt,revision,generation}`을 제공한다. phase는 idle/preparing/catching-up/applied/cancelled이고 방 안에서 eventSeq가 증가한다. 상태 표시만을 위한 정보이며 이동 seq/fix·상태 hash·게임 입력과 독립이다. 준비/추격 동안 revision은 활성 버전이며 승격 뒤 새 버전을 노출한다. [상단 표시 계약](handoffs/2026-10-08-deployment-indicator.md)을 따른다.
+
+[무중단 배포 인계](architecture/zero-downtime.md), [구조와 교체 순서](diagrams/worker-hot-swap.html), [Claude 전달 계약](handoffs/2026-10-08-worker-contract.md), [배포 도식](diagrams/zero-downtime.html), [실행 절차](../minimal/README.md)를 참조한다. 같은 상태/이동 규칙/wire protocol을 유지하는 게임 로직 교체만 대상이며, 맵·속도·브라우저 입력 계약 변경은 버전을 올리고 별도 이행해야 한다. 최초 접속 계층 도입·접속 프로세스 재시작은 별도 전환이다. 초기 검증은 별도 12622에서 진행했다. 이전 로컬 프로세스가 사라진 뒤 기존 DB의 행 내용 일치를 확인하고 12620에 새 구조를 시작했다. 기존 운영 서버는 유지하고 최소 서버는 13620/PB 18820에 따로 도입했다. 현재 실행 상태와 검증 결과는 PROJECT_STATUS를 따른다.
+
 ## 1. 기술 스택과 파일 경계
 
 | 영역 | 기술 / 소스 | 제약 |
@@ -262,3 +296,5 @@ macOS start.command도 로컬 실행 진입점이다. dev:all은 기본 PB 18090
 - 걷기 속도 `STEP_PER_TICK` 3 → 4도트/틱(60 → 80px/s, 2026-10-03 사용자 요청). 모서리 미끄러짐을 포함한 한 걸음 최대 5.5도트로 `MAX_HOP` 6 안이다(세 장소 무작위 80만 걸음으로 확인).
 - 측정 도구의 지연 흉내(`JITTER`, rollback·motion·others-check)는 보낼 데이터를 즉시 복사한다. SDK가 인코딩 버퍼를 재사용해, 늦게 보낸 메시지가 나중 메시지 내용으로 덮여 입장 확인이 사라졌다(이전 인계의 "큰 JITTER 입장 시간 초과" 원인).
 
+
+공개 최소 실시간 전송은 WebSocket permessage-deflate를 사용한다. 작은 입력은 압축하지 않고, 1024byte 이상 메시지에 level 1·동시 zlib 4개·context takeover 없음으로 적용한다. 50ms snapshot과 100ms 보간·이동 payload는 바꾸지 않는다. 압축은 host 설정이며 worker 교체 대상이 아니다.

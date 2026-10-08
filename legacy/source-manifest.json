@@ -1,0 +1,166 @@
+{
+  "revision": "45fcdd5",
+  "purpose": "기존 게임 소스 보존 검증; 데이터/비밀정보 미포함",
+  "files": [
+    {
+      "path": "colyseus/.env.example",
+      "sha256": "01247f9e76f18fafc0065b1065fcb5bb49db58329a23c9cfc904f368da336e9b"
+    },
+    {
+      "path": "colyseus/.gitignore",
+      "sha256": "441ff8b9ae4304841d722df984400637dbb2e74472edb526c6cf387733037793"
+    },
+    {
+      "path": "colyseus/README.md",
+      "sha256": "8582bcd8e4a083de666f6aed423eba2bbb9878b8efa51bdc81805f4a3e1bc6bd"
+    },
+    {
+      "path": "colyseus/config.js",
+      "sha256": "90e7aa0359f918a55d7d754596775eb32b7f0b092be04ad7365a4c52e81109e0"
+    },
+    {
+      "path": "colyseus/monitor-auth.js",
+      "sha256": "7f3db204bcf3da2b6b30be41cd2d3fc55d034d34f464efd999d455255255b7b1"
+    },
+    {
+      "path": "colyseus/outbox.js",
+      "sha256": "17838d4b0461d6ba8cfebc92d4eae22482b8fbad4ade6d29323c59e421026201"
+    },
+    {
+      "path": "colyseus/package-lock.json",
+      "sha256": "d5567901bd30d4653ac72d697eb81abfa2d20db0ddbc792b7ca156b90c4645d6"
+    },
+    {
+      "path": "colyseus/package.json",
+      "sha256": "e615d25f136e1feef56c3aebf38add61ce7d41c9c4a7f52a09a1b71bc2d72866"
+    },
+    {
+      "path": "colyseus/server.js",
+      "sha256": "49955d66c9948496c7942fb9ed239e34928f5a4986838d2ec8b1fd8114d8e596"
+    },
+    {
+      "path": "colyseus/test/outbox.test.js",
+      "sha256": "9645addb605c336c01d2c43f385a51a4153a8882bb22f12c955d96ab08d946d2"
+    },
+    {
+      "path": "colyseus/test/playback.test.js",
+      "sha256": "b478b2d1ae49a0dcf565cda900fe73021486a6ada51360eaa3eebf7f268ea3d6"
+    },
+    {
+      "path": "colyseus/test/shop.test.js",
+      "sha256": "0860ed7722529c2021ec387ebc064c0aab2171273e7feab063c94529a3c7d869"
+    },
+    {
+      "path": "colyseus/test/stars.test.js",
+      "sha256": "a5b84e2e29476c5c14586e2038e66aa6dec33ab0feb04b50e5878ef5356af1ef"
+    },
+    {
+      "path": "colyseus/test/world.test.js",
+      "sha256": "f3bf64a0cbd448eab32bc70f690a91dfeeedf4ee60d760835056876a1c8ee0ee"
+    },
+    {
+      "path": "colyseus/town.js",
+      "sha256": "d4bcd1184113d2d9f4519c78a736e698baf52a7a5badf7b5f19477f6fd22c3b0"
+    },
+    {
+      "path": "game/favicon.svg",
+      "sha256": "abc645104796a7da3c06705aab63b46a2eee2fbb4951a2c7d40363b3f7168a6f"
+    },
+    {
+      "path": "game/index.html",
+      "sha256": "6be8be32f49b9f92ccfa3b2a84b6369c460e178b6be8e513e9dd3e08471fa844"
+    },
+    {
+      "path": "game/src/components/CharacterSetup.jsx",
+      "sha256": "4e4e26a00186871b8c62f242c7196438d61eb1edfa19d577d5fbb40c3cf21053"
+    },
+    {
+      "path": "game/src/components/Chat.jsx",
+      "sha256": "7da1f6861bae10eb09a938e1743238cd098597e208620070cb5455dbf9a0ac2c"
+    },
+    {
+      "path": "game/src/components/Notebook.jsx",
+      "sha256": "489b954a701fba5cd73f5e01e14128e3a5e281a59d874475e8b20f3b9a4aaadc"
+    },
+    {
+      "path": "game/src/components/Pixels.jsx",
+      "sha256": "15b168e0de93d2b1f4efc11e7a376a81725eb797ecfd728600bea8b181876185"
+    },
+    {
+      "path": "game/src/components/Shop.jsx",
+      "sha256": "ae34358cdf63468de104bc25c8f252c5661c9f01b85feda4bc8199e0856846be"
+    },
+    {
+      "path": "game/src/main.jsx",
+      "sha256": "83578fcebab0ba7037eb374bf8f0de371592b00afbe215e74ac77a416faadcfa"
+    },
+    {
+      "path": "game/src/playback.js",
+      "sha256": "3f0277bd40cafa7076505fa14ecd16d4aba6c6cda4d726836459fe608c91b1b6"
+    },
+    {
+      "path": "game/src/render.js",
+      "sha256": "daa993547e445f29d1efd56ab3df738254c22cfbdab490d66d72f754bd07e56a"
+    },
+    {
+      "path": "game/src/sprites.js",
+      "sha256": "8ae20e23cf0a46f84ce11f3acd95182e0b196d070efdaf3159ed66ca9c441735"
+    },
+    {
+      "path": "game/src/style.css",
+      "sha256": "282841e9dd5193e3602ab06b15763da53d7ee9a73ee9a1ad36b4b914c9d6043b"
+    },
+    {
+      "path": "game/src/zones.js",
+      "sha256": "97c7aea512382f1262f8606b9d3dbc8959e2e6fc6d7edb9ea859074d3da9ecf0"
+    },
+    {
+      "path": "pocketbase/pb_hooks/guest.pb.js",
+      "sha256": "7c3d4e5697a042a6657375c58edabdcd92c04a2bdd40bab7a47f58254ae73738"
+    },
+    {
+      "path": "pocketbase/pb_hooks/matches.pb.js",
+      "sha256": "3c75814c672de8be0a6bb1cfb857f8c518264eda468b9619d914cb9522aa682e"
+    },
+    {
+      "path": "pocketbase/pb_hooks/profile.pb.js",
+      "sha256": "dfffc102a3a24f4a68f580b4b58193181fd37193d180e5a13d6ff2c2547414c5"
+    },
+    {
+      "path": "pocketbase/pb_hooks/shop.pb.js",
+      "sha256": "a6503a568ba21447c83f147ace2792f9e841e67900496bb17df484a2918cdbdf"
+    },
+    {
+      "path": "pocketbase/pb_hooks/shop_lib.js",
+      "sha256": "99af75b03627a5f5c277431af08c55a0c7cbcf56edb450b0d221f5571409204a"
+    },
+    {
+      "path": "scripts/deploy-macmini.sh",
+      "sha256": "dd514ecf3e1f412b26e296fdad3f04e578f7828a1e54b46a3bf40120880e1ed8"
+    },
+    {
+      "path": "scripts/dev-backend.mjs",
+      "sha256": "a7cc48d63d6a207b0792f2533a3e652123c49a72b4bafb2148582305c61eb7bb"
+    },
+    {
+      "path": "scripts/dev.mjs",
+      "sha256": "0e7f525e62c15f43bf6d522bdcfcf1e35340ead45654fffacb82a7ceb62c710d"
+    },
+    {
+      "path": "scripts/init-pocketbase.mjs",
+      "sha256": "87a57c8b910744b5520747e525a573028c23da601d5fc1141341ec94fdce79df"
+    },
+    {
+      "path": "shared/catalog.json",
+      "sha256": "6e3f79b8fdb99db2229bfbd64badb78f3ddbfc536bdead932cd7c49ff3abe798"
+    },
+    {
+      "path": "shared/world.js",
+      "sha256": "9ea63201c9f5cd820a5306c90ed5fbe6466b73b99b44d636a599c94ee5873cab"
+    },
+    {
+      "path": "vite.config.js",
+      "sha256": "fea95d906ba32d06f4f871e10f0fc843f4064c5b6e2d6217d06ede9405fc9825"
+    }
+  ]
+}

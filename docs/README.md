@@ -18,6 +18,12 @@
 | 현재 작업 / 검증 근거 / 알려진 문제 / 인수인계 | [03_PROJECT_STATUS.md](03_PROJECT_STATUS.md) — 메인 담당 관리 |
 | 개발 / 문서 갱신 / Git 게시 절차 | [04_WORKFLOW.md](04_WORKFLOW.md) |
 | Mac mini 서버 주소 / SSH / 서비스 점검 / 게임 이전 / 백업·복구 | [SERVER_OPERATIONS.md](SERVER_OPERATIONS.md) |
+| 별 소비 / 사용자 상태 변경 전체 목록 / 최소 게임 선행 조사 | [reviews/2026-10-08-game-state-audit.md](reviews/2026-10-08-game-state-audit.md) |
+| 최소 게임 / 활동 중 배포 / 접속 불가 안내 구현 계획 | [plans/PLAN-007.md](plans/PLAN-007.md) — 최소 게임·worker 교체 로컬 구현/검증 |
+| 게임 로직 무중단 배포 인계 | [architecture/zero-downtime.md](architecture/zero-downtime.md) — 동작 설명·용어·구현·배포 절차 |
+| 무중단 배포 구조와 교체 순서 | [diagrams/worker-hot-swap.html](diagrams/worker-hot-swap.html) — 브라우저에서 보는 HTML/SVG 그림 |
+| 도입 전 / 현재 배포 구조 비교 | [diagrams/zero-downtime.html](diagrams/zero-downtime.html) |
+| 최소 게임 실행·API / 기존 게임 보존 | [minimal/README.md](../minimal/README.md), [legacy/README.md](../legacy/README.md) |
 | 여러 계층에 걸친 구현과 확인 계획 | [plans/PLAN-004.md](plans/PLAN-004.md) Mac mini 서버 이전·Colyseus 0.18, [plans/PLAN-003.md](plans/PLAN-003.md) 별 상점·상시 이벤트, [plans/PLAN-002.md](plans/PLAN-002.md) 재제작 (이전: [PLAN-001](plans/PLAN-001.md)) |
 | 서버 권한·결과 원자성·재시도 결정 | [decisions/ADR-001.md](decisions/ADR-001.md) |
 | 맵·충돌 공용 모듈과 깊이 렌더링 | [decisions/ADR-002.md](decisions/ADR-002.md) |
@@ -34,3 +40,6 @@
 `analysis.md`의 원본 조사·관찰 한계는 보존되어 있다. 메인 담당은 자체 데모 연동 기술 설명을 현재 PocketBase 트랜잭션 계약으로 갱신했다. 추가 문서 담당은 해당 파일을 편집하지 않았다. 제품·기술 정본은 요구사항과 현재 계약을 설명하고, 조사 기록을 중복 복제하지 않는다.
 
 충돌을 판단할 때 현재 실행 코드·테스트, 결정 문서·기술 계약, 제품 명세, 현황·계획, 과거 기록 순으로 근거를 확인하되 사용자 요구를 임의로 축소하지 않는다. 코드가 요구를 충족하지 못하면 `DOC-CODE-MISMATCH`로 남겨 구현 담당에게 전달한다.
+
+- [미니멀 픽셀타운 → 실 서비스 인계·정리 조건](handoffs/2026-10-08-minimal-service.md)
+- [상단 배포 상태 표시 계약](handoffs/2026-10-08-deployment-indicator.md)

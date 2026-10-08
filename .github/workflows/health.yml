@@ -32,4 +32,7 @@ jobs:
           check https://pixeltown-rt.fastmake.net/health json
           check https://pixeltown-rt.fastmake.net/health/pocketbase json
           check https://pixeltown-pb.fastmake.net/api/health json
+          check https://pixeltown-minimal-rt.fastmake.net/health json
+          check https://pixeltown-minimal-rt.fastmake.net/ready json
+          check https://pixeltown-minimal-pb.fastmake.net/api/health json
           exit $fail
