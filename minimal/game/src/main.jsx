@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Client } from '@colyseus/sdk';
-import { authenticate, GAME_URL, pb, request, savedGuest } from './api.js';
+import { authenticate, createGameConnection, pb, request, savedGuest } from './api.js';
 import { cleanLedger, failureMessage, isDuplicateGuest, pendingTotal, readStored, reconcileLedger, rememberScore, retryDelay, WalletState, writeStored } from './state.js';
 import WorldCanvas, { applySnapshot, createEngine, stopMovement } from './WorldCanvas.jsx';
 import VisualStatus from './VisualStatus.jsx';
@@ -14,6 +13,9 @@ function App() {
   const [phase, setPhase] = useState('welcome');
   const [notice, setNotice] = useState('');
   const [otherTab, setOtherTab] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const [held, setHeld] = useState(false);
+  const connectionRef = useRef(null);
   const [storageNotice, setStorageNotice] = useState('');
   const [retryAt, setRetryAt] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -151,56 +153,55 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-    let disposed = false, joined = null, timeout, staleTimer;
+    // Join, reconnection and room events live in createGameConnection (api.js). A dropped socket is recovered there in the
+    // same room/session; the screen keeps playing with a small notice and shows the outage cover only on onFailure.
+    let disposed = false, connection = null, staleTimer;
     engine.connected = false; engine.initialized = false; engine.pending = []; engine.others.clear(); engine.stars = [];
     engine.seq = 0; engine.fix = 0; engine.snapshot = null; engine.userId = user.id; stopMovement(engine);
-    setPhase('joining'); setCrowd(0); setGame(null); resetDeployment(); setOtherTab(false);
-    const closeRoom = room => {
-      if (!room) return;
-      room.reconnection.maxRetries = 0;
-      try { void room.leave().catch(() => {}); } catch { /* Already closed. */ }
-    };
+    setPhase('joining'); setCrowd(0); setGame(null); resetDeployment(); setOtherTab(false); setRecovering(false);
     const fail = error => {
       if (disposed) return;
-      disposed = true; clearTimeout(timeout); clearInterval(staleTimer);
-      engine.connected = false; engine.room = null; stopMovement(engine); closeRoom(joined);
+      disposed = true; clearInterval(staleTimer); connection?.dispose();
+      engine.connected = false; engine.send = null; stopMovement(engine); setRecovering(false);
       setPhase('game-error'); setOtherTab(isDuplicateGuest(error)); setNotice(failureMessage(error, 'game')); setRetryAt(Date.now() + retryDelay(error));
     };
-    const client = new Client(GAME_URL);
-    if (client.auth.settings) client.auth.settings.key = 'pixeltown.minimal.room-auth';
-    client.auth.token = pb.authStore.token;
-    timeout = setTimeout(() => fail(new Error('Join timeout')), 12000);
-    client.joinOrCreate('minimal-town', { zone: 'lobby' }).then(room => {
-      if (disposed) { closeRoom(room); return; }
-      joined = room; room.reconnection.maxRetries = 0;
-      engine.room = room;
-      engine.send = movement => room.send('move', movement);
-      room.onMessage('snapshot', data => {
-        if (disposed || data?.zone !== 'lobby' || !Array.isArray(data.players)) return;
-        if (!applySnapshot(engine, data, user.id)) return;
-        clearTimeout(timeout); engine.connected = true;
+    connection = createGameConnection({ engine, userId: user.id, token: pb.authStore.token,
+      onSnapshot: data => {
+        if (disposed || data?.zone !== 'lobby' || !Array.isArray(data.players) || !applySnapshot(engine, data, user.id)) return false;
         if (phaseRef.current !== 'playing') { setPhase('playing'); setNotice(''); }
         setCrowd(data.players.length); setGame(data.game || null); trackDeployment(data.deployment);
         const score = data.game?.scores?.[user.id];
         const next = rememberScore(ledger.current, data.game?.id, score, false, settled.current);
         const previous = ledger.current[data.game?.id];
         if (next !== ledger.current && next[data.game?.id]?.score !== previous?.score) saveLedger(next);
-      });
-      room.onMessage('gameEnded', result => {
+        return true;
+      },
+      onGameEnded: result => {
         if (disposed) return;
         saveLedger(rememberScore(ledger.current, result.match_id, result.scores?.[user.id], true, settled.current));
         const mine = Number(result.scores?.[user.id]) || 0;
         if (mine > 0) announce(`이번 판 별 ${mine}개 · 저장 확인을 기다리고 있어요`, 'round');
-      });
-      room.onMessage('deployment', status => { if (!disposed) trackDeployment(status); });
-      room.onMessage('featureUnavailable', () => { if (!disposed) setNotice('지금은 광장에서 걷고 별을 모을 수 있어요.'); });
-      room.onDrop(code => fail({ code })); room.onLeave(code => fail({ code })); room.onError((code) => fail({ code }));
-      staleTimer = setInterval(() => {
-        if (engine.initialized && (Date.now() - engine.lastSnapshot > 8000 || !engine.connected)) fail(new Error('Connection stale'));
-      }, 1000);
-    }).catch(fail);
-    return () => { disposed = true; clearTimeout(timeout); clearInterval(staleTimer); engine.connected = false; engine.send = null; engine.room = null; stopMovement(engine); closeRoom(joined); };
+      },
+      onDeployment: status => { if (!disposed) trackDeployment(status); },
+      onFeatureUnavailable: () => { if (!disposed) setNotice('지금은 광장에서 걷고 별을 모을 수 있어요.'); },
+      onRecovery: status => { if (!disposed) setRecovering(status?.phase === 'recovering'); },
+      onFailure: fail,
+    });
+    connectionRef.current = connection;
+    engine.send = movement => connection.send(movement);
+    staleTimer = setInterval(() => connection.checkStale(), 1000);
+    return () => { disposed = true; clearInterval(staleTimer); connection.dispose(); engine.connected = false; engine.send = null; stopMovement(engine);
+      if (connectionRef.current === connection) connectionRef.current = null; };
   }, [user, roomAttempt, engine]);
+
+  // Past the prediction limit the connection object stops the avatar (engine.connected=false); only then is a band shown.
+  // Movement input is already ignored there; the band never takes pointer input.
+  useEffect(() => {
+    setHeld(false);
+    if (!recovering) return;
+    const timer = setInterval(() => setHeld(!engine.connected), 200);
+    return () => clearInterval(timer);
+  }, [recovering, engine]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -209,6 +210,7 @@ function App() {
       get current() { return engine.snapshot || null; },
       get userId() { return userRef.current?.id || null; },
       get room() { return engine.room || null; },
+      get connection() { return connectionRef.current?.status || null; },
     });
     window.__minimal = diagnostic;
     return () => { if (window.__minimal === diagnostic) delete window.__minimal; };
@@ -230,7 +232,9 @@ function App() {
         <span className="place">작은 광장</span>
         {user && ready && release && <Release release={release}/>}
         <VisualStatus/>
-        {user && <span className={`presence ${ready ? 'online' : ''}`}><i aria-hidden="true"/>{ready ? `함께 있는 이웃 ${crowd}명` : busy ? '입장 준비 중' : otherTab ? '다른 탭에서 입장 중' : '연결 확인 필요'}</span>}
+        {user && (ready && recovering
+          ? <span className="presence recovering" role="status"><i aria-hidden="true"/>연결을 다시 확인하고 있어요</span>
+          : <span className={`presence ${ready ? 'online' : ''}`}><i aria-hidden="true"/>{ready ? `함께 있는 이웃 ${crowd}명` : busy ? '입장 준비 중' : otherTab ? '다른 탭에서 입장 중' : '연결 확인 필요'}</span>)}
       </header>
       <section className="stage" aria-label="광장">
         <WorldCanvas engine={engine} ready={ready} controls={!!user}/>
@@ -247,6 +251,7 @@ function App() {
             {toast && <p key={toast.id} className={`toast ${toast.tone}`} role="status">{toast.tone === 'saved' && <Icon map={STAR}/>}{toast.text}</p>}
           </div>
         </div>}
+        {ready && recovering && held && <p className="recovery-band" aria-hidden="true"><Icon map={STAR}/>연결을 다시 확인하고 있어요…</p>}
         {!user && <div className="overlay title-screen">
           <section className="dialog welcome" aria-labelledby="welcome-title">
             <p className="kicker">작은 광장에서 만나요</p>

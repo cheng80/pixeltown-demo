@@ -154,3 +154,58 @@
 - 검사(`tests/offline-ui.mjs`): 내 캐릭터는 `d`+`w`로 0.8초 동안 걷는다. 다른 사람은 대각선 묶음을 재생한다. 두 경우 모두 방향이 옆모습(2) 하나로 유지된다.
 - 이동 속도: 실제 걷기 속도는 기존 게임과 같은 80px/s다. 체감 차이는 화면 확대 배율 때문이다(기존 게임은 1280px 화면에서 4배, 미니멀은 광장 전체가 보이도록 2배). 사용자 결정(2026-10-08)에 따라 일단 유지한다.
 - 검증: `npm run build`, `npm run test:minimal:unit` 19/19, `npm run test:minimal:ui` 통과. commit·push·배포는 하지 않았다.
+
+## 접속 복구 화면 연결 — 2026-10-09 추가
+
+계약: `docs/handoffs/2026-10-09-session-recovery-contract.md`. 입장·재연결·room 이벤트는 Codex의 `createGameConnection`(`src/api.js` → `src/connection.js`)이 맡는다. 화면은 그 콜백만 연결한다.
+
+- `src/main.jsx`
+  - `Client`·`joinOrCreate`·`room.onMessage/onDrop/onLeave/onError`, 8초 무응답 즉시 `fail`, 입장 12초 타이머를 지웠다. 대신 `createGameConnection({ engine, userId, token, onSnapshot, onGameEnded, onDeployment, onFeatureUnavailable, onRecovery, onFailure })`를 만든다. 정리할 때는 `dispose()`를 호출한다.
+  - `onSnapshot`: 기존처럼 `applySnapshot`과 인원·판·배포·정산 대기를 갱신한다. 적용 성공 여부를 boolean으로 반환한다. `engine.connected`는 바꾸지 않는다(연결 객체 담당).
+  - 1초마다 `connection.checkStale()`을 호출한다. 무응답을 실패로 보지 않고 복구로 넘긴다.
+  - `engine.send = movement => connection.send(movement)`. `engine.room`도 연결 객체가 관리한다.
+  - `onRecovery(status)`: `status.phase === 'recovering'`이면 `phase`를 `playing`으로 유지한다. 제목 줄 상태 자리에 "연결을 다시 확인하고 있어요"(`.presence.recovering`, `role=status`)를 띄운다. 그 밖의 phase를 받으면 다시 "함께 있는 이웃 N명"으로 돌아간다. 배포 표시(`.release`)와는 다른 자리라 섞이지 않는다.
+  - 기존 장애 덮개·수동 입장 버튼·다른 탭 구분은 `onFailure`에서만 쓴다.
+  - 개발용 `window.__minimal.connection`이 연결 상태(`status`)를 보여 준다.
+- `src/WorldCanvas.jsx`: 송신 실패를 화면에서 따로 처리하지 않는다(`try/catch`로 `connected=false`·`stopMovement`를 하던 코드 삭제). 이동 루프는 `engine.connected`만 본다. 예측 상한을 넘기면 연결 객체가 `connected=false`로 바꾸는데, 이때 키·목적지·pending은 지우지 않는다.
+- `src/style.css`: `.presence.recovering`. 금색 점이 깜박이고, 동작 줄이기 설정에서는 멈춘다. `.recovery-band`는 광장 위 반투명 띠이며 한 줄로 표시된다. 캐릭터를 가리지 않도록 위쪽 36% 위치에 두었고 `pointer-events: none`이다.
+- 3초 후 안내(사용자 결정 2026-10-09): 복구 중 연결 객체가 `engine.connected=false`로 예측을 멈추면 광장 위에 "연결을 다시 확인하고 있어요…" 띠를 띄운다. 화면은 0.2초마다 이 값을 확인한다. 버튼은 없고, 회복하면 띠가 사라진다. 실패하면 기존 덮개로 바뀐다. 이동 입력(키·터치패드·클릭)은 `engine.connected=false`일 때 이미 무시되므로 띠가 입력을 막을 필요가 없다. 저장 내역 "다시 확인" 같은 PB 버튼은 게임 소켓과 무관하므로 그대로 둔다. 띠는 `aria-hidden`이며, 화면 읽기 프로그램에는 제목 줄 `role=status`가 같은 문구를 알린다.
+- 연결 객체에 기대는 정보(코드로 확인함):
+  - `onRecovery`는 복구 시작, 재시도할 때마다, 성공했을 때 `{ ...status }`로 호출된다. 판정에는 `phase`만 쓴다.
+  - 첫 snapshot과 복구 완료 때 연결 객체가 `engine.connected=true`로 바꾼다. 입장 12초 제한도 연결 객체에 있다.
+  - `onFailure(error)`의 `error.code/message`는 기존 `failureMessage`·`isDuplicateGuest`로 해석한다. 다른 탭 409도 여기로 온다.
+  - 계약 문서의 `status`(playing/recovering/…) 값은 코드에서는 `status.phase`다. 계약 문서를 고칠 때 맞춰 주면 된다.
+- `tests/offline-ui.mjs`
+  - 모의 SDK를 작은 서버로 바꿨다. 플레이어 상태 하나를 공유하고, room을 그 위에 연결된 소켓으로 다루며, 복구 토큰으로 `reconnect()`한다. 서버 ack보다 seq가 작거나 같은 입력은 무시하고 그 수를 센다. 실제 `connection.js`가 이 모의 SDK를 상대로 실행된다.
+  - 시험 origin을 `https://minimal.test`로 바꿨다(아래 문제 참고).
+  - 끊김(1006, 재연결 실패가 이어지다 회복):
+    - 덮개 없이 "연결을 다시 확인하고 있어요"가 뜨고 배포 단계 표시는 없다.
+    - 3초 동안은 계속 걷는다(pending ≥ 15). 3초가 지나면 멈추되 키와 pending은 남는다(≤240).
+    - 회복하면 같은 roomId/sessionId로 돌아오고 "함께 있는 이웃"이 다시 보인다.
+    - 서버 ack가 seq와 같아지고, pending은 0이며, 서버 위치와 화면 위치가 일치한다. 중복 송신은 0이고, `recovered 1` · `replayed>0` · `corrected 0`이다.
+  - 12초 안에 복구하지 못하면 "잠시 쉬어 가요"와 안내 링크가 뜨고 이동이 멈춘다.
+  - 방이 사라진 경우(522)에는 12초를 기다리지 않고 바로 덮개가 뜬다.
+  - 2.5초 지연과 정상 배포 단계에서는 복구 문구가 나오지 않는다.
+  - 띠: 걷는 3초 동안은 없다. 멈춘 뒤에 나타나며 `pointer-events: none`이다. 회복하거나 실패하면 사라진다.
+  - 화면 기록: `.qa/recovering.png`(걷는 중), `.qa/recovering-held.png`(멈춘 뒤, 390px).
+  - 변이 확인: 복구 시작 때 `fail`을 부르도록 바꾸면 시험이 실패한다.
+- 발견한 문제(다른 작업자 소유, 수정하지 않음): `src/visual-update.js:8`의 `createVisualModuleLoader` 기본 인자가 `globalThis.crypto.randomUUID()`를 모듈 로드 때 호출한다. `randomUUID`는 보안 컨텍스트(https·localhost)에서만 있다. 그래서 `http://<LAN IP>` 같은 비보안 주소에서는 `crypto.randomUUID is not a function`으로 앱 전체가 뜨지 않는다. 공개 https와 127.0.0.1은 영향이 없다.
+- 검증:
+  - `npm run test:minimal:ui` 통과
+  - `npm run test:minimal:unit` 30/30, `connection.test.mjs` 5/5
+  - `vite build`(임시 출력 폴더, `dist-minimal`은 건드리지 않음)
+- 하지 않은 것:
+  - 실제 TCP 강제 절단·공개 장시간 검사. 서버 5270/18120/12620을 보존하라는 지시에 따라 돌리지 않았다.
+  - ego 실브라우저 확인. 절단할 서버가 없어 하지 않았다.
+  - commit·push·배포.
+
+### Codex 통합 확인 — 2026-10-09
+
+- 설치 SDK의 오류 코드에 맞춰 UI 모의 SDK의 ErrorCode export와 방 소멸522·토큰 만료524를 정정했다. 화면 파일은 직접 수정하지 않았다. 지정 Chromium 1193의 오프라인 UI 검사를 다시 통과했다.
+- 위 randomUUID 문제는 updater에서 getRandomValues를 사용하도록 수정했다. 비보안 HTTP에서 실제 Vite 렌더러의 첫 다운로드503·재시도200·같은 manifest 적용을 확인했다. 화면 모듈 브라우저8/8·단위45/45·오프라인 UI 통과이며 자세한 자료는 [Codex 통합 보고서](../../docs/reviews/2026-10-09-disconnect-recovery.md)를 따른다. 실제 Ego 브라우저는 별도 5279/18129/12629 환경에서 85명 SDK와 함께 같은 세션 복구를 확인했다. 이동 중 미확인 입력5개 재송신·ack 완료·pending0·보정0·장애 덮개0·새로고침0이며, terminal4002에서는 장애 안내를 확인했다. 운영 반영·공개 장시간 재검사는 남아 있다.
+- 실제 결과와 한계: docs/reviews/2026-10-09-disconnect-recovery.md. 공개 운영에 반영한 결과는 아니다.
+
+
+### Codex 최신 통합 판정 (2026-10-09)
+
+최신 제목 줄·예측 정지 띠의 계약을 확인했다. status.phase는 안내, engine.connected는 연결 객체의 예측 정지/재개를 따르며 입장12초 타이머·room 수명도 연결 객체가 소유한다. 단위47/47·최신UI·공개 띠/입력보존/동일세션/ack=seq 검사를 통과해 함께 commit/push할 수 있다. 공개30분은 입력2,804,624개·복구2건·보정/복구실패0이나 끊김없는기준은 실패했다. 최신띠화면a7b45baf는 그 뒤 별도 짧은 공개검증으로 게시했다. [최종 재검사와 한계](../../docs/reviews/2026-10-09-public-recovery-recheck.md).

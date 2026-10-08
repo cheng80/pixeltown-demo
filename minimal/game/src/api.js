@@ -1,8 +1,10 @@
 import PocketBase, { LocalAuthStore } from 'pocketbase';
 import { PREFIX, readStored, writeStored } from './state.js';
+import { createConnection } from './connection.js';
 
 export const PB_URL = import.meta.env.VITE_MINIMAL_PB_URL || 'http://127.0.0.1:18120';
 export const GAME_URL = import.meta.env.VITE_MINIMAL_GAME_URL || 'ws://127.0.0.1:12620';
+export const createGameConnection = options => createConnection({ ...options, url: GAME_URL });
 export const pb = new PocketBase(PB_URL, new LocalAuthStore(PREFIX + 'auth'));
 pb.autoCancellation(false);
 export const savedGuest = () => {

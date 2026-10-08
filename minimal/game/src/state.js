@@ -1,5 +1,19 @@
 export const PREFIX = 'pixeltown.minimal.';
 
+// A resumed socket must reconcile the existing session, never initialize a new one.
+export function recoveryPlan(engine, snapshot, userId) {
+  const me = snapshot?.players?.find(p => p.id === userId);
+  const previous = engine.snapshot?.players?.find(p => p.id === userId);
+  if (!me || !Number.isFinite(me.x) || !Number.isFinite(me.y) ||
+      !Number.isSafeInteger(me.ack) || me.ack < 0 || me.ack > engine.seq ||
+      !Number.isSafeInteger(me.fix) || me.fix < engine.fix ||
+      (previous && me.ack < previous.ack)) throw new Error('Session state moved backwards');
+  const acknowledged = engine.pending.filter(p => p.seq <= me.ack).length;
+  const remaining = engine.pending.filter(p => p.seq > me.ack);
+  const corrected = remaining.filter(p => p.fix !== me.fix).length;
+  return { acknowledged, corrected, replay: remaining.filter(p => p.fix === me.fix) };
+}
+
 export function readStored(key, fallback = null) {
   try { return JSON.parse(localStorage.getItem(PREFIX + key)) ?? fallback; }
   catch { return fallback; }

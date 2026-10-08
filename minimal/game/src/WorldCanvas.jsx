@@ -15,7 +15,8 @@ export default function WorldCanvas({ engine, ready, controls }) {
     const updater = createVisualUpdater({ canvas, engine, view, createRenderer });
     const tick = setInterval(() => {
       // Local-first (ADR-005): lag never holds the avatar back. Unacknowledged steps stay pending; the server only checks them,
-      // and a refused step comes back as a fix. Real outages are still caught by the 8 s stale check in main.jsx.
+      // and a refused step comes back as a fix. The connection object (api.js) owns send failures, recovery resends and
+      // the prediction limit: it clears engine.connected when the avatar must stop, and keeps keys, target and pending.
       if (!engine.connected || !engine.initialized || document.hidden) return;
       const dx = Number(engine.keys.has('ArrowRight') || engine.keys.has('d')) - Number(engine.keys.has('ArrowLeft') || engine.keys.has('a')) + engine.pad.x;
       const dy = Number(engine.keys.has('ArrowDown') || engine.keys.has('s')) - Number(engine.keys.has('ArrowUp') || engine.keys.has('w')) + engine.pad.y;
@@ -28,7 +29,7 @@ export default function WorldCanvas({ engine, ready, controls }) {
       engine.movedAt = engine.lastTick;
       const movement = { ...engine.self, seq: ++engine.seq, fix: engine.fix };
       engine.pending.push(movement);
-      try { engine.send?.(movement); } catch { engine.connected = false; stopMovement(engine); }
+      engine.send?.(movement);
       if (engine.target && Math.hypot(next.x - engine.target.x, next.y - engine.target.y) < 1) engine.target = null;
     }, TICK_MS);
 

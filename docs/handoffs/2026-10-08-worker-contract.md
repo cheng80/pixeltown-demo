@@ -1,5 +1,8 @@
 # worker 교체·프런트 연결 계약 (Codex, 2026-10-08)
 
+2026-10-09 후속 계약: 정상 worker 교체는 이 문서처럼 기존 연결을 유지한다. 외부 소켓 종료 뒤 복구는 [새 계약](2026-10-09-session-recovery-contract.md)을 따른다. SDK maxRetries는0으로 두되 api.js의 연결 객체가 같은 세션을 제한 재시도한다. 즉시 장애 화면을 띄우던 이전 처리에서 변경됐다. 후속 구현을 운영 반영했다. 공개30분은 무손실복구 통과·끊김없는기준 실패다. [최신 재검사](../reviews/2026-10-09-public-recovery-recheck.md)를 따른다.
+
+
 구현 기준: 접속 계층은 Colyseus room/session/WebSocket과 outbox를 유지하고 게임 로직만 Node worker로 교체한다. wire protocol 1 및 이동 규칙은 유지한다. 기존 5270/18120/12620 서버는 재시작하지 않는다.
 
 - 입력·입퇴장·틱·정산 확인에 서버 내부 단조 순서를 붙인다. 시각·난수 seed는 접속 계층에서 확정하며 worker 재생 시 동일하게 쓴다.

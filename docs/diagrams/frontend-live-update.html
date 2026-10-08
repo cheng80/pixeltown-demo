@@ -9,6 +9,7 @@
 <main>
 <p class="eyebrow">PIXELTOWN / 인계 문서 / 2026-10-08</p>
 <h1>플레이를 계속하면서<br>화면 코드와 리소스를 바꾸는 방법</h1>
+<div class="notice"><strong>화면 업데이트 후속 수정 · 2026-10-09</strong><p>이 문서의 초기 성공 기록 뒤, 장시간 검사에서는 화면 모듈 다운로드가 실패한 후 같은 주소로 재시도해도 적용되지 않는 문제가 나왔습니다. 현재는 재시도 주소를 내부에서 바꾸고, 배포용 렌더러를 의존 없는 JavaScript 한 파일로 묶었습니다. 준비가 실패하면 기존 화면을 유지합니다. 운영에 반영했고 공개30분에서 무손실 복구를 확인했습니다. 응답 정체2건으로 끊김 없는 기준은 실패했습니다. <a href="../reviews/2026-10-09-public-recovery-recheck.md">최신 공개 재검사</a>. <a href="../reviews/2026-10-09-disconnect-recovery.md">수정 결과와 한계</a></p></div>
 <p>접속과 이동을 처리하는 코드는 계속 실행합니다. 새 그림·스타일·그리기 코드를 뒤에서 준비하고, 준비가 끝나면 다음 화면 프레임부터 사용합니다. 준비에 실패하면 기존 화면으로 계속 플레이합니다.</p>
 <div class="figure">
 <svg viewBox="0 0 960 472" role="img" aria-labelledby="frontend-live-title frontend-live-desc">

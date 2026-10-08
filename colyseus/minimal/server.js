@@ -8,8 +8,11 @@ import { WorkerHost } from './worker-host.js';
 import { timingSafeEqual } from 'node:crypto';
 import { resolve } from 'node:path';
 import { ROOM_CAPACITY, TICK_MS } from '../../minimal/shared/world.js';
+import { connectionObserverFromEnv, installMessagePolicy, ServerHeartbeat, ValidatedMoveTracker, wasRateLimited } from './connection-observer.js';
 
 const outbox = new MinimalOutbox(OUTBOX_DIR, adminClient);
+const connectionObserver = connectionObserverFromEnv(STATE_DIR);
+const heartbeat = new ServerHeartbeat({ observer: connectionObserver });
 const period = Number(process.env.MINIMAL_SETTLE_MS || 180000);
 const spawnMs = Number(process.env.MINIMAL_SPAWN_MS || 6000);
 if (!Number.isInteger(period) || period < 1000 || period > 300000 || !Number.isInteger(spawnMs) || spawnMs < 1000 || spawnMs > 60000) throw new Error('Invalid minimal timing');
@@ -19,7 +22,8 @@ class MinimalTown extends Room {
     if (options.zone !== 'lobby') throw new ServerError(400, '메인 로비만 이용할 수 있어요.');
     if (lobby) throw new ServerError(503, '로비가 가득 찼어요. 잠시 후 다시 입장해 주세요.');
     lobby = this;
-    this.maxClients = ROOM_CAPACITY; this.autoDispose = false; this.maxMessagesPerSecond = 120;
+    this.maxClients = ROOM_CAPACITY; this.autoDispose = false;
+    installMessagePolicy(this, connectionObserver);
     this.held = new Map();
     this.inputs = [];
     this.game = new WorkerHost({ ...(process.env.MINIMAL_WORKER_ENTRY ? { entry: resolve(process.env.MINIMAL_WORKER_ENTRY) } : {}), durationMs: period, spawnMs, settle: match => {
@@ -28,10 +32,14 @@ class MinimalTown extends Room {
       void outbox.flush();
     } });
     await this.game.ready;
+    const liveness = new ValidatedMoveTracker(heartbeat, session => this.clients.get(session)?.ref);
     this.game.on('deployment', status => this.broadcast('deployment', status));
-    this.game.on('state', (snapshot, event) => { if (event.commands.some(c => c.type !== 'move')) this.broadcast('snapshot', snapshot); });
+    this.game.on('state', (snapshot, event) => {
+      liveness.committed(this.game.players, event);
+      if (event.commands.some(c => c.type !== 'move')) this.broadcast('snapshot', snapshot);
+    });
     this.game.on('unavailable', () => console.error('Minimal worker unavailable'));
-    this.onMessage('move', (client, data) => this.inputs.push({ type: 'move', session: client.sessionId, data, now: Date.now() }));
+    this.onMessage('move', (client, data) => this.inputs.push({ type: 'move', session: client.sessionId, data, now: Date.now(), receivedAt: performance.now() }));
     this.onMessage('*', (client, feature) => client.send('featureUnavailable', { feature: String(feature).slice(0, 40) }));
     this.setSimulationInterval(() => {
       const commands = this.inputs.splice(0); commands.push({ type: 'tick', now: Date.now() });
@@ -56,13 +64,27 @@ class MinimalTown extends Room {
     }
     const result = await this.game.dispatch([...this.inputs.splice(0), { type: 'join', session: client.sessionId, data: auth, now: Date.now() }]);
     if (result.outcomes[0]?.error) throw new ServerError(409, result.outcomes[0].error);
+    connectionObserver?.lifecycle('join', client, this.game.players.get(client.sessionId), false);
   }
-  onDrop(client) {
+  onDrop(client, code) {
     if (!this.game.players.has(client.sessionId)) return;
-    const pending = this.allowReconnection(client, 15); this.held.set(client.sessionId, pending);
-    pending.then(() => this.held.delete(client.sessionId), () => this.held.delete(client.sessionId));
+    // The SDK also uses 4002 to retire an old socket during a valid stale reconnect.
+    if (wasRateLimited(client.ref)) { connectionObserver?.lifecycle('drop', client, this.game.players.get(client.sessionId), false, code); return; }
+    const pending = this.allowReconnection(client, 20); this.held.set(client.sessionId, pending);
+    connectionObserver?.lifecycle('drop', client, this.game.players.get(client.sessionId), true, code);
+    const cleanup = () => { if (this.held.get(client.sessionId) === pending) this.held.delete(client.sessionId); };
+    pending.then(cleanup, () => {
+      cleanup(); connectionObserver?.lifecycle('reconnect-expired', client, this.game.players.get(client.sessionId), false);
+    });
   }
-  async onLeave(client) {
+  onReconnect(client) {
+    this.held.delete(client.sessionId);
+    client.send('snapshot', this.game.snapshot());
+    connectionObserver?.lifecycle('reconnect', client, this.game.players.get(client.sessionId), false);
+  }
+  async onLeave(client, code) {
+    this.held.delete(client.sessionId);
+    connectionObserver?.lifecycle('leave', client, this.game.players.get(client.sessionId), false, code);
     const commands = this.inputs.splice(0); commands.push({ type: 'leave', session: client.sessionId, now: Date.now() });
     await this.game.dispatch(commands);
   }
@@ -94,7 +116,7 @@ app.use((req, res, next) => {
   next();
 });
 const workerDeployment = process.env.MINIMAL_WORKER_ENTRY === resolve(STATE_DIR, 'worker-current/colyseus/minimal/simulation-worker.js') ? 'managed-release' : 'direct-entry';
-const health = () => ({ ok: !lobby?.game.fatal, mode: 'minimal', protocol: 1, capacity: ROOM_CAPACITY, rooms: lobby ? 1 : 0, players: lobby?.game.players.size || 0, persistence: outbox.status(), hotSwap: true, workerDeployment, worker: lobby?.game.status() || null });
+const health = () => ({ ok: !lobby?.game.fatal, mode: 'minimal', protocol: 1, capacity: ROOM_CAPACITY, rooms: lobby ? 1 : 0, players: lobby?.game.players.size || 0, persistence: outbox.status(), hotSwap: true, workerDeployment, worker: lobby?.game.status() || null, connectionDiagnostics: connectionObserver?.status() || { enabled: false } });
 // No browser or game token can invoke the local deployment control.
 app.post('/internal/worker/swap', async (req, res) => {
   const token = process.env.MINIMAL_SWAP_TOKEN;
@@ -111,12 +133,15 @@ app.get('/ready', async (_req, res) => {
   try { const r = await fetch(`${PB_URL}/api/health`, { signal: AbortSignal.timeout(1500) }); if (!r.ok) throw new Error(); res.json(health()); }
   catch { res.status(503).json({ ok: false, mode: 'minimal', dependency: 'pocketbase' }); }
 });
-const transport = new WebSocketTransport({ server: http.createServer(app), maxPayload: 8192, verifyClient: info => allowed(info.origin),
+const transport = new WebSocketTransport({ server: http.createServer(app), maxPayload: 8192, verifyClient: info => allowed(info.origin), pingInterval: 0,
   // Full 100-player snapshots at 20Hz need less bandwidth on public paths.
   // Keep small input messages uncompressed and bound zlib concurrency.
-  perMessageDeflate: { threshold: 1024, serverNoContextTakeover: true, clientNoContextTakeover: true,
+  perMessageDeflate: process.env.MINIMAL_COMPRESSION === 'off' ? false : {
+    threshold: 1024, serverNoContextTakeover: true, clientNoContextTakeover: true,
     zlibDeflateOptions: { level: 1 }, concurrencyLimit: 4 },
 });
+connectionObserver?.attach(transport);
+heartbeat.attach(transport);
 const server = new Server({ transport, greet: false, gracefullyShutdown: false });
 server.define('minimal-town', MinimalTown).filterBy(['zone']);
 await server.listen(GAME_PORT, '127.0.0.1');
@@ -125,6 +150,6 @@ const retry = setInterval(() => void outbox.flush(), 2000); void outbox.flush();
 let stopping = false;
 async function stop() {
   if (stopping) return; stopping = true; clearInterval(retry);
-  await server.gracefullyShutdown(false); await outbox.flush(); process.exit(0);
+  await server.gracefullyShutdown(false); heartbeat.close(); await outbox.flush(); await connectionObserver?.close(); process.exit(0);
 }
 process.on('SIGINT', stop); process.on('SIGTERM', stop);

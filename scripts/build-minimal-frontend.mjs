@@ -2,14 +2,55 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { build } from 'vite';
+import { isIP, setDefaultAutoSelectFamilyAttemptTimeout } from 'node:net';
+import { setTimeout as delay } from 'node:timers/promises';
 
 const root = resolve(import.meta.dirname, '..');
-const remote = process.argv.includes('--remote');
-const store = resolve(process.env.MINIMAL_VISUAL_STORE || resolve(root, '.local/minimal/frontend-releases'));
-const base = process.env.MINIMAL_VISUAL_PUBLIC_URL || 'https://pixeltown.fastmake.net';
-const get = async path => fetch(base + path, { cache: 'no-store', signal: AbortSignal.timeout(20000) });
-if (remote) {
+
+// Only structured network fields are logged: fetch messages can contain URLs,
+// credentials or response bodies. Preserve both IPv4 and IPv6 aggregate causes.
+export function visualNetworkError(error) {
+  const seen = new Set(), causes = [];
+  const visit = value => {
+    if (!value || typeof value !== 'object' || seen.has(value) || seen.size >= 16) return;
+    seen.add(value);
+    const fields = ['name', 'code', 'syscall'].flatMap(key => typeof value[key] === 'string' && /^[A-Za-z0-9_]{1,64}$/.test(value[key]) ? [`${key}=${value[key]}`] : []);
+    const family = typeof value.address === 'string' ? isIP(value.address) : 0;
+    if (family) fields.push(`address=${value.address}`, `family=IPv${family}`);
+    if (Number.isInteger(value.port) && value.port > 0 && value.port <= 65535) fields.push(`port=${value.port}`);
+    if (fields.length) causes.push(fields.join(' '));
+    visit(value.cause);
+    if (Array.isArray(value.errors)) value.errors.forEach(visit);
+  };
+  visit(error);
+  return causes.join('; ') || 'Network error';
+}
+
+export async function fetchVisualFile(base, path, { fetchImpl = fetch, timeoutMs = 20000, onRetry = message => console.warn(message) } = {}) {
+  const file = JSON.stringify(new URL(path, base).pathname);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    let response;
+    try {
+      // The same deadline covers headers AND body; retry truncated downloads too.
+      response = await fetchImpl(base + path, { cache: 'no-store', signal: AbortSignal.timeout(timeoutMs) });
+      if (!response.ok && response.status !== 404) {
+        const error = new Error(); error.code = `HTTP_${response.status}`; throw error;
+      }
+      const body = await response.arrayBuffer();
+      return new Response([204, 205].includes(response.status) ? null : body, { status: response.status, headers: response.headers });
+    } catch (error) {
+      await response?.body?.cancel().catch(() => {});
+      const message = `Visual GET ${file} attempt ${attempt}/3 failed: ${visualNetworkError(error)}`;
+      const retryable = !response || response.ok || [408, 429, 500, 502, 503, 504].includes(response.status);
+      if (attempt === 3 || !retryable) throw new Error(message);
+      onRetry(message);
+      await delay(100 * attempt);
+    }
+  }
+}
+
+export async function preservePublicVisualHistory(base, store, options) {
+  const get = path => fetchVisualFile(base, path, options);
   const index = await get('/visual/releases.json');
   const type = index.headers.get('content-type') || '';
   // Before this feature exists Pages' SPA fallback returns index.html with 200 for missing paths.
@@ -39,7 +80,7 @@ if (remote) {
         const r = await get(`/visual/releases/${id}/${file.path}`);
         if (!r.ok) throw new Error(`Retained file unavailable: ${file.path}`);
         const body = Buffer.from(await r.arrayBuffer());
-        if (createHash('sha256').update(body).digest('hex') !== file.sha256) throw new Error('Retained file checksum mismatch');
+        if (createHash('sha256').update(body).digest('hex') !== file.sha256) throw new Error(`Retained file checksum mismatch: ${JSON.stringify(file.path)}`);
         mkdirSync(resolve(dest, '..'), { recursive: true }); writeFileSync(dest, body);
       }
       writeFileSync(resolve(dir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
@@ -47,4 +88,15 @@ if (remote) {
     console.log(`Preserved ${history.releases.length} public visual releases`);
   }
 }
-await build({ configFile: resolve(root, 'vite.minimal.config.js'), ...(remote ? { mode: 'minimal-remote', build: { outDir: '../../dist' } } : {}) });
+
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
+  const remote = process.argv.includes('--remote');
+  if (remote) {
+    setDefaultAutoSelectFamilyAttemptTimeout(2000);
+    const store = resolve(process.env.MINIMAL_VISUAL_STORE || resolve(root, '.local/minimal/frontend-releases'));
+    const base = process.env.MINIMAL_VISUAL_PUBLIC_URL || 'https://pixeltown.fastmake.net';
+    await preservePublicVisualHistory(base, store);
+  }
+  const { build } = await import('vite');
+  await build({ configFile: resolve(root, 'vite.minimal.config.js'), ...(remote ? { mode: 'minimal-remote', build: { outDir: '../../dist' } } : {}) });
+}

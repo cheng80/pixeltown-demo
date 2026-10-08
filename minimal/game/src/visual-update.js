@@ -2,6 +2,49 @@
 const COMPATIBILITY = typeof __MINIMAL_VISUAL_COMPAT__ === 'undefined' ? 'development' : __MINIMAL_VISUAL_COMPAT__;
 const INITIAL_REVISION = typeof __MINIMAL_VISUAL_REVISION__ === 'undefined' ? 'development' : __MINIMAL_VISUAL_REVISION__;
 const SHA = /^[a-f0-9]{64}$/;
+let loaderSequence = 0;
+function visualNonce() {
+  // getRandomValues also works on non-secure LAN HTTP origins; randomUUID does not.
+  if (globalThis.crypto?.getRandomValues) {
+    return Array.from(globalThis.crypto.getRandomValues(new Uint32Array(4)), word => word.toString(16).padStart(8, '0')).join('');
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${++loaderSequence}`;
+}
+
+// A failed import can remain in the browser's module map. Keep relative imports
+// rooted at the immutable release, and cap new module identities per entry.
+export function createVisualModuleLoader(importModule = url => import(/* @vite-ignore */ url), nonce = visualNonce()) {
+  const entries = new Map();
+  let retained = new Set(), identity = 0;
+  const prune = () => {
+    for (const entry of entries.keys()) {
+      if (entries.size <= 16) break;
+      if (!retained.has(entry)) entries.delete(entry);
+    }
+  };
+  const load = async (entry, signal) => {
+    if (signal.aborted) throw new Error('Visual preparation cancelled');
+    let state = entries.get(entry);
+    if (!state) state = { attempts: 0, module: null };
+    entries.delete(entry); entries.set(entry, state); prune();
+    if (state.module) return state.module;
+    if (state.attempts >= 3) throw new Error('Visual module retry limit reached (3 attempts)');
+    const attempt = ++state.attempts;
+    const url = attempt === 1 ? entry : `${entry}?visualAttempt=${encodeURIComponent(nonce)}-${++identity}-${attempt}`;
+    try {
+      const module = await importModule(url);
+      if (signal.aborted) throw new Error('Visual preparation cancelled');
+      state.module = module;
+      return module;
+    } catch (error) {
+      throw new Error(`Visual module attempt ${attempt}/3 failed: ${String(error?.message || 'Import failed').slice(0, 100)}`);
+    }
+  };
+  load.retain = (active, previous) => { retained = new Set([active, previous].filter(Boolean)); prune(); };
+  load.clear = () => { entries.clear(); retained.clear(); };
+  Object.defineProperty(load, 'size', { get: () => entries.size });
+  return load;
+}
 
 export function validateVisualManifest(value, compatibility, origin) {
   if (!value || value.schema !== 1 || !SHA.test(value.revision) || !SHA.test(value.compatibility)) throw new Error('Invalid visual manifest');
@@ -35,6 +78,7 @@ function previewEngine(engine) {
 }
 
 export function createVisualUpdater({ canvas, engine, view, createRenderer }) {
+  const loadModule = createVisualModuleLoader();
   let current = { renderer: createRenderer({ canvas, engine, view }), styles: [...document.querySelectorAll('link[rel="stylesheet"]')], fonts: [] };
   let previous = null, pending = null, disposed = false, busy = false, timer, controller;
   const status = { phase: 'idle', revision: INITIAL_REVISION, compatibility: COMPATIBILITY, applied: 0, failures: 0, rollbacks: 0, checkedAt: null };
@@ -64,9 +108,10 @@ export function createVisualUpdater({ canvas, engine, view, createRenderer }) {
   const disable = release => release.styles.forEach(link => { link.disabled = true; });
   const fail = error => { status.failures++; status.phase = 'retained'; status.reason = String(error?.message || 'Renderer failed').slice(0, 160); publish(); };
   async function prepare(manifest, signal) {
-    const release = { styles: [], fonts: [], resources: { images: new Map() }, revision: manifest.revision };
+    const release = { styles: [], fonts: [], resources: { images: new Map() }, revision: manifest.revision, entry: manifest.entry };
     const family = `PixelTown_${manifest.revision}`;
-    const aborted = new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('Visual preparation timed out')), { once: true }));
+    let onAbort;
+    const aborted = new Promise((_, reject) => { onAbort = () => reject(new Error('Visual preparation timed out')); signal.addEventListener('abort', onAbort, { once: true }); });
     try {
       await Promise.race([Promise.all([
         ...manifest.styles.map(href => new Promise((resolve, reject) => {
@@ -81,7 +126,7 @@ export function createVisualUpdater({ canvas, engine, view, createRenderer }) {
           const image = new Image(); image.src = i.url; await image.decode(); release.resources.images.set(i.name, image);
         }),
         (async () => {
-          const module = await import(/* @vite-ignore */ manifest.entry);
+          const module = await loadModule(manifest.entry, signal);
           if (typeof module.createRenderer !== 'function') throw new Error('Renderer unavailable');
           release.factory = module.createRenderer;
         })(),
@@ -95,6 +140,7 @@ export function createVisualUpdater({ canvas, engine, view, createRenderer }) {
       if (typeof release.renderer?.draw !== 'function') throw new Error('Invalid renderer');
       return release;
     } catch (error) { clean(release); throw error; }
+    finally { signal.removeEventListener('abort', onAbort); }
   }
   async function check() {
     if (disposed || busy || pending) return;
@@ -124,6 +170,7 @@ export function createVisualUpdater({ canvas, engine, view, createRenderer }) {
         try {
           enable(candidate); disable(current); candidate.renderer.draw(now);
           clean(previous); previous = current; current = candidate;
+          loadModule.retain(current.entry, previous.entry);
           current.priorRevision = status.revision; status.revision = candidate.revision; status.phase = 'applied'; status.applied++; publish();
           return;
         } catch (error) {
@@ -135,6 +182,7 @@ export function createVisualUpdater({ canvas, engine, view, createRenderer }) {
       catch (error) {
         if (previous) {
           const failed = current; current = previous; previous = null;
+          loadModule.retain(current.entry);
           disable(failed); enable(current); status.revision = failed.priorRevision; status.rollbacks++; clean(failed); fail(error);
           try { current.renderer.draw(now); } catch { /* Keep movement and the last painted frame alive. */ }
         } else fail(error);
@@ -142,6 +190,7 @@ export function createVisualUpdater({ canvas, engine, view, createRenderer }) {
     },
     dispose() {
       disposed = true; clearInterval(timer); controller?.abort(); clean(pending); clean(previous);
+      loadModule.clear();
       // Initial host styles belong to React's page, not the renderer lifecycle.
       if (current.revision) clean(current); else { try { current.renderer.dispose?.(); } catch {} }
       if (window.__minimalVisual === diag) delete window.__minimalVisual;

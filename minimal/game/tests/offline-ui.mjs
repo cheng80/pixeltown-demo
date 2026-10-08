@@ -7,22 +7,49 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { chromium } from 'playwright-core';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// The SDK mock is a tiny server: one shared player state, rooms as sockets onto it, and reconnect() by resume token.
+// The real connection object (src/connection.js) runs against it, so drops and recovery go through production code.
 const sdkMock = `
+export const ErrorCode = { MATCHMAKE_INVALID_ROOM_ID: 522, MATCHMAKE_EXPIRED: 524, AUTH_FAILED: 525 };
+let sessions = 0;
+function openRoom(m, sessionId) {
+  const handlers = {};
+  const room = { roomId: 'room-a', sessionId, reconnectionToken: 'resume-' + sessionId, reconnection: {}, handlers,
+    connection: { isOpen: true, close() { room.connection.isOpen = false; } },
+    onMessage:(type,cb)=>{handlers[type]=cb}, onDrop:cb=>{handlers.drop=cb}, onLeave:cb=>{handlers.leave=cb}, onError:cb=>{handlers.error=cb},
+    send(type, move){
+      if(type !== 'move') throw new Error('Wrong movement contract');
+      if(!room.connection.isOpen) throw new Error('Socket closed');
+      m.moves.push({...move});
+      const me = m.snapshot.players[0];
+      if(move.fix !== me.fix || move.seq <= me.ack) { m.ignored++; return; }
+      if(!m.lag) Object.assign(me, {x:move.x, y:move.y, ack:move.seq});
+    },
+    async leave(){ room.connection.isOpen = false; }
+  };
+  m.room = room;
+  return room;
+}
 export class Client {
   auth = {};
   async joinOrCreate(name, options) {
     if (globalThis.__rejectJoin) throw Object.assign(new Error(globalThis.__rejectJoin.message), { code: globalThis.__rejectJoin.code });
     if (name !== 'minimal-town' || options.zone !== 'lobby' || !this.auth.token) throw new Error('Invalid join');
-    const handlers = {};
+    clearInterval(window.__mock?.timer);
     const snapshot = {zone:'lobby',players:[{id:'minimal-user',name:'산책이',x:56,y:336,ack:0,fix:0},{id:'neighbor',name:'이웃',x:130,y:300,ack:0,fix:0}],game:{id:'round-a',active:true,endsAt:Date.now()+180000,stars:[{id:'star',x:100,y:336}],scores:{'minimal-user':0}}};
-    const emit = (type, data) => handlers[type]?.(structuredClone(data));
-    const room = { reconnection:{}, onMessage:(type,cb)=>{handlers[type]=cb}, onDrop:cb=>{handlers.drop=cb}, onLeave:cb=>{handlers.leave=cb}, onError:cb=>{handlers.error=cb},
-      send(type, move){ if(type !== 'move') throw new Error('Wrong movement contract'); window.__mock.moves.push({...move}); if(!window.__mock.lag) Object.assign(snapshot.players[0],move,{ack:move.seq}); },
-      async leave(){ clearInterval(timer); }
-    };
-    window.__mock = {snapshot,emit,moves:[],room};
-    const timer = setInterval(()=>{ if(!window.__mock.lag) emit('snapshot',snapshot); },50);
-    return room;
+    const m = window.__mock = {snapshot,moves:[],ignored:0,reconnects:0,down:null,lag:false};
+    m.emit = (type, data) => { if (m.room.connection.isOpen) m.room.handlers[type]?.(structuredClone(data)); };
+    // A network cut: the socket dies without a goodbye; down makes reconnect attempts fail (true = unreachable, number = server code).
+    m.cut = (code = 1006, down = true) => { m.down = down; m.room.connection.isOpen = false; m.room.handlers.drop?.(code); };
+    m.timer = setInterval(() => { if (!m.lag) m.emit('snapshot', snapshot); }, 50);
+    return openRoom(m, 's' + ++sessions);
+  }
+  async reconnect(token) {
+    const m = window.__mock; m.reconnects++;
+    if (m.down === true) throw new Error('Network unreachable');
+    if (m.down) throw Object.assign(new Error('Room gone'), { code: m.down });
+    if (token !== m.room.reconnectionToken) throw Object.assign(new Error('Bad token'), { code: ErrorCode.MATCHMAKE_EXPIRED });
+    return openRoom(m, m.room.sessionId);
   }
 }`;
 const bundle = await build({ entryPoints: [path.join(root, 'src/main.jsx')], bundle: true, write: false,
@@ -55,7 +82,7 @@ try {
     throw new Error('Unexpected request blocked: '+url.pathname);
   });
   await page.clock.install();
-  await page.goto('http://minimal.test/');
+  await page.goto('https://minimal.test/');
   await page.getByLabel('닉네임',{exact:true}).fill('산책이');
   await page.getByRole('button',{name:'광장 들어가기'}).click();
   await page.waitForFunction(()=>!!window.__mock);
@@ -100,6 +127,7 @@ try {
   await page.keyboard.down('d'); await page.clock.runFor(2500); await page.keyboard.up('d');
   assert.ok(await page.evaluate(()=>window.__mock.moves.length) - lagFrom >= 45, 'avatar keeps walking while acks are late');
   assert.equal(await page.getByRole('heading',{name:'잠시 쉬어 가요'}).count(),0,'2.5 s lag is not a connection failure');
+  assert.equal(await page.getByText('연결을 다시 확인하고 있어요').count(),0,'2.5 s lag is not a recovery');
   await page.evaluate(()=>{ const mock = window.__mock, last = mock.moves.at(-1); mock.lag = false; Object.assign(mock.snapshot.players[0], {x:last.x, y:last.y, ack:last.seq}); mock.emit('snapshot', mock.snapshot); });
   assert.equal(await page.evaluate(()=>window.__minimal.snapshot.players[0].fix), await page.evaluate(()=>window.__mock.moves.at(-1).fix), 'no correction after late acks');
   // Deployment status: old servers send none; steps are display-only and never stop movement.
@@ -119,6 +147,7 @@ try {
   assert.ok((await page.locator('.release [role=status]').innerText()).includes('적용 완료'));
   await page.keyboard.up('w');
   assert.ok(await page.evaluate(()=>window.__mock.moves.length) > movesBeforeDeploy + 10, 'movement continues during deployment');
+  assert.equal(await page.getByText('연결을 다시 확인하고 있어요').count(),0,'a normal deployment shows no recovery notice');
   await page.clock.runFor(4100); assert.ok(!(await release()).includes('적용 완료') && (await release()).includes('bbbbbbbb · 2회차'));
   await deploy('catching-up', 2, 'aaaaaaaa11112222', 1); await page.clock.runFor(100);
   assert.ok(!(await release()).includes('상태 확인 중') && (await release()).includes('bbbbbbbb'), 'late deployment status ignored');
@@ -160,8 +189,49 @@ try {
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2); await page.mouse.down(); await page.clock.runFor(150); await page.mouse.up();
   assert.ok(await page.evaluate(()=>window.__mock.moves.length)>before,'touchpad moves');
   const canvas = page.locator('canvas'); await canvas.click({position:{x:220,y:290}}); await page.clock.runFor(200);
-  await page.evaluate(()=>window.__mock.emit('drop',1006));
+  // Recovery: a cut socket resumes in the same room/session through the real connection object. The screen keeps playing
+  // with a small title-bar notice (never the outage cover), predicts up to 3 s, then holds still without dropping keys or pending.
+  const recoveringText = page.getByText('연결을 다시 확인하고 있어요');
+  const sessionBefore = await page.evaluate(()=>[window.__minimal.room.roomId, window.__minimal.room.sessionId]);
+  await page.keyboard.down('d'); await page.clock.runFor(300);
+  await page.evaluate(()=>window.__mock.cut(1006));
+  await page.clock.runFor(1000);
+  await recoveringText.waitFor();
+  assert.equal(await page.locator('.cover').count(),0,'recovery keeps playing without the outage cover');
+  assert.equal(await page.locator('.release-step').count(),0,'recovery notice is not mixed into the deployment indicator');
+  assert.equal(await page.locator('.recovery-band').count(),0,'no band while the avatar still walks');
+  await page.screenshot({path:path.join(root,'.qa/recovering.png'),animations:'disabled'});
+  const during = await page.evaluate(()=>({pending:window.__qaEngine.pending.length, connected:window.__qaEngine.connected}));
+  assert.ok(during.connected && during.pending >= 15, `avatar keeps predicting while reconnecting (${JSON.stringify(during)})`);
+  await page.clock.runFor(2600);
+  const frozen = await page.evaluate(()=>({x:window.__qaEngine.self.x, pending:window.__qaEngine.pending.length, connected:window.__qaEngine.connected, key:window.__qaEngine.keys.has('d')}));
+  assert.ok(!frozen.connected && frozen.key && frozen.pending > 0 && frozen.pending <= 240, `prediction stops after 3 s, keeping keys and pending (${JSON.stringify(frozen)})`);
+  await page.clock.runFor(400);
+  assert.equal(await page.evaluate(()=>window.__qaEngine.self.x), frozen.x, 'avatar holds still past the prediction limit');
+  await page.locator('.recovery-band').waitFor();
+  assert.equal(await page.locator('.recovery-band').evaluate(e=>getComputedStyle(e).pointerEvents),'none','band never takes input');
+  await page.screenshot({path:path.join(root,'.qa/recovering-held.png'),animations:'disabled'});
+  assert.equal(await page.locator('.cover').count(),0);
+  await page.evaluate(()=>{ window.__mock.down = null; });
+  await page.clock.runFor(3000);
+  await page.getByText('함께 있는 이웃 2명').waitFor();
+  assert.equal(await page.locator('.recovery-band').count(),0,'band leaves on recovery');
+  await page.keyboard.up('d'); await page.clock.runFor(300);
+  const resumed = await page.evaluate(()=>{ const e = window.__qaEngine, m = window.__mock, me = m.snapshot.players[0];
+    return { room:[window.__minimal.room.roomId, window.__minimal.room.sessionId], ack:me.ack, seq:e.seq, pending:e.pending.length, ignored:m.ignored,
+      reconnects:m.reconnects, same:me.x === e.self.x && me.y === e.self.y, status:{...window.__minimal.connection} }; });
+  assert.deepEqual(resumed.room, sessionBefore, 'same room/session after recovery');
+  assert.ok(resumed.ack === resumed.seq && resumed.pending === 0 && resumed.same, `every input confirmed in order (${JSON.stringify(resumed)})`);
+  assert.equal(resumed.ignored, 0, 'no acknowledged input is sent twice');
+  assert.ok(resumed.status.recovered === 1 && resumed.status.replayed > 0 && resumed.status.corrected === 0, `recovery counted (${JSON.stringify(resumed.status)})`);
+  assert.ok(resumed.reconnects >= 2, 'failed attempts were retried');
+  // Recovery that cannot finish in 12 s hands over to the outage cover; movement stops there.
+  await page.evaluate(()=>window.__mock.cut(1006));
+  await page.clock.runFor(1000); await recoveringText.waitFor();
+  await page.clock.runFor(12500);
   await page.getByRole('heading',{name:'잠시 쉬어 가요'}).waitFor();
+  assert.equal(await recoveringText.count(),0,'failed recovery replaces the notice with the cover');
+  assert.equal(await page.locator('.recovery-band').count(),0);
   const stopped = await page.evaluate(()=>window.__mock.moves.length);
   await page.keyboard.down('d'); await page.clock.runFor(1000); await page.keyboard.up('d');
   assert.equal(await page.evaluate(()=>window.__mock.moves.length),stopped,'movement stops while disconnected');
@@ -179,11 +249,16 @@ try {
   await rejoin(null);
   await page.getByText('함께 있는 이웃 2명').waitFor();
   assert.equal(await page.locator('.cover').count(),0,'rejoin after closing the other tab plays again');
+  // A vanished room (process restart) cannot be resumed: the cover comes up at once instead of retrying for 12 s.
+  await page.evaluate(()=>window.__mock.cut(1006, 522));
+  await page.clock.runFor(1000);
+  await page.getByRole('heading',{name:'잠시 쉬어 가요'}).waitFor();
+  await rejoin(null); await page.getByText('함께 있는 이웃 2명').waitFor();
   const authBeforeReload = authCalls;
   await page.reload(); await page.waitForFunction(()=>!!window.__mock); await page.clock.runFor(100);
   assert.equal(guestCalls,1,'reload must not create a new guest'); assert.equal(authCalls,authBeforeReload+1,'reload authenticates saved guest');
-  await page.goto('http://minimal.test/unavailable.html'); await page.getByRole('heading',{name:'광장에 잠시 연결할 수 없어요'}).waitFor();
+  await page.goto('https://minimal.test/unavailable.html'); await page.getByRole('heading',{name:'광장에 잠시 연결할 수 없어요'}).waitFor();
   assert.equal(await page.locator('script').count(),0); assert.equal(await page.locator('a').getAttribute('href'),'./');
   assert.deepEqual(errors,[]);
-  console.log('PASS offline UI: guest/restore, isolated credentials, server spawn, seq/fix, movement, lag-tolerant local movement, paced playback of others, steady diagonal facing, deployment indicator, pending/settlement, wallet failure/429, disconnect, duplicate-tab vs outage, 1280/390 overflow, static fallback');
+  console.log('PASS offline UI: guest/restore, isolated credentials, server spawn, seq/fix, movement, lag-tolerant local movement, paced playback of others, steady diagonal facing, deployment indicator, pending/settlement, wallet failure/429, session recovery/timeout/room gone, duplicate-tab vs outage, 1280/390 overflow, static fallback');
 } finally { await browser.close(); }

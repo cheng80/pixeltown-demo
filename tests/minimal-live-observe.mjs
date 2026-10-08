@@ -12,6 +12,8 @@ const {default:PocketBase}=await import('pocketbase');
 assert.equal(process.env.MINIMAL_OPERATIONAL,'1','Explicit authorization required');
 assert(process.env.MINIMAL_OPERATIONAL_ACCOUNTS,'Reuse existing private test accounts');
 const root=process.cwd(),count=85,collectors=5,intervalMs=180000;
+const durationMs=Number(process.env.MINIMAL_OBSERVE_DURATION_MS||0);
+assert(Number.isInteger(durationMs)&&durationMs>=0&&durationMs<=86400000,'Invalid observation duration');
 mkdirSync(resolve(root,'.local/minimal'),{recursive:true});
 mkdirSync(resolve(root,'.test-work'),{recursive:true});
 const lock=resolve(root,'.local/minimal/live-observe.lock');
@@ -29,15 +31,19 @@ writeFileSync(resolve(directory,'accounts.json'),JSON.stringify(accounts),{mode:
 const base='https://pixeltown-minimal-rt.fastmake.net',pbUrl='https://pixeltown-minimal-pb.fastmake.net';
 const run=promisify(execFile),ssh=['-o','BatchMode=yes','-o','ConnectTimeout=10','-i',process.env.HOME+'/.ssh/stonematch_macmini_ed25519','cheng80@mac-mini.tailc386bf.ts.net'];
 async function control(action){const{stdout}=await run('ssh',[...ssh,'cd /Users/cheng80/Servers/pixeltown-minimal/app && /Users/cheng80/Servers/pixeltown-colyseus/runtime/bin/node --env-file=../.env .test-work/operational-control.mjs '+action],{timeout:90000,maxBuffer:4000000});return JSON.parse(stdout);}
+const deploymentDriver=process.env.MINIMAL_OBSERVE_DEPLOY_DRIVER;
+let randomState=Number(process.env.MINIMAL_OBSERVE_SEED)||0;
+const random=()=>randomState?((randomState=(Math.imul(randomState,1664525)+1013904223)>>>0)/4294967296):Math.random();
+async function deploy(number){if(!deploymentDriver)return control('swap-'+Date.now());const {stdout}=await run(process.execPath,[deploymentDriver,'deploy',String(number),directory],{timeout:150000,maxBuffer:2000000});return JSON.parse(stdout);}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let stopping=false,phase='joining',movementTimer,reportTimer,stopTimer,lastOwnRevision,activityStarted,deploying=false;
 const diagnosticKey=Date.now()+'-'+process.pid;
 let diagnosticBusy=false,diagnosticNumber=0,draining=false,lastProgress=performance.now(),lastMovement=performance.now();
 let lastRefresh=Date.now();
 const clients=[],samples={snapshots:[],acks:[]};
-const stats={pid:process.pid,directory,state:'joining',target:base,bots:count,randomWalkers:count-collectors,starHunters:collectors,deploymentIntervalMs:intervalMs,startedAt:new Date().toISOString(),deployments:0,deploymentFailures:0,drops:0,errors:0,fixes:0,rejoins:0,continuityErrors:0,pickups:0,settlements:0};
+const stats={pid:process.pid,node:process.version,directory,state:'joining',target:base,bots:count,randomWalkers:count-collectors,starHunters:collectors,deploymentIntervalMs:intervalMs,durationMs,startedAt:new Date().toISOString(),deployments:0,deploymentFailures:0,drops:0,errors:0,fixes:0,rejoins:0,continuityErrors:0,pickups:0,settlements:0};
 function log(type,detail={}){const event={at:new Date().toISOString(),type,phase,...detail};appendFileSync(resolve(directory,'events.jsonl'),JSON.stringify(event)+'\n');if(type!=='snapshot')console.log(JSON.stringify(event));}
-function sample(name,value){const a=samples[name];a.push(value);if(a.length>20000)a.splice(0,10000);}
+function sample(name,value){if(phase!=='joining'&&!stopping){stats.activeMax ||= {};stats.activeMax[name]=Math.max(stats.activeMax[name]||0,value);}stats.lifetimeMax ||= {};stats.lifetimeMax[name]=Math.max(stats.lifetimeMax[name]||0,value);const a=samples[name];a.push(value);if(a.length>20000)a.splice(0,10000);}
 function summary(a){const s=a.slice().sort((a,b)=>a-b);return {n:s.length,p95:s[Math.floor(s.length*.95)]||0,p99:s[Math.floor(s.length*.99)]||0,max:s.at(-1)||0};}
 function save(){Object.assign(stats,{updatedAt:new Date().toISOString(),state:stopping?'stopping':phase,connected:clients.filter(c=>c.room?.connection.isOpen&&c.snapshot).length,inputs:clients.reduce((n,c)=>n+c.sent,0),pending:clients.reduce((n,c)=>n+c.pending.size,0),metrics:Object.fromEntries(Object.entries(samples).map(([k,v])=>[k,summary(v)]))});writeFileSync(resolve(directory,'status.json'),JSON.stringify(stats,null,2)+'\n');}
 async function diagnostics(reason){
@@ -50,25 +56,30 @@ async function diagnostics(reason){
   log('diagnostics-captured',{reason,file,gamePid:data.services?.['com.fastmake.pixeltown.minimal.colyseus']?.pid,players:data.health?.players,logLines:data.logs.reduce((n,l)=>n+(l.lines?.length||0),0)});
  }catch(error){log('diagnostics-failed',{reason,message:error.message.slice(0,300)});}finally{diagnosticBusy=false;}
 }
-function connectionDetail(c,room){const me=c.snapshot?.players.find(p=>p.id===c.id);return {bot:c.index,roomId:room.roomId,sessionId:room.sessionId,lastSnapshotAt:c.lastSeen?new Date(c.lastSeen).toISOString():null,snapshotAgeMs:c.lastSeen?Date.now()-c.lastSeen:null,seq:c.seq,ack:me?.ack,fix:me?.fix,position:me?{x:me.x,y:me.y}:null,pending:c.pending.size,deployment:c.snapshot?.deployment,lastDeployment:stats.lastDeployment?.generation,eventLoopLagMs:stats.eventLoopLagMs};}
+function connectionDetail(c,room){const me=c.snapshot?.players.find(p=>p.id===c.id),wire=room.connection.transport.ws;return {bot:c.index,roomId:room.roomId,sessionId:room.sessionId,openedAt:c.openedAt,lastPingAt:c.lastPingAt,pings:c.pings,pongCallbacks:c.pongCallbacks,lastSnapshotAt:c.lastSeen?new Date(c.lastSeen).toISOString():null,snapshotAgeMs:c.lastSeen?Date.now()-c.lastSeen:null,seq:c.seq,ack:me?.ack,fix:me?.fix,position:me?{x:me.x,y:me.y}:null,pending:c.pending.size,bufferedAmount:wire?.bufferedAmount,writableLength:wire?._socket?.writableLength,senderQueuedBytes:wire?._sender?._bufferedBytes,deployment:c.snapshot?.deployment,lastDeployment:stats.lastDeployment?.generation,eventLoopLagMs:stats.eventLoopLagMs};}
 function stop(reason){if(stopping)return;stopping=true;log('stop-request',{reason});save();}
 process.on('SIGTERM',()=>stop('SIGTERM'));process.on('SIGINT',()=>stop('SIGINT'));
 stopTimer=setInterval(()=>{if(existsSync(resolve(directory,'STOP')))stop('STOP file');},1000);
 async function health(){return(await fetch(base+'/health',{signal:AbortSignal.timeout(15000)})).json();}
+async function leaveRoom(room){let timer;try{await Promise.race([room.leave(),new Promise(resolve=>{timer=setTimeout(()=>{room.connection.transport.ws?.terminate();resolve();},5000);})]);}finally{clearTimeout(timer);}}
 async function connect(c){
  if(c.connecting||stopping)return;c.connecting=true;
  try{
   const sdk=new Client(base.replace('https:','wss:'));sdk.auth.token=c.token;
   const room=await sdk.joinOrCreate('minimal-town',{zone:'lobby'});
-  if(stopping){await room.leave();return;}
+  if(stopping){await leaveRoom(room);return;}
   const rejoin=!!c.initialSession;room.reconnection.maxRetries=0;c.room=room;c.snapshot=null;c.pos=null;c.pending.clear();c.seq=0;c.fix=0;c.lastSnapshot=0;c.goal=null;c.nextJoinAt=0;
   c.initialSession ||= room.sessionId;
   if(rejoin){stats.rejoins++;log('bot-rejoined',{bot:c.index,roomId:room.roomId,sessionId:room.sessionId,previousSession:c.lastSession});}c.lastSession=room.sessionId;
   let departed=false;
-  const dropped=(kind,code,reason)=>{if(c.room!==room||departed||stopping)return;departed=true;stats.drops++;c.nextJoinAt=Date.now()+16000;log('bot-disconnected',{...connectionDetail(c,room),kind,code,reason});c.snapshot=null;save();void health().then(h=>log('health-after-drop',{players:h.players,worker:h.worker,persistence:h.persistence})).catch(e=>log('health-after-drop-failed',{message:e.message}));void diagnostics('disconnect-bot-'+c.index);};
+  const dropped=(kind,code,reason)=>{if(c.room!==room||departed||stopping)return;departed=true;stats.drops++;c.nextJoinAt=Date.now()+16000;c.disconnectDetail=connectionDetail(c,room);log('bot-disconnected',{...c.disconnectDetail,kind,code,reason});c.snapshot=null;save();void health().then(h=>log('health-after-drop',{players:h.players,worker:h.worker,persistence:h.persistence})).catch(e=>log('health-after-drop-failed',{message:e.message}));void diagnostics('disconnect-bot-'+c.index);};
   room.onDrop((code,reason)=>dropped('drop',code,reason));room.onLeave((code,reason)=>dropped('leave',code,reason));room.onError((code,message)=>{if(stopping)return;stats.errors++;log('bot-error',{...connectionDetail(c,room),code,message});void diagnostics('error-bot-'+c.index);});
   const wire=room.connection.transport.ws;
-  wire?.on('close',(code,reason)=>{if(!stopping)log('socket-close',{...connectionDetail(c,room),code,reason:reason.toString().slice(0,300)});});
+  c.openedAt=new Date().toISOString();c.pings=0;c.pongCallbacks=0;c.lastPingAt=null;c.disconnectDetail=null;
+  log('socket-open',{bot:c.index,roomId:room.roomId,sessionId:room.sessionId,openedAt:c.openedAt,extensions:wire?.extensions,rejoin});
+  wire?.on('ping',()=>{c.pings++;c.lastPingAt=new Date().toISOString();});
+  if(wire){const pong=wire.pong;wire.pong=function(...args){const callback=typeof args.at(-1)==='function'?args.pop():null;args.push(error=>{if(!error)c.pongCallbacks++;else log('pong-write-error',{bot:c.index,sessionId:room.sessionId,message:error.message});callback?.(error);});return pong.apply(this,args);};}
+  wire?.on('close',(code,reason)=>{if(!stopping)log('socket-close',{...(c.disconnectDetail||connectionDetail(c,room)),code,reason:reason.toString().slice(0,300)});});
   wire?.on('error',error=>{if(!stopping)log('socket-error',{...connectionDetail(c,room),message:error.message});});
   room.onMessage('deployment',d=>{if(c.index===0)log('server-deployment',d);});room.onMessage('featureUnavailable',()=>{});
   room.onMessage('gameEnded',m=>{if(!c.matches.has(m.match_id)){c.matches.add(m.match_id);c.awarded+=(m.scores[c.id]||0);stats.settlements++;if(c.matches.size>100)c.matches.delete(c.matches.values().next().value);}});
@@ -81,11 +92,11 @@ async function connect(c){
    c.snapshot=s;
   });
   const until=Date.now()+15000;while(!c.snapshot&&!stopping&&Date.now()<until)await sleep(25);
-  if(!c.snapshot&&!stopping){await room.leave();throw Error('Snapshot timeout');}
+  if(!c.snapshot&&!stopping){await leaveRoom(room);throw Error('Snapshot timeout');}
  }catch(error){c.nextJoinAt=Date.now()+16000;log('join-failed',{bot:c.index,code:error.code,message:error.message});}
  finally{c.connecting=false;}
 }
-function randomGoal(){let goal;do{goal={x:16+Math.random()*608,y:16+Math.random()*368};}while(blocked(goal.x,goal.y));return goal;}
+function randomGoal(){let goal;do{goal={x:16+random()*608,y:16+random()*368};}while(blocked(goal.x,goal.y));return goal;}
 function move(){
  if(stopping)return;const tickAt=performance.now();stats.eventLoopLagMs=Math.max(0,tickAt-lastMovement-50);lastMovement=tickAt;stats.maxEventLoopLagMs=Math.max(stats.maxEventLoopLagMs||0,stats.eventLoopLagMs);if(stats.eventLoopLagMs>500)log('runner-timer-stall',{lagMs:stats.eventLoopLagMs});const claimed=new Set();
  for(const c of clients){
@@ -101,7 +112,7 @@ function move(){
   if(!goal){
    if(now<(c.restUntil||0))continue;
    if(!c.walkGoal||Math.hypot(c.walkGoal.x-c.pos.x,c.walkGoal.y-c.pos.y)<1||now>c.goalUntil){
-    if(c.walkGoal&&Math.random()<.2){c.walkGoal=null;c.restUntil=now+500+Math.random()*2000;continue;}
+    if(c.walkGoal&&random()<.2){c.walkGoal=null;c.restUntil=now+500+random()*2000;continue;}
     c.walkGoal=randomGoal();c.goalUntil=now+15000;
    }goal=c.walkGoal;
   }
@@ -116,9 +127,17 @@ try{
  await diagnostics('baseline');
  lastMovement=performance.now();movementTimer=setInterval(move,50);reportTimer=setInterval(()=>{const now=performance.now();stats.progressTimerLagMs=Math.max(0,now-lastProgress-30000);lastProgress=now;stats.memoryRssBytes=process.memoryUsage().rss;save();log('progress',{connected:stats.connected,inputs:stats.inputs,drops:stats.drops,fixes:stats.fixes,deployments:stats.deployments,pickups:stats.pickups,nextDeploymentAt:stats.nextDeploymentAt,eventLoopLagMs:stats.eventLoopLagMs,maxEventLoopLagMs:stats.maxEventLoopLagMs});void diagnostics('periodic');},30000);
  for(let i=0;i<count&&!stopping;i++){const c={index:i,id:accounts[i].id,token:accounts[i].token,seq:0,sent:0,pending:new Map(),matches:new Set(),awarded:0};clients.push(c);await connect(c);if((i+1)%10===0)log('joined',{count:clients.filter(c=>c.snapshot).length});}
- assert(clients.every(c=>c.snapshot)||stopping,'Not all bots joined');
- activityStarted=Date.now();phase='active';stats.activeAt=new Date(activityStarted).toISOString();let nextDeployment=activityStarted+intervalMs;stats.nextDeploymentAt=new Date(nextDeployment).toISOString();save();log('ready',{connected:stats.connected,nextDeploymentAt:stats.nextDeploymentAt});
- while(!stopping){
+ const joinDeadline=Date.now()+120000;
+ while(!stopping&&clients.some(c=>!c.snapshot||!c.room?.connection.isOpen)&&Date.now()<joinDeadline){
+  for(const c of clients)if(!c.connecting&&(!c.snapshot||!c.room?.connection.isOpen)&&Date.now()>=(c.nextJoinAt||0))void connect(c);
+  await sleep(500);
+ }
+ assert(clients.every(c=>c.snapshot&&c.room?.connection.isOpen)||stopping,'Not all bots joined');
+ if(!stopping){
+  stats.activityBaseline={inputs:clients.reduce((n,c)=>n+c.sent,0),drops:stats.drops,pickups:stats.pickups,settlements:stats.settlements};activityStarted=Date.now();phase='active';stats.activeAt=new Date(activityStarted).toISOString();let nextDeployment=activityStarted+intervalMs;stats.nextDeploymentAt=new Date(nextDeployment).toISOString();save();log('ready',{connected:stats.connected,nextDeploymentAt:stats.nextDeploymentAt});
+  if(durationMs){stats.plannedStopAt=new Date(activityStarted+durationMs).toISOString();save();log('duration-armed',{durationMs,plannedStopAt:stats.plannedStopAt});}
+  while(!stopping){
+  if(durationMs&&Date.now()-activityStarted>=durationMs){stats.activityDurationMs=Date.now()-activityStarted;stop('duration elapsed');break;}
   const pauseDeployments=existsSync(resolve(directory,'PAUSE_DEPLOYMENTS'));
   if(pauseDeployments&&!stats.deploymentPaused){nextDeployment=Infinity;stats.deploymentPaused=true;stats.deploymentPausedAt=new Date().toISOString();stats.nextDeploymentAt=null;save();log('deployment-paused',{reason:'PAUSE_DEPLOYMENTS file; keep clients'});}
   if(!pauseDeployments&&stats.deploymentPaused){stats.deploymentPaused=false;nextDeployment=Date.now()+intervalMs;stats.nextDeploymentAt=new Date(nextDeployment).toISOString();save();log('deployment-resumed',{nextDeploymentAt:stats.nextDeploymentAt});}
@@ -127,16 +146,18 @@ try{
   if(!pauseDeployments&&Date.now()>=nextDeployment&&!deploying){
    deploying=true;phase='deploying';log('deployment-start',{number:stats.deployments+1});await diagnostics('before-deployment');
    if(stopping){deploying=false;break;}
-   try{const result=await control('swap-'+Date.now());lastOwnRevision=result.revision;stats.deployments++;stats.lastDeployment=result;log('deployment-applied',result);}catch(error){stats.deploymentFailures++;log('deployment-failed',{message:error.message.slice(0,1000)});}
+   try{const result=await deploy(stats.deployments+stats.deploymentFailures+1);if(!deploymentDriver||result.kind==='worker')lastOwnRevision=result.revision;stats.deployments++;stats.lastDeployment=result;log('deployment-applied',result);}catch(error){stats.deploymentFailures++;log('deployment-failed',{message:error.message.slice(0,1000)});}
    await diagnostics('after-deployment');deploying=false;phase='active';nextDeployment+=intervalMs;if(nextDeployment<Date.now())nextDeployment=Date.now()+intervalMs;stats.nextDeploymentAt=new Date(nextDeployment).toISOString();save();
   }
   await sleep(500);
  }
+ }
 }catch(error){stats.fatalError=error.stack;log('runner-error',{message:error.message});process.exitCode=1;}
 finally{
  stopping=true;clearInterval(movementTimer);clearInterval(reportTimer);clearInterval(stopTimer);
- draining=true;const drain=Date.now()+5000;while(clients.some(c=>c.pending.size)&&Date.now()<drain)await sleep(50);stats.pendingAfterDrain=clients.reduce((n,c)=>n+c.pending.size,0);draining=false;
- await Promise.allSettled(clients.filter(c=>c.room?.connection.isOpen).map(c=>c.room.leave()));
+ draining=true;const drain=Date.now()+5000;while(clients.some(c=>c.pending.size)&&Date.now()<drain)await sleep(50);stats.pendingAfterDrain=clients.reduce((n,c)=>n+c.pending.size,0);writeFileSync(resolve(directory,'inputs-at-stop.json'),JSON.stringify(clients.map(c=>({bot:c.index,sessionId:c.room?.sessionId,seq:c.seq,ack:c.snapshot?.players.find(p=>p.id===c.id)?.ack,pending:c.pending.size,lastPending:[...c.pending.keys()].slice(-20),position:c.pos,snapshotAt:c.lastSeen&&new Date(c.lastSeen).toISOString()})),null,2)+'\n');draining=false;
+ await Promise.allSettled(clients.filter(c=>c.room?.connection.isOpen).map(c=>leaveRoom(c.room)));
+ if(deploymentDriver){try{const {stdout}=await run(process.execPath,[deploymentDriver,'restore','0',directory],{timeout:150000,maxBuffer:2000000});stats.mixedRestore=JSON.parse(stdout);log('mixed-deployments-restored',stats.mixedRestore);}catch(error){stats.cleanupError=error.message;log('mixed-restore-failed',{message:error.message});}}
  try{const h=await health();if(lastOwnRevision&&h.worker.revision===lastOwnRevision){stats.restore=await control('restore');log('original-worker-restored',stats.restore);}else if(lastOwnRevision)log('restore-skipped',{reason:'Another release is active; preserve it'});stats.ledger=await control('verify');log('ledger-verified',stats.ledger);}catch(error){stats.cleanupError=error.message;log('cleanup-error',{message:error.message});}
  save();stats.state=stats.fatalError?'failed':'stopped';stats.stoppedAt=new Date().toISOString();writeFileSync(resolve(directory,'status.json'),JSON.stringify(stats,null,2)+'\n');if(existsSync(lock)&&JSON.parse(readFileSync(lock)).pid===process.pid)unlinkSync(lock);log('stopped',{directory,deployments:stats.deployments,drops:stats.drops});
 }

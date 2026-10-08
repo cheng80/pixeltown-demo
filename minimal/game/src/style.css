@@ -27,6 +27,9 @@ h1, h2, p { margin: 0; }
 .presence i { width: 8px; height: 8px; background: #b9aebd; box-shadow: 0 0 0 2px var(--line); }
 .presence.online { color: var(--line); }
 .presence.online i { background: #4cd07d; }
+.presence.recovering { color: var(--line); }
+.presence.recovering i { background: var(--gold); animation: blink 1s steps(1) infinite; }
+.recovery-band { position: absolute; left: 50%; top: 36%; transform: translate(-50%, -50%); width: max-content; white-space: nowrap; display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 16px; max-width: calc(100% - 32px); background: rgba(255, 250, 252, .9); border: 2px solid var(--line); box-shadow: 0 3px 0 rgba(58, 36, 64, .3); font-size: 13px; font-weight: 700; color: var(--line); pointer-events: none; }
 /* Deployment status: display only, never covers the world. */
 .release { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-size: 11px; white-space: nowrap; }
 .release-version { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 1px 7px; border: 2px solid var(--line); background: var(--cream); }

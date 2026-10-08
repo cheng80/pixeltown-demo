@@ -3,12 +3,15 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync, openSync, closeSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
+import { setDefaultAutoSelectFamilyAttemptTimeout } from 'node:net';
+import { fetchVisualFile } from './build-minimal-frontend.mjs';
+setDefaultAutoSelectFamilyAttemptTimeout(2000);
 const root = resolve(import.meta.dirname, '..');
 const lock = resolve(root, '.local/minimal/frontend-deploy.lock'); mkdirSync(resolve(lock, '..'), { recursive: true });
 const fd = openSync(lock, 'wx', 0o600); writeFileSync(fd, String(process.pid)); closeSync(fd);
 try {
 const publicRevision = async () => {
-  const r = await fetch('https://pixeltown.fastmake.net/visual/current.json', { cache: 'no-store', signal: AbortSignal.timeout(20000) });
+  const r = await fetchVisualFile('https://pixeltown.fastmake.net', '/visual/current.json');
   if (!r.ok) throw new Error('Public frontend unavailable; publication cancelled');
   return createHash('sha256').update(await r.text()).digest('hex');
 };

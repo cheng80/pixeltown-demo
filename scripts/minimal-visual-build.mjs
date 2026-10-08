@@ -11,16 +11,52 @@ const digest = paths => {
   for (const path of [...paths].sort()) hash.update(relative(ROOT, path)).update('\0').update(readFileSync(path)).update('\0');
   return hash.digest('hex');
 };
+// The multi-entry Vite build can emit a wrapper importing a shared renderer
+// chunk. A unique wrapper URL cannot recover that chunk's failed module identity.
+// Flatten only the published visual graph; the host's existing chunks stay intact.
+function standaloneVisualRelease() {
+  return {
+    name: 'standalone-visual-release',
+    async generateBundle(_options, bundle) {
+      const entry = Object.values(bundle).find(item => item.type === 'chunk' && item.isEntry && item.facadeModuleId?.endsWith('/visual-release.js'));
+      if (!entry) throw new Error('Missing visual entry for standalone build');
+      const { rollup } = await import('rollup');
+      const { posix } = await import('node:path');
+      const graph = await rollup({
+        input: entry.fileName,
+        plugins: [{
+          name: 'emitted-visual-graph',
+          resolveId(source, importer) {
+            const name = importer && source.startsWith('.') ? posix.join(posix.dirname(importer), source) : source;
+            if (bundle[name]?.type !== 'chunk') throw new Error('Unresolved visual JS dependency in standalone build');
+            return name;
+          },
+          load(name) { return bundle[name].code; },
+        }],
+      });
+      try {
+        const { output } = await graph.generate({ format: 'es', inlineDynamicImports: true });
+        const chunk = output.find(item => item.type === 'chunk');
+        if (output.length !== 1 || chunk.imports.length || chunk.dynamicImports.length) throw new Error('Visual release is not standalone');
+        const fileName = `assets/visual-standalone-${createHash('sha256').update(chunk.code).digest('hex').slice(0, 16)}.js`;
+        // Keep the original wrapper in the host output, but publish this entry.
+        entry.isEntry = false;
+        bundle[fileName] = { ...entry, ...chunk, fileName, facadeModuleId: entry.facadeModuleId, isEntry: true };
+      } finally { await graph.close(); }
+    },
+  };
+}
+
 export function minimalVisualBuild() {
   let config, compatibility, revision;
   return {
     name: 'minimal-visual-release', apply: 'build',
     config() {
       // Stable shell changes require a new page. Visual-only changes share this compatibility hash.
-      compatibility = digest(['main.jsx', 'WorldCanvas.jsx', 'engine.js', 'visual-update.js', 'VisualStatus.jsx', 'api.js', 'state.js', 'playback.js']
+      compatibility = digest(['main.jsx', 'WorldCanvas.jsx', 'engine.js', 'visual-update.js', 'VisualStatus.jsx', 'api.js', 'connection.js', 'state.js', 'playback.js']
         .map(name => resolve(ROOT, 'minimal/game/src', name)).concat(resolve(ROOT, 'minimal/shared/world.js'), resolve(ROOT, 'package-lock.json')));
       revision = createHash('sha256').update(compatibility).update(digest([
-        resolve(ROOT, 'minimal/game/src/visual-release.js'), resolve(ROOT, 'minimal/game/src/art.js'), resolve(ROOT, 'minimal/game/src/style.css'),
+        resolve(ROOT, 'scripts/minimal-visual-build.mjs'), resolve(ROOT, 'minimal/game/src/visual-release.js'), resolve(ROOT, 'minimal/game/src/art.js'), resolve(ROOT, 'minimal/game/src/style.css'),
         ...files(resolve(ROOT, 'minimal/game/public')),
       ])).digest('hex');
       return {
@@ -29,6 +65,7 @@ export function minimalVisualBuild() {
       };
     },
     configResolved(resolved) { config = resolved; },
+    generateBundle: standaloneVisualRelease().generateBundle,
     writeBundle(_options, bundle) {
       const out = resolve(config.root, config.build.outDir);
       const store = resolve(process.env.MINIMAL_VISUAL_STORE || resolve(ROOT, '.local/minimal/frontend-releases'));
