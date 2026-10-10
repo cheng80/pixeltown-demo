@@ -71,7 +71,7 @@ npm run swap:minimal
 
 이 명령은 localhost의 `POST /internal/worker/swap`만 호출한다. 실행 경로를 HTTP body로 받지 않으며 Origin이 있는 브라우저 요청은 거절한다. 후보 준비/추격/상태 검사가 실패하면 409와 이유를 반환하고 현재 worker가 계속 실행된다. 동일 상태 schema 1, `minimal-move-v1`, wire protocol 1 호환이 전제다. 맵·속도·입력 계약을 바꾸는 릴리스에는 쓰지 않는다.
 
-`MINIMAL_BROWSER_HOLD=1 npm run test:minimal:swap`은 검증 뒤 5272 웹과 별도 백엔드를 유지한다(최대 30분). 출력된 `.test-work/minimal-hotswap-*` 폴더에서 browser-done 파일을 만들면 검사 소유 서버만 종료한다. 기본 브라우저 검증은 ego-browser이며, 동시 비활성 탭 렌더 계측이 불가능할 때만 다음 보조 검사를 사용한다.
+`MINIMAL_BROWSER_HOLD=1 npm run test:minimal:swap`은 검증 뒤 5272 웹과 별도 백엔드를 유지한다(최대 30분). 출력된 `.test-work/minimal-hotswap-*` 폴더의 `browser-done` 파일에 `done`처럼 비어 있지 않은 내용을 쓰면 검사 소유 서버만 종료한다. 기본 브라우저 검증은 ego-browser이며, 동시 비활성 탭 렌더 계측이 불가능할 때만 다음 보조 검사를 사용한다.
 
 ```sh
 CHROME_PATH=~/Library/Caches/ms-playwright/chromium-1193/chrome-mac/Chromium.app/Contents/MacOS/Chromium MINIMAL_SWAP_STATE=/절대/경로/.test-work/minimal-hotswap-XXXX node tests/minimal-hotswap-browser.mjs
@@ -87,8 +87,10 @@ CHROME_PATH=~/Library/Caches/ms-playwright/chromium-1193/chrome-mac/Chromium.app
 
 ## 플레이 중 화면 코드·리소스 교체
 
-`WorldCanvas.jsx`는 입력과 이동을 계속 처리하고 `visual-release.js`의 그림만 교체한다. `art.js`, CSS, 글꼴·이미지도 버전별로 준비한다. 화면 코드·그림을 수정한 뒤 승인된 범위에서 `npm run deploy:minimal:frontend`로 Pages에 게시한다. `npm run build:remote`만 실행하면 게시하지 않는다. 이전 공개 파일을 해시 대조해 다음 빌드에도 포함한다. 최초 한 번 기능을 받은 뒤에는 브라우저가 15초마다 확인해 새 화면으로 전환한다.
+2026-10-11 로컬 코드는 전체 프런트 OTA다. `bootstrap.js`의 runtime·surface가 연결·입력·canvas를 유지하고, 입장 화면부터 광장 HUD·renderer·CSS·글꼴·이미지까지 `ui-entry.jsx` 묶음 하나를 통째로 교체한다. 새 화면은 일반 React 컴포넌트와 runtime의 `ui` 상태·명령으로 추가하며 updater·서버·배포 코드를 고치지 않는다. 15초 폴링은 없다. 접속 중에는 게임 WebSocket의 `frontendRevision/frontendCurrent`, 미입장 화면은 첫 UI 준비 후·탭 복귀·입장 직전의 `/visual/current.json` 단발 확인을 쓴다.
 
-인증·접속·이동·충돌·React 화면 구성 변경은 열린 탭에 자동 적용하지 않는다. [쉽게 보는 그림](../docs/diagrams/frontend-live-update.html), [파일 계약·배포와 정리](../docs/handoffs/2026-10-08-frontend-live-update.md)를 따른다. `npm run test:minimal:visual`은 기존 로컬 PB/game을 유지한 실제 화면 교체·리소스 누락·오류 복구 검사다. `test:minimal:ui`는 SDK를 대체한 회귀 검사이며 실제 팔·다리 그림의 순환과 정지 복귀도 대조한다.
+게시는 `npm run deploy:minimal:frontend`(Pages 게시 → 공개 파일 SHA 확인 → 서버 활성화)이고, Git 자동 Pages 게시나 수동 게시 뒤에는 `npm run activate:minimal:frontend -- --revision <SHA>`가 필요하다. 운영 설정과 receipt는 [활성화 인계](../docs/handoffs/2026-10-11-frontend-activation.md)를 따른다. 최초 runtime 도입·runtime/프로토콜 변경은 열린 탭에 자동 적용하지 않는다. 운영 공개 화면은 게시 전까지 기존 renderer 전용 방식이다([이전 그림](../docs/diagrams/frontend-live-update.html)).
+
+`npm run test:minimal:frontend`는 실제 HTTP/SDK 활성화와 게시 도구 검사, `npm run test:minimal:visual`(SDK2명 짧은 실행)과 `npm run test:minimal:ota`(85명 10+10분)는 격리 PB/game·production 빌드·Ego 두 페이지의 전체 UI 교체 검사다. 두 브라우저 검사는 task 소유 Ego space를 `OTA_EGO_SPACE`로 지정해야 한다. `node tests/minimal-visual-retry.mjs`는 실패 주입 matrix를 포함한다. `test:minimal:ui`는 SDK를 대체한 회귀 검사다. 설계와 실제 결과는 [그림](../docs/diagrams/frontend-ota.html), [PLAN-008](../docs/plans/PLAN-008.md), [로컬 결과](../docs/reviews/2026-10-11-frontend-ota.md)를 따른다.
 
 85명 관찰 도구는 `MINIMAL_DEPLOYMENT_PAUSED=1`로 시작하면 자동 worker 배포 없이 이동만 한다. 실행 폴더에 `PAUSE_DEPLOYMENTS` 파일을 만들면 배포만 중지한다. 지시 후 이 파일을 제거하면 3분 뒤부터 재개한다. `STOP`은 전체 시험 접속 종료와 자신이 배포한 worker의 조건부 원본 복구다. 두 제어를 혼동하지 않는다. 현재 실행과 사고 기록은 PROJECT_STATUS 7절을 따른다.

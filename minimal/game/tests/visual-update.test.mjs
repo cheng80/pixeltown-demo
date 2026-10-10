@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateVisualManifest, createVisualModuleLoader } from '../src/visual-update.js';
 const revision = 'a'.repeat(64), compatibility = 'b'.repeat(64), origin = 'https://pixeltown.fastmake.net';
-const manifest = () => ({ schema: 1, revision, compatibility, entry: `/visual/releases/${revision}/assets/visual.js`, styles: [], fonts: [], images: [] });
+const manifest = () => ({ schema: 2, uiApiVersion: 1, uiStateSchema: 1, revision, compatibility, entry: `/visual/releases/${revision}/assets/visual.js`, styles: [], fonts: [], images: [], files: [{ path: 'assets/visual.js', sha256: 'c'.repeat(64) }] });
 test('visual release accepts only the same origin and immutable version directory', () => {
   assert.equal(validateVisualManifest(manifest(), compatibility, origin).revision, revision);
   for (const entry of ['https://elsewhere.test/file.js', '/src/main.jsx', `/visual/releases/${revision}/../other.js`, `/visual/releases/${revision}/entry.js?change=1`]) {
@@ -12,7 +12,7 @@ test('visual release accepts only the same origin and immutable version director
 });
 test('incompatible shell or map is retained without importing a new renderer', () => {
   assert.equal(validateVisualManifest(manifest(), 'c'.repeat(64), origin), null);
-  assert.throws(() => validateVisualManifest({ ...manifest(), schema: 2 }, compatibility, origin));
+  assert.throws(() => validateVisualManifest({ ...manifest(), schema: 1 }, compatibility, origin));
 });
 
 test('failed imports get bounded unique URLs without changing the immutable manifest', async () => {
@@ -101,4 +101,26 @@ test('evicted retry state cannot reuse a poisoned retry URL', async () => {
   for (let n=0; n<20; n++) await assert.rejects(load(`/retired-${n}.js`, signal));
   for (let n=0; n<2; n++) await assert.rejects(load(manifest().entry, signal));
   assert.notEqual(urls.at(-1), firstRetry); assert.equal(load.size, 16);
+});
+
+
+test('WebSocket hint schema1 and manifest schema2 are independent contracts', async () => {
+  const { validateFrontendHint } = await import('../src/visual-update.js');
+  const hint = { schema: 1, generation: 1, revision, compatibility, uiApiVersion: 1, uiStateSchema: 1 };
+  assert.equal(validateFrontendHint(hint).generation, 1);
+  assert.equal(validateVisualManifest(manifest(), compatibility, origin).schema, 2);
+  for (const value of [{...hint,schema:2},{...hint,generation:0},{...hint,generation:1.5},{...hint,uiStateSchema:2}]) assert.throws(() => validateFrontendHint(value));
+  assert.equal(validateFrontendHint(null), null);
+});
+
+test('notification order uses durable generation, including rollback and duplicate suppression', async () => {
+  const { acceptFrontendHint } = await import('../src/visual-update.js');
+  const A = { schema: 1, generation: 1, revision, compatibility, uiApiVersion: 1, uiStateSchema: 1 };
+  const B = { ...A, generation: 2, revision: 'c'.repeat(64) };
+  const rollback = { ...A, generation: 3 };
+  assert.deepEqual(acceptFrontendHint(null, A), A);
+  assert.deepEqual(acceptFrontendHint(A, B), B);
+  assert.deepEqual(acceptFrontendHint(B, rollback), rollback);
+  assert.equal(acceptFrontendHint(rollback, A), null); assert.equal(acceptFrontendHint(B, B), null);
+  assert.throws(() => acceptFrontendHint(B, {...A,generation:2}), /Conflicting/);
 });

@@ -1,0 +1,60 @@
+{
+  "info": {
+    "name": "Minimal frontend activation local contract",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base", "value": "http://127.0.0.1:12620" },
+    { "key": "frontend_token", "value": "" },
+    { "key": "revision", "value": "" },
+    { "key": "expected_generation", "value": "0" }
+  ],
+  "item": [
+    {
+      "name": "Health exposes durable frontend state",
+      "request": { "method": "GET", "url": "{{base}}/health" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('health frontend contract', () => { pm.response.to.have.status(200); pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); const f = pm.response.json().frontend; pm.expect(f).to.have.all.keys('state','generation','current','notification'); pm.expect(f.generation).to.be.a('number'); });"
+      ] } }]
+    },
+    {
+      "name": "Unauthenticated activation denied",
+      "request": { "method": "POST", "url": "{{base}}/internal/frontend/activate", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"expectedGeneration\":0,\"revision\":\"{{revision}}\"}" } },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('separate token required', () => pm.response.to.have.status(403));" ] } }]
+    },
+    {
+      "name": "Forwarded activation denied",
+      "request": { "method": "POST", "url": "{{base}}/internal/frontend/activate", "header": [
+        { "key": "Authorization", "value": "Bearer {{frontend_token}}" },
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "X-Forwarded-For", "value": "127.0.0.1" }
+      ], "body": { "mode": "raw", "raw": "{\"expectedGeneration\":0,\"revision\":\"{{revision}}\"}" } },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('forwarding header denied', () => pm.response.to.have.status(403));" ] } }]
+    },
+    {
+      "name": "Malformed activation body denied",
+      "request": { "method": "POST", "url": "{{base}}/internal/frontend/activate", "header": [
+        { "key": "Authorization", "value": "Bearer {{frontend_token}}" }, { "key": "Content-Type", "value": "application/json" }
+      ], "body": { "mode": "raw", "raw": "{\"expectedGeneration\":0,\"revision\":\"{{revision}}\",\"path\":\"/unsafe\"}" } },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('allowlisted keys only', () => pm.response.to.have.status(400));" ] } }]
+    },
+    {
+      "name": "Activate published frontend",
+      "request": { "method": "POST", "url": "{{base}}/internal/frontend/activate", "header": [
+        { "key": "Authorization", "value": "Bearer {{frontend_token}}" }, { "key": "Content-Type", "value": "application/json" }
+      ], "body": { "mode": "raw", "raw": "{\"expectedGeneration\":{{expected_generation}},\"revision\":\"{{revision}}\"}" } },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('activation and notification separate', () => { pm.expect([200,202]).to.include(pm.response.code); const value = pm.response.json(); pm.expect(value.activation).to.eql('confirmed'); pm.expect(value.notification).to.have.all.keys('state','targets','failed'); pm.expect(value.generation).to.be.above(0); pm.collectionVariables.set('expected_generation', String(value.generation)); });"
+      ] } }]
+    },
+    {
+      "name": "Duplicate reuses generation",
+      "request": { "method": "POST", "url": "{{base}}/internal/frontend/activate", "header": [
+        { "key": "Authorization", "value": "Bearer {{frontend_token}}" }, { "key": "Content-Type", "value": "application/json" }
+      ], "body": { "mode": "raw", "raw": "{\"expectedGeneration\":0,\"revision\":\"{{revision}}\"}" } },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('duplicate rebroadcast keeps generation', () => { pm.expect([200,202]).to.include(pm.response.code); pm.expect(pm.response.json().generation).to.eql(Number(pm.collectionVariables.get('expected_generation'))); });"
+      ] } }]
+    }
+  ]
+}

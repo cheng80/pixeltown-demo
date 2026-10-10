@@ -115,3 +115,15 @@ test('prediction already queued before drop shares the recovery budget, while he
     assert.equal(g.connection.status.drops,0); assert.equal(g.engine.pending.length,0);
   } finally { g.connection.dispose(); }
 });
+
+test('frontend hints use the existing room and current is requested on bind and explicit visibility reconciliation', async () => {
+  const engine = createEngine(), room = fakeRoom(), hints = [];
+  const connection = createConnection({ url: 'ws://localhost', engine, userId: 'guest', token: 'auth',
+    client: { auth: {}, joinOrCreate: async () => room }, onSnapshot: data => applySnapshot(engine, data, 'guest'), onFrontend: value => hints.push(value) });
+  try {
+    await delay(0); assert.deepEqual(room.sent.map(x => x.type), ['frontendCurrent']);
+    room.emit('frontendCurrent', null); room.emit('frontendRevision', { generation: 1 });
+    connection.requestFrontend(); assert.equal(room.sent.length, 2); assert.deepEqual(hints, [null, { generation: 1 }]);
+    connection.dispose(); room.emit('frontendRevision', { generation: 2 }); assert.equal(hints.length, 2);
+  } finally { connection.dispose(); }
+});

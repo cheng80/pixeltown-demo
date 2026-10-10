@@ -75,6 +75,24 @@
           }
         }
       ]
+    },
+    {
+      "name": "Public frontend activation denied",
+      "request": {
+        "method": "POST",
+        "url": "https://pixeltown-minimal-rt.fastmake.net/internal/frontend/activate"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Public frontend activation denied', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
     }
   ]
 }

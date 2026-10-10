@@ -18,6 +18,7 @@ function openRoom(m, sessionId) {
     connection: { isOpen: true, close() { room.connection.isOpen = false; } },
     onMessage:(type,cb)=>{handlers[type]=cb}, onDrop:cb=>{handlers.drop=cb}, onLeave:cb=>{handlers.leave=cb}, onError:cb=>{handlers.error=cb},
     send(type, move){
+      if(type === 'frontendCurrent') { queueMicrotask(() => handlers.frontendCurrent?.(null)); return; }
       if(type !== 'move') throw new Error('Wrong movement contract');
       if(!room.connection.isOpen) throw new Error('Socket closed');
       m.moves.push({...move});
@@ -52,8 +53,8 @@ export class Client {
     return openRoom(m, m.room.sessionId);
   }
 }`;
-const bundle = await build({ entryPoints: [path.join(root, 'src/main.jsx')], bundle: true, write: false,
-  outdir: path.join(root, '.qa-assets'), format: 'esm', define: { 'import.meta.env': JSON.stringify({ DEV: true }) },
+const bundle = await build({ entryPoints: [path.join(root, 'src/bootstrap.js')], bundle: true, write: false,
+  outdir: path.join(root, '.qa-assets'), format: 'esm', target: 'esnext', entryNames: 'main', define: { 'import.meta.env': JSON.stringify({ DEV: true }) },
   plugins: [{ name: 'offline-room', setup(builder) { builder.onResolve({ filter: /^@colyseus\/sdk$/ }, () => ({ path: 'room', namespace: 'mock' })); builder.onLoad({ filter: /.*/, namespace: 'mock' }, () => ({ contents: sdkMock, loader: 'js' })); } }],
 });
 const assets = Object.fromEntries(bundle.outputFiles.map(file => [path.basename(file.path), file.contents]));
@@ -67,7 +68,7 @@ try {
   let walletMode = 'success', walletCalls = 0, guestCalls = 0, authCalls = 0, balance = 12, settledMatchIds = [];
   const record = {id:'minimal-user',email:'offline@example.invalid',name:'산책이',collectionName:'users'};
   const token = `test.${Buffer.from(JSON.stringify({ id:record.id,exp:9999999999 })).toString('base64url')}.test`;
-  await context.addInitScript(() => { localStorage.setItem('pocketbase_auth','legacy-untouched'); localStorage.setItem('pixeltown.guest','legacy-guest-untouched'); });
+  await context.addInitScript(() => { window.__qaQuery = selector => document.querySelector(selector) || document.querySelector('.ui-release')?.shadowRoot?.querySelector(selector); localStorage.setItem('pocketbase_auth','legacy-untouched'); localStorage.setItem('pixeltown.guest','legacy-guest-untouched'); });
   await context.route('**/*', async route => {
     const url = new URL(route.request().url());
     const send = (data, status = 200, headers = {}) => route.fulfill({ status, contentType:'application/json', headers:{'Access-Control-Allow-Origin':'*', ...headers}, body:JSON.stringify(data) });
@@ -77,12 +78,14 @@ try {
     if (url.pathname === '/api/minimal/wallet') { walletCalls++; assert.equal(route.request().headers().authorization,`Bearer ${token}`); return walletMode === 'success' ? send({balance,settledMatchIds,profile:{name:'산책이'}}) : send({},429,{'Retry-After':'60'}); }
     if (url.pathname === '/unavailable.html') return route.fulfill({contentType:'text/html',body:await fs.readFile(path.join(root,'public/unavailable.html'),'utf8')});
     if (url.hostname === 'minimal.test' && url.pathname === '/') return route.fulfill({contentType:'text/html',body:'<!doctype html><html lang="ko"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/main.css"><div id="root"></div><script type="module" src="/main.js"></script></html>'});
+    if (url.pathname === '/src/style.css') return route.fulfill({contentType:'text/css',body:await fs.readFile(path.join(root,'src/style.css'),'utf8')});
     const file = assets[url.pathname.slice(1)];
     if (url.hostname === 'minimal.test' && file) return route.fulfill({contentType:url.pathname.endsWith('.css')?'text/css':'text/javascript',body:Buffer.from(file)});
     throw new Error('Unexpected request blocked: '+url.pathname);
   });
   await page.clock.install();
   await page.goto('https://minimal.test/');
+  await page.evaluate(() => { window.__qaQuery = selector => document.querySelector(selector) || document.querySelector('.ui-release')?.shadowRoot?.querySelector(selector); });
   await page.getByLabel('닉네임',{exact:true}).fill('산책이');
   await page.getByRole('button',{name:'광장 들어가기'}).click();
   await page.waitForFunction(()=>!!window.__mock);
@@ -97,7 +100,7 @@ try {
   await page.keyboard.down('s'); await page.clock.runFor(100); await page.keyboard.up('s');
   assert.equal(await page.evaluate(()=>window.__mock.moves.at(-1).fix),1);
   // Others: a burst of 10 accepted steps plays back at walking pace instead of jumping.
-  await page.evaluate(()=>{const canvas=document.querySelector('canvas');let f=canvas[Object.keys(canvas).find(k=>k.startsWith('__reactFiber'))];while(f&&!f.memoizedProps?.engine)f=f.return;window.__qaEngine=f.memoizedProps.engine;});
+  await page.evaluate(()=>{window.__qaEngine=window.__minimalDebug.engine;});
   await page.evaluate(()=>{const n=window.__mock.snapshot.players[1]; Object.assign(n,{x:n.x+40,ack:10}); window.__mock.emit('snapshot',window.__mock.snapshot);});
   await page.clock.runFor(150);
   const midX = await page.evaluate(()=>window.__qaEngine.others.get('neighbor').x);
@@ -158,7 +161,7 @@ try {
   assert.equal(await page.getByRole('heading',{name:'잠시 쉬어 가요'}).count(),0,'cancel is not a connection failure');
   await page.setViewportSize({width:390,height:844}); await page.clock.runFor(100);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth),true,'deployment indicator overflow at 390px');
-  const [bar, hud] = await page.evaluate(()=>[document.querySelector('.release').getBoundingClientRect().bottom, document.querySelector('.hud').getBoundingClientRect().top]);
+  const [bar, hud] = await page.evaluate(()=>[window.__qaQuery('.release').getBoundingClientRect().bottom, window.__qaQuery('.hud').getBoundingClientRect().top]);
   assert.ok(bar <= hud, 'indicator does not cover the HUD');
   await page.screenshot({path:path.join(root,'.qa/deploy-mobile.png'),animations:'disabled'});
   await page.setViewportSize({width:1280,height:1000});
@@ -166,7 +169,7 @@ try {
   assert.ok(!(await release()).includes('취소') && (await release()).includes('bbbbbbbb · 3회차'), 'idle after recovery clears the step and updates generation');
   await page.clock.runFor(5000);
   await page.evaluate(()=>{window.__mock.snapshot.game.scores['minimal-user']=3;window.__mock.emit('snapshot',window.__mock.snapshot);window.__mock.emit('gameEnded',{match_id:'round-a',scores:{'minimal-user':3}})});
-  await page.waitForFunction(()=>document.querySelector('.pending-number').textContent.includes('3'));
+  await page.waitForFunction(()=>window.__qaQuery('.pending-number').textContent.includes('3'));
   assert.ok((await page.locator('.wallet').innerText()).includes('12'));
   walletMode = 'rate'; await page.clock.runFor(10100);
   await page.getByText('저장 내역 미확인.',{exact:true}).waitFor();
@@ -176,7 +179,7 @@ try {
   await page.clock.runFor(20000); assert.equal(walletCalls,callsAfter429,'no retry storm during rate limit');
   walletMode = 'success'; balance = 15; settledMatchIds = ['round-a'];
   await page.clock.runFor(41000);
-  await page.waitForFunction(()=>document.querySelector('.pending-number').textContent==='0개');
+  await page.waitForFunction(()=>window.__qaQuery('.pending-number').textContent==='0개');
   assert.ok((await page.locator('.wallet').innerText()).includes('15'));
   assert.equal(await page.evaluate(()=>localStorage.getItem('pocketbase_auth')),'legacy-untouched');
   assert.equal(await page.evaluate(()=>localStorage.getItem('pixeltown.guest')),'legacy-guest-untouched');

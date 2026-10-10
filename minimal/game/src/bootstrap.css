@@ -1,0 +1,7 @@
+html, body { height:100%; margin:0; overflow:hidden; }
+body { background:#8fd0f2 radial-gradient(rgba(255,255,255,.55) 1.5px,transparent 2px) 0 0 / 16px 16px; }
+#root { height:100%; }
+.ui-release { position:fixed; inset:0; z-index:2; pointer-events:none; }
+.ui-release[hidden] { display:none; }
+canvas.world { position:fixed; z-index:1; display:block; touch-action:none; cursor:pointer; image-rendering:pixelated; user-select:none; background:#5a9a48; }
+canvas.world:focus-visible { outline:3px solid #ffd23f; outline-offset:-3px; }

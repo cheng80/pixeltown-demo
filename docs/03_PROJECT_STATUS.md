@@ -1,6 +1,8 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-09 (Asia/Seoul). 미니멀 게임의 worker 무중단 교체·동기화·상단 배포 표시를 구현하고 공개 화면에 게시했다. 사용자 게임 주소는 `https://pixeltown.fastmake.net` 그대로이며, 기존 운영 서버를 유지하고 미니멀 전용 서버(PB 18820/game 13620)를 도입했다. 구현 게시 commit은 `68d4ca8`이다.
+갱신일: 2026-10-11 (Asia/Seoul). 아래 운영·공개 검사 결과는2026-10-09 당시 기록이며 오늘 재확인한 상태가 아니다. 사용자 게임 주소는 `https://pixeltown.fastmake.net` 그대로다.
+
+현재 작업: **전체 프런트 OTA의 로컬 구현·검증을 완료했고, 사용자 승인으로 commit·push와 운영 적용·실제 접속 검증을 진행 중이다.** runtime이 연결·입력·게임 상태를 유지하고 전체 UI release를 교체하며,15초 버전 폴링을 WebSocket 알림으로 바꿨다. 최종 소스 단위60/60·활성화8·게시/네트워크19/19·오프라인UI, PB중단3회·SDK100명worker교체·두브라우저 재생 검사가 통과했다. 최종85명10+10분(SFAvNp)은10분 무폴링HTTP0·20회UI+worker교체·전체24개검사·2,071,365입력, SDK/두브라우저 복구/drop/fix/pending0·seq=ack로 통과했다. 직전 소스의 동시복구 실패(QMbFGN)와 공개 정체2건은 원인 미확정으로 보존한다. 실제IME/터치기기·운영 자동활성화·공개 검사 전환은 남는다. [로컬 결과](reviews/2026-10-11-frontend-ota.md), [PLAN-008](plans/PLAN-008.md), [기술 계약](02_TECH_SPEC.md#frontend-ota-contract), [HTML 설명](diagrams/frontend-ota.html).
 
 현재 실행: **정상 입력 보정을 고치고 두 번째 공개30분에서 복구실패·보정·입력교정0을 확인했다.** SDK85명·실제Chromium1명·2,804,624입력, 응답정체2건은 같은세션으로 복구했고 최종pending0·ack=seq다. 브라우저끊김·덮개·새로고침0. 무손실복구는 통과했지만 끊김없는기준은 실패해 종류별배포 비교는 시작하지 않았다. 최초정체원인은 미확정이다. 첫검사의66개 입력교정과 실패자료도 보존한다. 최신Claude예측정지띠를 단위47/47·UI·공개의도적복구로 검증하고 화면a7b45baf를 게시했다. 자체시험접속을 정리하고 운영game·로컬서버를 유지했다. 기존100명지갑/원장 대조 통과. 복구/화면수정을 `7fc3f1e`로 main에 commit·push했고 Cloudflare자동빌드 성공·공개파일SHA일치를 확인했다. [상세 재검사](reviews/2026-10-09-public-recovery-recheck.md).
 
@@ -177,6 +179,31 @@ PB 배포 중 플레이 유지: 운영 서비스를 PB와 게임으로 분리했
 4. PWA·앱 포장은 웹 핵심 플레이 검증 후 별도 계획으로 다룬다.
 
 ## 7. 인수인계
+
+### 전체 프런트 OTA 로컬 구현·검증 정리 (2026-10-11, Claude Opus 5.5 / Codex PM / Grok 검증)
+
+- 역할: Codex는 PM 조율, 구현 인수는 Orca의 Claude Opus 5.5, 시험 실행·결과 판정은 Grok Build. 이전 구현 에이전트 결과(`.test-work/ota-20261011/*-result.md`)를 인수해 같은 main 체크아웃에서 미커밋 변경을 보존했다.
+- 구현: runtime·surface·bootstrap 분리, 전체 React UI entry와 shadow root CSS 격리, schema2 release·의존 그래프 hash·SHA 검증 Blob JS, WebSocket `frontendRevision/frontendCurrent`, durable generation과 `/internal/frontend/activate`, 게시→공개 확인→활성화 receipt. 파일 목록과 구현 계약은 [로컬 결과](reviews/2026-10-11-frontend-ota.md)와 [TECH_SPEC](02_TECH_SPEC.md#frontend-ota-implemented).
+- 통과: 단위60/60, 실제 HTTP/SDK 활성화8, 게시/네트워크19/19, 빌드 그래프8/8, S1 실제 PB/game6·복구8·오프라인UI(1280/390), `.test-work/frontend-ota-DOjtOW/report.json`(Ego2페이지+SDK2명, 20회 전체 UI 교체+worker 교체, navigation1·drop/cover0·pending0·seq=ack).
+- 장시간 실패: `.test-work/frontend-ota-QMbFGN`(85명 10분 무변경+10분 20회 교체+fault matrix)은 02:07:21 시작이라 최종 `runtime.js`·`visual-update.js`·`minimal-visual-build.mjs`·`frontend-publication.mjs`를 포함하지 않는다(직전 소스 근거). 무변경10분 버전 HTTP0, 20회 교체 단언, fault matrix19는 통과했다. 최종 단언에서 SDK85명 전원이 각1회 `prediction-limit` 같은 세션 복구(fix0·보정0·pending0·seq=ack)를 해 실패했다. 브라우저 p2도1회, p1은0. 시각 기록이 없어 단계를 판별하지 못했고 원인은 미확정이다. harness에 단계·복구 시각과 시험 프로세스 지연 기록을 추가했다.
+- 최종 소스 재검증: `.test-work/frontend-ota-NBY0zb/report.json` PASS(SDK2명·Ego2페이지·20회 교체+worker·전체24개검사, 초기manifest503 회복·12초 본문 기한 포함, drops/fix/pending/cover0·seq=ack). 단위60/60·활성화8·게시/네트워크19/19·오프라인UI도 재실행 통과. `.test-work/minimal-pb-restart-DhdmSh`의 PB중단3회+브라우저 통과, `.test-work/minimal-hotswap-Tb6z20`의 SDK100명·worker9회·42,400입력·drops/fix0 통과.
+- 최종 게이트 통과: `.test-work/frontend-ota-SFAvNp/report.json` PASS·exit0. cp4코드39파일 SHA 일치, SDK85명10분무변경+10분UI20회+worker1회+전체24개검사, 입력2,071,365개·SDK/두브라우저 drops/recovered/failures/fix/pending0·seq=ack·덮개0·navigation1. 버전HTTP0, health1,258표본·오류0·worker recovery0, 시험추가지연baseline20ms·교체최대3ms. 정체는 재현되지 않았으며 기존실패 원인을 해결했다고 해석하지 않는다.
+- worker브라우저 caller: `.test-work/minimal-hotswap-YWJfHw`에서6회 교체·각221입력·재생633/638프레임·좌표오류0 통과. 시험5489/12740/18240 LISTEN없음 확인, DB·로그·실패자료·개발세션 보존. Claude구현·Grok검증 Task는 모두succeeded, 두terminal을사용자지시대로retain했다. 문서참조156개·git diff --check 통과. 같은 main·세션을 유지한다.
+- 이번 수선: `tests/minimal-pb-restart.mjs`·`tests/minimal-hotswap-browser.mjs`를 dev 진단 `__minimalDebug.engine`과 shadow 조회로 바꿨다(PB브라우저 통과, worker브라우저의 추가 재생 계측 수정 후 통과). `test:minimal:visual`은 SDK2명 짧은 기본값으로 되돌렸다. 초기 manifest 503 회복 검사의 재시도 소진 경쟁을 2회 한정 fault로 고쳤다. 제품 코드 결함은 이번 검토에서 새로 찾지 못했다.
+- NEEDS-DECISION: 과거 공개 브라우저 검사5개는 React fiber로 engine을 찾는다. 현재 운영(구 UI)에서는 유효해 수정하지 않았다. 새 runtime 게시 후 공개 재검사 전에 `__minimalVisual.movement` 기반 검사로 바꿀지, production에 제한된 engine 진단을 둘지 정해야 한다.
+- 운영 경계: 최초 runtime 도입은 기존 탭에 들어가지 않는다. 서버 `MINIMAL_FRONTEND_ORIGIN`·`MINIMAL_FRONTEND_TOKEN`, 게시 측 SSH/토큰 파일, Git 자동 Pages 뒤 활성화 연결은 운영 승인 후 설정한다([활성화 인계](handoffs/2026-10-11-frontend-activation.md)). 공개30분 응답 정체2건의 최초 원인은 미확정 그대로다.
+- 권한: commit·push·PR·merge·운영 접근·게시·Cloudflare/secret 변경·세션/worktree 정리를 하지 않았다. 기존 시험 실패자료·DB·개발 세션을 보존한다.
+
+### 전체 프런트 OTA 계획·새 세션 전달 (2026-10-11, Codex)
+
+- 사용자 요청: 화면·기능이 늘어도 공통 OTA 경계 하나를 사용하고15초 폴링을 없애도록 상세 기획/플랜을 먼저 준비한 뒤 새 세션으로 전달해 진행한다.
+- 설계: 탭 runtime이 인증·connection·engine·이동/입력·지갑·원장·보존할 UI 상태를 소유한다. UI release 하나에 React/ReactDOM·전체 화면·renderer·리소스를 넣는다. 후보와 활성 UI는 다른 root를 사용하며 React 객체를 서로 넘기지 않는다. canvas·입력 수명은 유지한다. UI rollback은 현재 게임 상태로 복구한다.
+- 알림: 기존 WebSocket의 현재/변경 hint, 디스크에 보존하는 별도 generation, 최초 입장·재접속·탭 복귀 대조. 게시 파일 확인 후 내부 활성화하며 게시/활성화/브라우저 적용을 나눠 기록한다. 수동 게시와 Git 자동 Pages 게시 모두 활성화가 필요하다. 별도 연결·주기 서버 폴링도 추가하지 않는다. 미입장 탭 즉시 push와 완전히 누락한 활성화는 보장하지 않는다.
+- 산출물: PRODUCT_SPEC 목표 요구, TECH_SPEC 목표 계약, [PLAN-008](plans/PLAN-008.md), [ADR-007](decisions/ADR-007.md), [HTML 그림](diagrams/frontend-ota.html), [새 세션 인계](handoffs/2026-10-11-frontend-ota.md), 문서 지도. 기존 코드/계약·과거 검증 증거는 변경하지 않았다. 상세 읽기 전용 검토2건으로 React/입력 수명과 게시 누락/순서 위험을 확인했다.
+- 조사 기준: HEAD `1354dc6852e27221a82ea69bd5711336a1c3e090`. 시작 시 작업 트리는 깨끗했다. 오늘5270/18120/12620 LISTEN 조회에는 프로세스가 없었으며 새로 시작하거나 종료하지 않았다. 운영 접근·상태 확인·게시·Git 게시를 수행하지 않았다. 과거 운영 안정성 결과를 이번 구조의 통과 증거로 사용하지 않는다.
+- 새 세션은 같은 main 체크아웃에서 S0 기준 확인→S1 실행 수명 분리부터 구현·로컬 검증한다. 전달 후 부모는 구현 파일을 수정하지 않는다. 세션 식별·문서 검증과 정확한 다음 작업은 인계 파일에 기록한다. 기존 세션/worktree 종료·정리는 승인하지 않는다.
+- 문서 검증: 로컬 링크127개·명시 anchor·도식 self-check·`git diff --check` 통과. Ego space25에서1280/390px 표시·페이지 가로 넘침0·외부 리소스 요청0을 확인하고 자체space를 정리했다. 전달 직전 코드 diff0·소스 해시61개. 자료는 `.test-work/ota-plan-20261011/`에 보관한다.
+- 새 구현 세션 **PixelTown 전체 프런트 OTA 구현** (`01a126b5-1b51-79a3-81d7-f77efcafd1ae`, local, gpt-6-astra/high)을 생성해 전체 문서와S0/S1 시작 지시를 전달했다. read_thread에서 inProgress와 인계 읽기·S0/S1 시작 commentary, 지정 문서·코드·포트 조회 실행을 확인했다. 세션 생성/시작과 구현 완료는 구분한다. 실제 결과가 나오기 전에는 OTA 적용·무중단 통과로 기록하지 않는다.
 
 ### 이전 Codex 세션 종료·운영 재검사 재개 (2026-10-09)
 

@@ -1,25 +1,24 @@
-:root {
+:host {
   --line: #3a2440; --paper: #fffafc; --cream: #fff6e9; --pink: #ff5c93; --pink-dk: #d93a73; --pink-lt: #ffa3c4; --pink-pale: #ffe3ee;
   --lav: #e3d4ff; --sky: #8fd0f2; --gold: #ffd23f; --gold-dk: #e0a020; --muted: #7a6680; --ok: #2f8f4e; --warn: #c2185b;
   --drop: 0 4px 0 rgba(58, 36, 64, .35);
   font-family: Galmuri11, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
-  font-size: 13px; line-height: 1.5; color: var(--line); background: var(--sky);
+  font-size: 13px; line-height: 1.5; color: var(--line);
   font-synthesis: none; -webkit-font-smoothing: none; -webkit-text-size-adjust: 100%;
 }
+/* Release styles live in this release's shadow root. Page, body and the world canvas belong to bootstrap.css. */
 * { box-sizing: border-box; }
-html, body, #root { height: 100%; }
-body { margin: 0; overflow: hidden; background: var(--sky) radial-gradient(rgba(255, 255, 255, .55) 1.5px, transparent 2px) 0 0 / 16px 16px; }
-button, input { font: inherit; color: inherit; }
-button, a, input, canvas { -webkit-tap-highlight-color: transparent; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; touch-action: manipulation; }
 a { color: inherit; }
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 h1, h2, p { margin: 0; }
 
 /* ------------------------------------------------------------ frame */
-.app { height: 100%; padding: 16px; display: grid; place-items: center; }
-.frame { width: min(1280px, 100%); height: 100%; display: flex; flex-direction: column; background: var(--paper); border: 3px solid var(--line); box-shadow: 0 6px 0 rgba(58, 36, 64, .4); }
-.titlebar { flex: none; height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-bottom: 3px solid var(--line); background: var(--paper); }
+.app { position: absolute; inset: 0; padding: 16px; display: grid; place-items: center; }
+.frame { width: min(1280px, 100%); height: 100%; display: flex; flex-direction: column; border: 3px solid var(--line); box-shadow: 0 6px 0 rgba(58, 36, 64, .4); }
+.titlebar { flex: none; height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-bottom: 3px solid var(--line); background: var(--paper); pointer-events: auto; }
 .brand { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 16px; color: var(--pink); text-decoration: none; text-shadow: 1px 1px 0 var(--pink-pale); }
 .brand .px-icon { width: 20px; height: 20px; }
 .place { padding: 2px 8px; border: 2px solid var(--line); background: var(--lav); font-size: 12px; }
@@ -45,9 +44,10 @@ h1, h2, p { margin: 0; }
 .applied .release-dots i { background: #4cd07d; animation: none; }
 @keyframes blink { 50% { background: var(--paper); } }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.stage { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #5a9a48; }
-canvas.world { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: pointer; image-rendering: pixelated; -webkit-user-select: none; user-select: none; }
-canvas.world:focus-visible { outline: 3px solid var(--gold); outline-offset: -3px; }
+/* The host passes pointers through to the runtime canvas below; only panels take them. Frame and stage stay
+   transparent so the canvas (which paints the stage background) shows through the slot. */
+.stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.world-slot { position: absolute; inset: 0; }
 
 /* ------------------------------------------------------------ pixel icons */
 .px-icon { display: inline-block; width: 18px; height: 18px; flex: none; vertical-align: middle; }
@@ -111,7 +111,7 @@ canvas.world:focus-visible { outline: 3px solid var(--gold); outline-offset: -3p
 kbd { padding: 1px 5px; border: 2px solid var(--line); border-bottom-width: 3px; background: #fff; font: inherit; font-size: 11px; }
 
 /* ------------------------------------------------------------ dialogs */
-.overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; overflow-y: auto; pointer-events: auto; }
 .title-screen { background: linear-gradient(rgba(58, 36, 64, .08), rgba(58, 36, 64, .38)); }
 .cover { background: rgba(58, 36, 64, .45); }
 .dialog { position: relative; width: min(380px, 100%); padding: 26px 24px 18px; text-align: center; background: var(--paper); border: 3px solid var(--line); box-shadow: inset 0 0 0 3px var(--pink-pale), 0 6px 0 rgba(58, 36, 64, .45); }
@@ -172,3 +172,9 @@ kbd { padding: 1px 5px; border: 2px solid var(--line); border-bottom-width: 3px;
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
 .visual-version { font-size: 10px; line-height: 1.5; pointer-events: none; }
 @media (max-width: 760px) { .visual-version { flex-basis: 100%; order: 4; } }
+/* Test-only second screen (VITE_OTA_TEST_SCREEN=1). */
+.ota-test { position: absolute; top: 12px; right: 12px; width: min(300px, calc(100% - 24px)); max-height: calc(100% - 24px); display: grid; gap: 10px; padding: 16px; text-align: left; pointer-events: auto; }
+.ota-test h2 { font-size: 16px; }
+.ota-test label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; }
+.ota-test textarea, .ota-test select { width: 100%; padding: 6px 8px; border: 2px solid var(--line); background: #fff; border-radius: 0; font-weight: 400; }
+.ota-test-list { height: 120px; margin: 0; padding: 4px 8px 4px 24px; overflow-y: auto; border: 2px solid var(--line); background: #fff; }

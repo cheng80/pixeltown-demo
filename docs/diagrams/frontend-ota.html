@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PixelTown — 화면이 늘어도 같은 방식으로 업데이트하기</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f5f5;color:#2d3142;font-family:'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;line-height:1.75}main{max-width:1100px;margin:auto;padding:48px 24px 64px}h1{font-family:'Instrument Serif','Noto Serif KR','AppleMyungjo',serif;font-size:clamp(28px,4vw,40px);font-weight:400;line-height:1.35;word-break:keep-all;margin:12px 0 24px}h2{font-size:24px;margin:40px 0 12px}p{max-width:900px}.meta{font-family:'Geist Mono',monospace;color:#4f5d75;font-size:12px;letter-spacing:.08em}.status{border-left:4px solid #eb6c36;padding:12px 20px;background:rgba(235,108,54,.08)}a{color:#2e5aa8;text-underline-offset:4px}a:focus-visible{outline:3px solid #2e5aa8;outline-offset:4px}code{font-family:'Geist Mono',ui-monospace,monospace;font-size:.9em;overflow-wrap:anywhere}.figure-scroll{overflow-x:auto;margin:24px 0}svg{display:block;width:100%;min-width:800px}svg text{font-family:'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif}svg .tech{font-family:'Geist Mono',ui-monospace,monospace;fill:#4f5d75;font-size:12px}svg .name{font-size:20px;font-weight:600}svg .label{font-size:16px;font-weight:500}svg .body{font-size:16px;fill:#4f5d75}.table-scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:16px}th,td{border-bottom:1px solid #c7cbd1;text-align:left;vertical-align:top;padding:12px 16px}th{color:#4f5d75;font-weight:600}ol,ul{padding-left:24px}li{margin:8px 0}footer{margin-top:40px;padding-top:20px;border-top:1px solid #c7cbd1;color:#4f5d75;font-size:14px}@media(max-width:600px){main{padding:24px 16px 40px}h2{font-size:20px}th,td{padding:12px 8px}}@media print{main{padding:0}.figure-scroll{overflow:visible}svg{min-width:0}body{font-size:12px}h2{break-after:avoid}table,figure{break-inside:avoid}}
+</style>
+</head>
+<body><main>
+<p class="meta">PIXELTOWN / OTA DESIGN / 2026-10-11</p>
+<h1>화면이 늘어도<br>같은 방식으로 업데이트하기</h1>
+<p class="status"><strong>로컬에서 구현했고 운영에는 아직 적용하지 않았습니다.</strong> 최종85명10+10분·20회 UI 교체·실패 주입을 포함한 로컬 검증을 마쳤습니다. 실제 검사 결과는 <a href="../reviews/2026-10-11-frontend-ota.md">로컬 결과</a>, 최신 상태는 <a href="../03_PROJECT_STATUS.md">프로젝트 현황</a>을 따릅니다.</p>
+<p>OTA는 새 코드와 파일을 인터넷으로 받아 적용하는 업데이트입니다. PixelTown에서는 <strong>게임을 계속 실행하는 부분은 유지하고, 화면 전체만 새 묶음으로 바꿉니다.</strong> 화면이 하나 늘어도 업데이트 장치를 하나 더 만들지 않습니다.</p>
+<h2>게임을 유지하는 부분과 바꾸는 부분</h2>
+<div class="figure-scroll" tabindex="0" role="region" aria-label="전체 프런트 OTA 구조 그림. 좁은 화면에서는 좌우로 스크롤할 수 있습니다.">
+<svg viewBox="0 0 1000 576" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="frontend-ota-title frontend-ota-desc">
+<title id="frontend-ota-title">게임 실행부를 유지하고 화면 전체를 교체하는 구조</title>
+<desc id="frontend-ota-desc">Colyseus는 기존 연결로 새 버전을 알리고, 브라우저 실행부는 Cloudflare에서 파일을 받아 게임 상태를 유지한 채 하나의 프런트 화면 묶음을 교체합니다.</desc>
+<defs><marker id="frontend-ota-arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#4f5d75"/></marker><marker id="frontend-ota-http" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#2e5aa8"/></marker></defs>
+<rect width="1000" height="576" fill="#f5f5f5"/>
+<rect x="32" y="288" width="936" height="216" rx="8" fill="rgba(45,49,66,.02)" stroke="rgba(45,49,66,.12)"/>
+<text x="48" y="312" class="label">브라우저</text>
+<path d="M188 176 V344" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#frontend-ota-arrow)"/>
+<rect x="200" y="216" width="224" height="24" fill="#f5f5f5"/>
+<text x="208" y="232" class="label">기존 연결로 버전 알림</text>
+<path d="M812 176 V248 Q812 256 804 256 H408 Q400 256 400 264 V344" fill="none" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#frontend-ota-http)"/>
+<rect x="824" y="208" width="128" height="24" fill="#f5f5f5"/>
+<text x="832" y="224" class="label">새 파일 준비</text>
+<path d="M448 416 H672" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#frontend-ota-arrow)"/>
+<rect x="476" y="384" width="168" height="24" fill="#f5f5f5"/>
+<text x="560" y="400" text-anchor="middle" class="label">게임 상태 그대로</text>
+<rect x="48" y="64" width="280" height="112" rx="8" fill="#fff" stroke="#2d3142"/>
+<text x="72" y="100" class="name">게임 접속 서버</text><text x="72" y="128" class="body">현재 화면 버전 보관·알림</text><text x="72" y="152" class="tech">Colyseus / WebSocket</text>
+<rect x="672" y="64" width="280" height="112" rx="8" fill="rgba(45,49,66,.03)" stroke="#4f5d75"/>
+<text x="696" y="100" class="name">화면 파일 보관</text><text x="696" y="128" class="body">버전별 파일·이전 버전 유지</text><text x="696" y="152" class="tech">Cloudflare Pages / immutable</text>
+<rect x="48" y="344" width="400" height="144" rx="8" fill="#fff" stroke="#2d3142"/>
+<text x="72" y="380" class="name">계속 실행하는 부분</text><text x="72" y="408" class="body">접속·위치·점수·입력·지갑</text><text x="72" y="436" class="body">같은 canvas와 이동 실행 유지</text><text x="72" y="464" class="tech">runtime / one updater</text>
+<rect x="672" y="344" width="280" height="144" rx="8" fill="rgba(235,108,54,.08)" stroke="#eb6c36" stroke-width="1.2"/>
+<text x="696" y="380" class="name">통째로 바꾸는 화면</text><text x="696" y="408" class="body">입장·광장·메뉴·새 화면</text><text x="696" y="436" class="body">그림·스타일·글꼴·이미지</text><text x="696" y="464" class="tech">one UI release / React</text>
+<line x1="32" y1="528" x2="968" y2="528" stroke="rgba(45,49,66,.16)"/>
+<text x="48" y="556" class="label">주황: 교체 대상</text><text x="320" y="556" class="label">회색 선: 기존 연결·상태</text><text x="664" y="556" class="label" fill="#2e5aa8">파란 선: 파일 다운로드</text>
+</svg></div>
+<p>여기서 실행부는 브라우저 안에서 계속 돌아가는 코드입니다. 서버의 게임 로직 <code>worker</code>와는 다릅니다. Colyseus는 실시간 접속 서버, PocketBase(PB)는 계정과 지갑·원장을 저장하는 별도 서버입니다. 이번 화면 OTA는 worker나 PB를 재시작하지 않습니다.</p>
+<h2>화면을 추가할 때 달라지는 일</h2>
+<div class="table-scroll"><table><thead><tr><th>작업</th><th>개발자가 하는 일</th><th>OTA에 추가할 일</th></tr></thead><tbody>
+<tr><td>새 메뉴·안내 화면</td><td>React 컴포넌트와 메뉴 연결</td><td>없음. 전체 UI 빌드에 포함</td></tr>
+<tr><td>그림·애니메이션·디자인 수정</td><td>renderer·CSS·리소스 수정</td><td>없음. 같은 묶음으로 준비·교체</td></tr>
+<tr><td>입력 초안·선택값 유지</td><td>공통 UI 상태에 값 보관</td><td>화면마다 저장·복구 장치를 만들지 않음</td></tr>
+<tr><td>새 서버 기능</td><td>필요한 API와 실행부 계약 구현</td><td>기존 실행부에서 가능한 변경인지 확인</td></tr>
+<tr><td>연결 방식·이동 규칙 변경</td><td>실행부·서버 계약 변경</td><td>호환되지 않으면 다음 입장에서 반영</td></tr>
+</tbody></table></div>
+<p>상점 화면을 만들 수 있다는 것과 실제 구매 기능이 생기는 것은 다릅니다. 구매에는 서버의 잔액 검사와 원장 저장이 필요합니다. 이번 작업은 현재 미니멀 게임을 유지하며, 보류한 상점·채팅·미니룸을 새로 구현하지 않습니다.</p>
+<h2>15초마다 묻는 대신, 배포할 때 알립니다</h2>
+<ol><li><strong>새 파일 게시:</strong> 배포 도구가 Cloudflare에 전체 UI를 올리고 공개 파일·해시를 확인합니다.</li><li><strong>현재 버전 등록:</strong> 비공개 관리 경로로 게임 접속 서버에 버전을 등록합니다. 서버는 디스크에 기록한 뒤 기존 연결로 알립니다.</li><li><strong>뒤에서 준비:</strong> 브라우저가 새 파일을 받는 동안 이전 화면과 게임은 그대로 돌아갑니다.</li><li><strong>안전할 때 교체:</strong> 새 화면과 첫 그리기가 확인되면 전환합니다. 한글 입력 조합·터치 이동 중에는 입력을 취소하지 않고 기다립니다.</li></ol>
+<p>입장·재접속·탭 복귀 때 현재 버전을 다시 확인하므로 연결이 끊겨 놓친 알림을 보완합니다. 미입장 탭에는 게임 연결이 없어 최초 로드·탭 복귀·입장 전의 단발 확인을 사용합니다. 주기 폴링이나 별도 알림 연결을 추가하지 않습니다.</p>
+<p><strong>Git 자동 빌드도 버전 등록 단계에 연결해야 합니다.</strong> 파일 게시만 되고 등록에 실패하면 “게시 성공·활성화 실패”로 남기고 등록만 다시 시도합니다. 알림을 완전히 누락한 게시가 계속 열린 탭에 즉시 반영된다고 약속하지 않습니다.</p>
+<h2>잘못된 업데이트는 화면만 되돌립니다</h2>
+<p>다운로드나 준비가 실패하면 기존 UI로 계속 플레이합니다. 새 UI 실행 중 문제가 나면 직전 UI로 돌아갑니다. <strong>그 사이 움직인 위치, 획득한 별, 완료된 저장을 과거 상태로 되감지 않습니다.</strong> 업데이트 실패와 실제 연결 장애는 따로 표시합니다.</p>
+<p>처음 이 구조를 받는 탭은 한 번 새로 입장해야 합니다. 이후 호환되는 화면과 리소스는 새로고침 없이 반영합니다. 실행부 자체의 비호환 변경까지 무조건 교체하는 구조는 아닙니다.</p>
+<h2>어떤 자료를 보고 구현하나요?</h2>
+<ul><li><a href="../plans/PLAN-008.md">PLAN-008</a>: 단계별 작업, 담당 범위, 수용 검사</li><li><a href="../02_TECH_SPEC.md#frontend-ota-contract">기술 계약</a>: 실행 수명, UI entry, 버전 알림, 게시와 복구</li><li><a href="../handoffs/2026-10-11-frontend-ota.md">새 세션 인계</a>: 현재 기준과 첫 작업, 승인 범위</li><li><a href="../decisions/ADR-007.md">ADR-007</a>: 이 방법을 택한 이유와 한계</li><li><a href="../reviews/2026-10-11-frontend-ota.md">로컬 결과</a>: 실제로 통과한 검사와 남은 검증</li></ul>
+<footer>2026-10-11 설계 자료. 기본 도식 색상을 사용하고 글꼴은 로컬 대체 글꼴로 표시합니다. 외부 파일·스크립트를 요청하지 않습니다. runtime·UI 분리는 2026-10-11 로컬 구현했고, 10분 무폴링과 실패 주입 전체 로컬 검증을 마쳤습니다. 실제 기기·운영 검증은 별도입니다.</footer>
+</main></body></html>

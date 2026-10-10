@@ -127,6 +127,13 @@ test('cloned CLI uses 2000ms address timeout and preserves hashed public history
   for (const file of current.files) assert.equal(digest(readFileSync(resolve(app, 'dist/visual/releases', current.revision, file.path))), file.sha256);
   const { minimalVisualBuild } = await import(pathToFileURL(resolve(app, 'scripts/minimal-visual-build.mjs')));
   const before = minimalVisualBuild().config().define.__MINIMAL_VISUAL_COMPAT__;
+  assert.equal(current.schema, 2); assert.equal(current.uiApiVersion, 1); assert.equal(current.uiStateSchema, 1);
+  const ui = resolve(app, 'minimal/game/src/main.jsx');
+  writeFileSync(ui, readFileSync(ui, 'utf8') + '\n// UI-only dependency fixture\n');
+  assert.equal(minimalVisualBuild().config().define.__MINIMAL_VISUAL_COMPAT__, before);
+  const lockPath = resolve(app, 'package-lock.json'), lock = JSON.parse(readFileSync(lockPath));
+  lock.packages['node_modules/react'].version = '19.999.0'; writeFileSync(lockPath, JSON.stringify(lock));
+  assert.equal(minimalVisualBuild().config().define.__MINIMAL_VISUAL_COMPAT__, before, 'UI React dependency does not change the runtime graph');
   const connection = resolve(app, 'minimal/game/src/connection.js');
   writeFileSync(connection, readFileSync(connection, 'utf8') + '\n// changed connection contract fixture\n');
   assert.notEqual(minimalVisualBuild().config().define.__MINIMAL_VISUAL_COMPAT__, before);

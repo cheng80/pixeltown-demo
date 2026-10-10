@@ -1,14 +1,9 @@
 import { WORLD, TICK_MS } from '../../shared/world.js';
-import { play } from './playback.js';
 import { EXT, LINE, FOUNTAIN_BOX, GATE_SIGN, ambience, avatar, backdrop, foreground, fountain, fountainWater, ground, lookFor, star } from './art.js';
 import './style.css';
 
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const mix = (a, b, t) => a + (b - a) * t;
-// Display-only facing: 0 down, 1 up, 2 right, 3 left. As in the legacy game (ec5da17), anything within 2:1 of a diagonal
-// shows the side view; others are judged on a running average of recent frames, so playback jitter cannot flip them.
-const facing = (dx, dy) => Math.abs(dy) > Math.abs(dx) * 2 ? (dy > 0 ? 0 : 1) : (dx > 0 ? 2 : 3);
-const turn = (a, dx, dy) => { a.vx = (a.vx || 0) * 0.75 + dx * 0.25; a.vy = (a.vy || 0) * 0.75 + dy * 0.25; return facing(a.vx, a.vy); };
 const FALLBACK_FONT = ' "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 const shadow = (c, x, y) => { c.globalAlpha = 0.24; c.fillStyle = LINE; c.fillRect(x - 5, y - 1, 10, 3); c.fillRect(x - 6, y, 12, 1); c.globalAlpha = 1; };
 function blit(c, spr, x, y, flip) {
@@ -22,7 +17,7 @@ export function createRenderer({ canvas, engine, view, fontFamily = 'Galmuri11',
     const dc = canvas.getContext('2d');
     const low = document.createElement('canvas'), lc = low.getContext('2d');
     const looks = new Map(), lookOf = id => looks.get(id) || looks.set(id, lookFor(id)).get(id);
-    let lastDraw = 0, pops = [], lastStars = [], lastGame = null, lastScore = 0;
+    let pops = [], lastStars = [], lastGame = null, lastScore = 0;
   // Prepare procedural art before activation. No input listeners or movement timers live here.
   ground(); backdrop(); foreground(); fountain(); star();
   for (const id of [engine.userId, ...engine.others.keys()].filter(Boolean)) avatar(lookOf(id), 0, 0);
@@ -36,7 +31,6 @@ export function createRenderer({ canvas, engine, view, fontFamily = 'Galmuri11',
       const lw = Math.ceil(devW / z), lh = Math.ceil(devH / z);
       if (low.width !== lw || low.height !== lh) { low.width = lw; low.height = lh; }
       const t = clamp((now - engine.lastTick) / TICK_MS, 0, 1);
-      if (engine.movedAt === engine.lastTick && (engine.self.x !== engine.previous.x || engine.self.y !== engine.previous.y)) engine.facing = facing(engine.self.x - engine.previous.x, engine.self.y - engine.previous.y);
       const self = { x: mix(engine.previous.x, engine.self.x, t), y: mix(engine.previous.y, engine.self.y, t) };
       // Camera locked to the avatar in whole art px (no lag, so the avatar never wobbles against the map).
       // Title screen: frame the fountain beside (wide) or above (tall) the entry dialog.
@@ -69,12 +63,8 @@ export function createRenderer({ canvas, engine, view, fontFamily = 'Galmuri11',
       // y-sorted layer: fountain, stars and avatars by foot y
       const items = [{ y: FOUNTAIN_BOX.y + FOUNTAIN_BOX.h - 4, kind: 'fountain' }];
       for (const s of engine.stars) items.push({ y: s.y, kind: 'star', s });
-      const dt = lastDraw ? Math.min(1000, now - lastDraw) : 0; lastDraw = now;
       for (const [id, p] of engine.others) {
-        const q = play(p.pb, dt), dx = q.x - p.x, dy = q.y - p.y;
-        if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) { p.dir = turn(p, dx, dy); p.movedAt = now; }
-        p.x = q.x; p.y = q.y;
-        items.push({ y: q.y, x: q.x, kind: 'avatar', id, name: p.name, dir: p.dir, walking: now - p.movedAt < 160 });
+        items.push({ y: p.y, x: p.x, kind: 'avatar', id, name: p.name, dir: p.dir, walking: now - p.movedAt < 160 });
       }
       if (engine.initialized) items.push({ ...self, kind: 'avatar', id: engine.userId, name: engine.name, dir: engine.facing, walking: now - engine.movedAt < 120, mine: true });
       items.sort((a, b) => a.y - b.y);

@@ -23,6 +23,7 @@
 | 게임 로직 무중단 배포 인계 | [architecture/zero-downtime.md](architecture/zero-downtime.md) — 동작 설명·용어·구현·배포 절차 |
 | 무중단 배포 구조와 교체 순서 | [diagrams/worker-hot-swap.html](diagrams/worker-hot-swap.html) — 브라우저에서 보는 HTML/SVG 그림 |
 | 새로고침 없이 화면 코드·리소스 반영 | [diagrams/frontend-live-update.html](diagrams/frontend-live-update.html), [계약·배포·한계](handoffs/2026-10-08-frontend-live-update.md) |
+| 화면·기능 확장과 전체 프런트 OTA(로컬 구현, 운영 미적용) | [HTML 설명](diagrams/frontend-ota.html), [PLAN-008](plans/PLAN-008.md), [기술 계약](02_TECH_SPEC.md#frontend-ota-contract), [로컬 결과](reviews/2026-10-11-frontend-ota.md), [새 세션 인계](handoffs/2026-10-11-frontend-ota.md), [활성화 인계](handoffs/2026-10-11-frontend-activation.md) |
 | 도입 전 / 현재 배포 구조 비교 | [diagrams/zero-downtime.html](diagrams/zero-downtime.html) |
 | 최소 게임 실행·API / 기존 게임 보존 | [minimal/README.md](../minimal/README.md), [legacy/README.md](../legacy/README.md) |
 | 여러 계층에 걸친 구현과 확인 계획 | [plans/PLAN-004.md](plans/PLAN-004.md) Mac mini 서버 이전·Colyseus 0.18, [plans/PLAN-003.md](plans/PLAN-003.md) 별 상점·상시 이벤트, [plans/PLAN-002.md](plans/PLAN-002.md) 재제작 (이전: [PLAN-001](plans/PLAN-001.md)) |

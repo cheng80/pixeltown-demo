@@ -38,6 +38,8 @@
 
 ### 미니멀 화면·리소스 교체 계약 (2026-10-08)
 
+> 2026-10-11 로컬 코드에서는 아래 [전체 프런트 OTA 계약](#frontend-ota-contract)이 이 renderer 전용 15초 계약을 대체했다. 운영 공개 화면과 기존 탭은 게시 전까지 이 절의 schema1 계약으로 동작한다. 과거 schema1 release와 이력 보존 규칙은 그대로 유지한다.
+
 `GET /visual/current.json`(인증 없음, no-store)은 `{schema:1,revision,compatibility,entry,styles,fonts,images,files}`를 제공한다. SHA-256 버전 경로는 같은 origin의 `/visual/releases/<revision>/` 아래이며 내용을 덮어쓰지 않는다. `/visual/releases.json`과 각 manifest의 파일 해시 목록으로 다음 빌드에도 과거 버전을 보존한다. 버전 파일은 immutable, 누락 파일은 404다.
 
 브라우저는 15초마다 확인하고 같은 compatibility일 때만 renderer·CSS·글꼴·이미지를 준비한다. `createRenderer({canvas,engine,view,fontFamily,resources})`의 draw를 기존 rAF에서 교체한다. room·입력 타이머·seq/fix·내 위치·점수·보류 입력을 초기화하지 않는다. 첫 그리기를 복제 상태로 확인한다. 준비 실패는 기존 화면 유지, 전환 후 draw 실패는 직전 화면 복구이며 입력 차단을 만들지 않는다.
@@ -59,6 +61,92 @@ heartbeat는 3초마다 ping을 보낸다. pong 대기는 송신 완료 뒤 6초
 화면 교체용 JavaScript는 배포할 때 의존 모듈을 하나의 파일로 묶는다. 첫 import 실패 후에는 같은 파일에 내부 재시도 query를 붙여 브라우저의 실패 캐시를 피하고, 최대 3회까지만 import한다. 준비 실패는 기존 화면을 유지한다. 서버에 저장한 파일·SHA·manifest 경로는 바꾸지 않는다. 게시 도구의 이력 다운로드와 게시 전후 버전 확인은 GET 최대 3회·본문 포함 시도당 20초·주소별 연결 대기 2초를 사용하며, 기존 SHA·게시 충돌 검사를 유지한다.
 
 50ms snapshot, 타인의 확인된 걸음 재생(`playback.js`), seq/fix 이동 규칙과 PB 정산은 유지한다. 접속 프로세스 재시작으로 방이 사라진 경우의 상태 복원은 구현하지 않았다. 이번 복구 기능과 updater 변경은 기존 탭의 화면 교체만으로 주입할 수 없으므로 최초 한 번 새 프런트로 입장해야 한다. 상세 계약과 검증은 [접속 복구 인계](handoffs/2026-10-09-session-recovery-contract.md), [수정 검증 보고서](reviews/2026-10-09-disconnect-recovery.md)를 따른다.
+
+<a id="frontend-ota-contract"></a>
+### 전체 프런트 OTA 계약 (2026-10-11, 로컬 구현·운영 미적용)
+
+이 절은 사용자 요청에 따른 목표 계약이며, 2026-10-11 로컬 코드에 구현했다. 운영 게시·활성화는 하지 않았다. 구현에서 구체화한 계약은 절 끝의 [로컬 구현 계약](#frontend-ota-implemented)에 두고, 실제 검사와 대기 항목은 [로컬 결과](reviews/2026-10-11-frontend-ota.md)를 따른다. 결정 이유는 [ADR-007](decisions/ADR-007.md), 전달 자료는 [인계](handoffs/2026-10-11-frontend-ota.md)다.
+
+#### 실행 수명과 상태
+
+| 소유자 | 책임 | UI 교체 때 금지 |
+|---|---|---|
+| 탭 실행부(runtime) | 게스트·인증·connection/room·engine·50ms 이동·복구·지갑 요청/재시도·원장·UI 보존 상태·구독 | dispose, 재입장, pending/seq/fix 초기화, 완료된 요청 취소/반복 |
+| 영구 월드 표면 | canvas DOM·그리기 rAF·키보드/blur/visibility·포인터 입력 소유 | canvas 제거·capture 중 DOM 교체·이동 루프 복제 |
+| UI release | 입장·광장·메뉴·표시 컴포넌트·renderer·CSS·글꼴·이미지 | SDK 연결 생성, 인증 자동 복원, 이동/지갑 타이머 소유 |
+| updater 하나 | 알림·후보 준비·최신 목표·활성화·직전 UI 복구·오류 집계 | 화면별 updater·주기 manifest 확인 |
+
+runtime은 `getSnapshot()`과 `subscribe(listener)`로 상태를 제공한다. 변경이 없으면 snapshot 참조를 유지하며 UI가 engine 내부를 직접 바꾸지 못하도록 한다. 명령은 기존 입장·지갑 갱신·목적지·방향패드·UI 상태 변경에 필요한 것만 노출한다. PB 토큰·비밀번호·raw room·복구 토큰은 표시 snapshot에 넣지 않는다. 새 상태관리 패키지나 모든 기능을 해석하는 범용 플러그인 계층은 추가하지 않는다.
+
+닉네임 초안·열린 패널·선택값·복원할 스크롤/포커스는 runtime의 UI 상태에 둔다. 새 화면은 공통 상태 읽기/쓰기 방식을 사용하며 OTA별 저장 hook을 붙이지 않는다. 장식 애니메이션만 재시작 가능하다. 상태 schema가 다른 후보는 거절하며 이번에는 자동 migration 체계를 만들지 않는다. 후속 기능의 보존 상태가 바뀌면 기본값으로 읽을 수 있는 호환 추가인지, 기존 상태를 변환해야 하는 변경인지 먼저 분류한다. React의 component type 변경·제거가 내부 상태를 초기화하는 동작은 [공식 상태 보존 설명](https://react.dev/learn/preserving-and-resetting-state)을 따른다.
+
+기존 `WalletState`, 인증 요청 세대, connection의12초 복구·3초 예측·ack/fix 재전송은 재사용한다. 요청/복구의 수명과 UI release 세대를 분리한다. 이미 시작된 실제 요청은 한 번 완료되어 최신 화면에 반영하고, 종료된 UI의 늦은 callback이 새로운 명령을 시작하는 것은 차단한다.
+
+#### UI entry와 빌드
+
+부팅/runtime은 React를 import하거나 React root를 소유하지 않는다. UI release 한 JS에 React·ReactDOM·전체 App·renderer를 묶는다. 각 후보는 같은 release의 React로 별도 root를 mount한다. 다른 release 사이로 React component·element·context·hook을 넘기지 않는다. 이 조건 없이 서로 다른 React 인스턴스를 혼용하면 안 된다.
+
+entry는 `mountUI({root,runtime,resources,signal})`와 `createRenderer`를 제공한다. `mountUI`는 최초 React commit 완료를 확인한 뒤 `{setActive(active),dispose()}`를 반환한다. 준비 중 facade는 상태 읽기만 허용하고 명령은 거절한다. 활성화된 release만 명령을 보낼 수 있다. `dispose`는 구독·UI 타이머·root를 정리하되 runtime/connection/input을 종료하지 않는다. renderer는 영구 canvas에 연결되며 프레임당 한 번 계산된 표시 상태로 그린다. 후보 그리기는 복제 표시 상태·별도 canvas를 사용한다. 타인 재생·방향·view를 두 번 진행하거나 게임 상태를 되돌리지 않는다.
+
+레이아웃을 바꿀 수 있도록 UI와 renderer/CSS를 함께 준비하지만 canvas DOM과 입력 소유자는 runtime에 유지한다. 기존 root·canvas를 React의 후보 트리에 넣었다가 unmount로 제거하지 않는다. 후보 CSS는 후보 영역에만 적용하고, 활성화 전에 전역 body/호스트/기존 UI를 바꾸지 않는다. bootstrap CSS와 release CSS를 분리한다. 버전별 글꼴 이름과 기존 이미지 decode 확인은 보존한다.
+
+기존 `/visual/` 불변 이력을 재사용한다. 새 manifest는 `schema:2`이며 기존 `revision`, `compatibility`, `entry`, `styles`, `fonts`, `images`, `files`에 `uiApiVersion:1`, `uiStateSchema:1`을 추가한다. `compatibility`는 runtime·공용 게임 규칙·UI 경계의 호환성이고 UI component 목록의 해시가 아니다. UI 의존 그래프 전체와 public 리소스는 revision에 포함한다. runtime 의존 그래프 변경·게임 URL/프로토콜/이동 규칙 변경은 compatibility를 바꾼다. UI 전용 React/CSS 변경 때문에 runtime hash가 불필요하게 바뀌지 않도록 빌드로 검증한다.
+
+이전 schema1 릴리스와 파일 내용은 보존한다. 새로운 schema2를 구 탭에 강제로 적용하지 않는다. 최초 새 runtime 진입이 필요함을 안내한다. 같은 origin의 `/visual/releases/<revision>/`만 허용하며 임의 URL·query·경로 탈출·HTML SPA fallback·누락 파일을 거절한다. mutable current/index는 no-store, release는 immutable이다. 빌드·게시의 전체 파일 SHA 검사와 과거 릴리스 보존을 유지한다. 새 entry도 static/dynamic JS import0개인 단일 모듈로 검증한다.
+
+#### 후보 준비·전환·복구
+
+새 후보 준비 동안 기존 UI·renderer·입력이 계속 동작한다. 현재 활성 UI와 직전 UI는 최대 두 개까지만 유지하고 후보는 하나만 준비한다. 이전보다 새로운 목표가 오면 기존 후보를 취소한다. 취소된 import의 늦은 완료는 상태·활성 revision을 바꾸지 못한다.
+
+모듈·CSS·글꼴·이미지·첫 React commit·첫 그리기를 확인한 뒤 안전한 프레임에 UI/renderer/스타일을 함께 전환한다. IME 조합·입력 영역 선택 복원·패드 pointer capture가 진행 중이면 기존 UI를 유지하고 최신 후보만 기다린다. 강제로 blur나 입력 취소를 하지 않는다. 키보드 키와 클릭 목적지는 영구 실행부에서 유지한다. 화면만 바꾸는 동안 서버 snapshot과 입력 실행은 계속한다.
+
+준비 실패는 기존 UI 유지, 전환/실행 오류는 직전 UI를 **현재 runtime 상태로** 복구한다. 이전 위치·원장·완료된 명령으로 되감지 않는다. React 오류 경계 외에 이벤트 handler·비동기 callback·renderer 호출에도 필요한 오류 처리를 둔다. 실행 오류가 난 revision은 해당 탭에서 격리하여 계속 재적용하지 않는다. 다운로드 실패의 최대3회 import와12초 준비 한도는 기존 정책을 재사용한다. 교체를 안전한 순간까지 기다리는 시간은 네트워크 준비 기한과 구분한다.
+
+JS module cache는 Map에서 삭제해도 브라우저에서 강제로 해제되지 않는다. 실제 renderer/root/subscription/style 해제와 장시간 module 메모리 증가는 구분해 측정한다.
+
+#### 버전 알림과 순서
+
+접속 서버는 worker와 별개로 현재 프런트 상태를 소유한다. 예시 메시지 이름은 `frontendRevision`이며, 현재 버전 요청은 `frontendCurrent`다. payload는 `{schema:1,generation,revision,compatibility,uiApiVersion,uiStateSchema}`다. generation은 안전한 비음수 정수이며 활성 버전 변경마다 증가하고 디스크에 보존한다. 파일이 없는 최초 상태는 generation0·current null이고 첫 활성화는 generation1이다. 아직 확인한 버전이 없으면 hint는 null이다. 손상 파일은 최초 상태가 아니다. worker generation·deployment.eventSeq·move.seq/fix를 재사용하지 않는다.
+
+활성 버전 변경 시 기존 방에 broadcast한다. 최초 입장·같은 세션 복귀에는 현재 hint를 별도 전달한다. 탭 복귀 때 연결된 클라이언트는 기존 WebSocket으로 현재 hint를 한 번 요청한다. 과도한 요청은 기존 메시지 제한 안에서 다루고 새 입장을 만들지 않는다. 매50ms snapshot에 전체 manifest/hint를 반복해서 붙이지 않는다. 같은 소켓의 정상 TCP 메시지는 순서대로 오며, 연결 유실은 복귀 때 현재 버전 대조로 보완한다.
+
+낮은 generation은 무시한다. 같은 generation의 다른 payload는 오류다. 같은 target의 반복 hint는 HTTP 요청·준비를 반복하지 않는다. `A → B → A`는 증가한 generation으로 허용하는 명시적 롤백이다. 시간·SHA 문자열·처음 본 revision만으로 신구를 판정하지 않는다. 서버 저장 상태가 손상돼 generation을 확인하지 못하면0으로 초기화하거나 기존 파일을 덮어쓰지 않고 프런트 활성화를 보류한다. 게임은 기존 상태로 계속하고 운영 진단에 오류를 남긴다.
+
+브라우저는 새 hint에 대해 immutable `/visual/releases/<revision>/manifest.json`을 읽는다. 메시지의 `schema:1`과 manifest의 `schema:2`는 각각 검증하며 서로 같다고 비교하지 않는다. 둘 사이에서는 revision·compatibility·uiApiVersion·uiStateSchema 일치를 확인한다. mutable current를 읽다가 다른 배포의 파일을 섞지 않는다. 미입장 화면에서는 최초 로드·탭 복귀·입장 직전에만 `/visual/current.json`을 확인하고 겹친 확인을 하나로 합친다. 입장 후에는 hint 경로로 전환한다. 안정적인 접속에서 주기 버전 HTTP 요청은 없다. welcome 상태에서 아무 상호작용도 없이 열린 탭의 즉시 OTA는 보장하지 않는다.
+
+#### 내부 활성화와 게시
+
+`POST /internal/frontend/activate`를 별도 경로로 추가한다. 기존 worker swap 경로에 화면 배포 action을 섞지 않는다. 같은 loopback·별도 관리자 토큰·Origin/CF-Connecting-IP/X-Forwarded-For/Forwarded 거절·timingSafeEqual 인증 정책을 재사용한다. 브라우저/PB 사용자 토큰은 허용하지 않는다. 인증 후 최대4KiB JSON을 읽고 허용 필드만 받는다. 요청은 `{expectedGeneration,revision}`이다. generation과64자리 SHA를 검증하며 임의 URL·파일 경로는 받지 않는다.
+
+서버는 운영에서 고정한 게임 origin의 `/visual/current.json`을 한 번 확인해 요청 revision과 일치하는 검증된 metadata를 사용한다. 리다이렉트·크기 초과·잘못된 schema·본문 포함 시간 초과를 거절한다. 테스트는 별도 loopback origin으로 고정한다. 게임 실행과 입장·이동은 외부 GET 완료를 기다리지 않는다. 활성화 요청은 직렬화하고 검사 후 임시 파일·flush·rename·디렉터리 fsync로 `STATE_DIR/frontend-current.json`을 저장한다. **저장 성공 뒤** 메모리 상태와 알림을 변경한다. 로비0명에서도 저장·수락 가능하다. 시작 시 저장 상태를 복원한다.
+
+rename 전 저장 실패는 이전 상태를 유지한다. rename 뒤 fsync 등에서 오류가 나면 디스크가 이미 바뀌었을 수 있으므로 “미적용”으로 단정하지 않는다. 이때 저장 결과 불명·상태 대조 필요로 기록하고 추가 활성화를 차단한다. 파일을 검증하고 내구성 기록을 다시 완료해 디스크/메모리 generation을 일치시킨 뒤 같은 버전 알림을 재전송한다. 이전 파일을 자동으로 덮어쓰거나 generation0으로 재시작하지 않는다.
+
+기존 `/health`에 no-store와 `frontend:{state,generation,current,notification}`을 추가한다. current는 공개 버전 metadata만이며 파일 경로·토큰을 포함하지 않는다. state는 uninitialized/ready/reconcile-required/error다. 게시 도구는 이 값으로 빈 로비에서도 expectedGeneration을 얻는다. 브라우저 OTA는 health를 폴링하지 않는다. 프런트 활성화 오류만으로 게임의 기존 health를 자동503으로 바꾸지는 않는다.
+
+이미 같은 revision과 metadata가 활성화된 요청은 generation을 증가시키지 않고 **같은 hint를 다시 broadcast**한다. 저장 직후 알림이 실패한 경우나 응답 유실을 이 재시도로 보완한다. 중복 hint는 브라우저가 요청/준비를 반복하지 않는다. 다른 revision이면 expectedGeneration 일치가 필요하다. 공개 current가 다른 버전이면 이전 게시의 지연 요청으로 덮어쓰지 않는다.
+
+결과는200(활성화·알림 큐 등록),202(저장/활성화 확인·일부 또는 전체 알림 큐 등록 실패),400(본문),403(인증),409(순서/버전 충돌),502(공개 파일 검증),503(저장/상태 오류)로 구분한다. broadcast 실패는 이미 저장한 버전을 되돌리지 않는다. 응답에 activation과 notification을 구분하고, notification은 queued/partial/failed/not-attempted와 대상/실패 건수를 제공한다. queued는 서버 송신 큐 수락이지 브라우저 수신/적용 증거가 아니다. rename 후 저장 불명은503·activation unknown이며 앞의 상태 대조 규칙을 따른다.
+
+게시 순서는 기존 잠금/충돌/이력/SHA 검사 → Pages 게시 → 공개 current와 실제 파일/SHA 확인 → SSH를 통한 원격 loopback 활성화 → 서버 수락 확인이다. 토큰은 원격의 비공개 파일에서 읽고 SSH 명령·로그·브라우저로 전달하지 않는다. 이 경로의 실제 운영 실행은 별도 승인 대상이다.
+
+수동 게시와 Git 자동 Pages 게시 모두 같은 활성화 종료 조건이 필요하다. Git 자동 빌드만 성공했다고 이미 열린 탭의 OTA 성공으로 기록하지 않는다. Git/Cloudflare 자동 게시의 활성화 연결은 코드·문서·로컬 가짜 pipeline으로 준비하고 실제 secret·webhook·운영 CI 설정은 변경하지 않는다. 최신 상태를 주기적으로 읽는 서버 폴링도 이번에는 추가하지 않는다. 게시됐지만 활성화 호출이 누락되면 기존 접속자의 즉시 갱신은 보장되지 않으며 활성화 재실행이 필요하다.
+
+게시 receipt에는 `revision`, `publication`(confirmed/failed/unknown), `activation`(confirmed/failed/unknown/not-attempted), `notification`(queued/partial/failed/unknown/not-attempted), `generation`을 따로 남긴다. 알림 실패 때 재게시나 다른 배포의 자동 롤백을 하지 않는다. 같은 revision 활성화만 제한 재시도하고 재시도 종료 후 부분 실패를 명시한다. 서버 수락은 브라우저 적용 완료가 아니며 실제 적용은 별도 진단으로 확인한다.
+
+최소 수용 검사와 콜러·fixture 영향은 [PLAN-008](plans/PLAN-008.md#5-검증-계획)에 둔다. HTTP 계약 검사는 로컬 Postman 또는 기존 실제 HTTP 시험으로 확인하고 WebSocket·UI 수명·입력 보존은 실제 SDK/브라우저로 검사한다. Postman workspace push·원격 모니터를 이번에 만들지 않는다.
+
+<a id="frontend-ota-implemented"></a>
+#### 로컬 구현 계약 (2026-10-11)
+
+- 부팅: `index.html` → `bootstrap.js`(React 없음). `runtime.js`가 상태·명령, `surface.js`가 body의 영구 `canvas.world`·50ms tick·rAF·키보드/blur/visibility·canvas pointer를 소유한다. production은 `visual-update.js` updater 하나로 UI를 준비하고, 첫 UI가 활성화된 뒤 `runtime.start()`로 저장된 입장을 복원한다. dev는 Vite로 `ui-entry.jsx`를 직접 mount하며 OTA 통과 근거로 쓰지 않는다.
+- facade: `getSnapshot()`, `subscribe()`, `enter()`, `refreshWallet()`, `setUI(patch)`, `setPad(x,y)`, `nudge(x,y)`(방향패드 버튼 키보드 한 칸), `setInteraction(kind,active)`(`composition`·`pad`·`world` 중이면 교체 보류), `bindWorldSlot(element)`, `reportUIError(error)`. release마다 `createUIFacade` lease를 주며 비활성·폐기 lease의 명령은 `Inactive UI command`로 거절한다. UI 보존 상태는 snapshot의 `ui`(예: `name`, `panel`, `otaDraft`, `otaChoice`)다. 포커스·선택·스크롤은 교체 순간 shadow root에서 `id`/`name`으로 복원한다.
+- release: 각 UI는 `#root` 아래 `.ui-release` host의 open shadow root에 자기 React root로 mount한다. release CSS는 그 shadow root에만 넣고, 페이지·canvas CSS는 `bootstrap.css`가 가진다. 글꼴은 `PixelTown_<revision>` FontFace로 활성 UI와 직전 UI만 등록한다. entry JS는 manifest SHA를 확인한 바이트를 Blob URL로 import한다.
+- 빌드: compatibility = `bootstrap.js` 의존 그래프(esbuild metafile의 실제 입력 파일·node_modules 경로와 내용) + PB/game URL. revision = compatibility + `ui-entry.jsx` 의존 그래프 + `VITE_OTA_TEST_SCREEN` + 빌드 스크립트·public 파일. runtime 그래프에 React가 들어가면 빌드를 실패시킨다. 게시 entry는 standalone 단일 모듈이다.
+- 알림: 연결 직후 클라이언트가 `frontendCurrent`를 한 번 요청하고, 서버는 입장·같은 세션 재접속·요청에 `frontendCurrent`, 활성화에 `frontendRevision`을 보낸다. 입장 중 탭 복귀는 `frontendCurrent` 요청, 미입장 탭 복귀·첫 UI 준비 후·입장 직전은 `/visual/current.json` 단발 확인이다. hint를 받은 뒤에는 단발 확인이 목표를 바꾸지 않는다.
+- 실패: 준비 실패는 1초·2초 뒤 최대 2회 재시도(같은 entry import 최대3회), 12초 준비 기한. 첫 UI가 없는 상태의 실패는 `#root`에 `role="alert"` 안내를 띄우고 첫 UI 활성화 때 제거한다. 활성화 뒤 실행 오류는 직전 UI로 복구하고 해당 revision을 그 탭에서 격리한다.
+- 진단: production `window.__minimal`(snapshot 복사본, `room:{roomId,sessionId}`, `userId`, connection 상태)과 `window.__minimalVisual`(`status`, `movement`)은 읽기 전용이다. 실제 engine·room은 dev의 `window.__minimalDebug.engine`만 제공한다.
+- 서버 환경: `MINIMAL_FRONTEND_ORIGIN`(활성화 때 current를 읽을 origin, 기본 `http://127.0.0.1:<MINIMAL_WEB_PORT>`), `MINIMAL_FRONTEND_TOKEN`(32바이트 이상). 상태 파일은 `STATE_DIR/frontend-current.json`이다.
 
 ## 1. 기술 스택과 파일 경계
 

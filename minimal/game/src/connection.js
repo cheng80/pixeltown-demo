@@ -7,7 +7,7 @@ const retryable = code => [1001, 1005, 1006, 4010].includes(Number(code));
 
 // Own the movement queue: the SDK's ten-message offline queue cannot preserve it.
 export function createConnection({ url, engine, userId, token, onSnapshot, onGameEnded = () => {},
-  onDeployment = () => {}, onFeatureUnavailable = () => {}, onFailure = () => {}, onRecovery = () => {},
+  onDeployment = () => {}, onFrontend = null, onFeatureUnavailable = () => {}, onFailure = () => {}, onRecovery = () => {},
   client = new Client(url), policy = RECOVERY }) {
   if (client.auth.settings) client.auth.settings.key = 'pixeltown.minimal.room-auth';
   client.auth.token = token;
@@ -77,7 +77,9 @@ export function createConnection({ url, engine, userId, token, onSnapshot, onGam
     value.onMessage('snapshot', data => receive(value, data));
     value.onMessage('gameEnded', data => { if (!stopped && room === value) onGameEnded(data); });
     value.onMessage('deployment', data => { if (!stopped && room === value) onDeployment(data); });
+    for (const type of ['frontendRevision', 'frontendCurrent']) value.onMessage(type, data => { if (!stopped && room === value) onFrontend?.(data); });
     value.onMessage('featureUnavailable', data => { if (!stopped && room === value) onFeatureUnavailable(data); });
+    if (onFrontend) { try { value.send('frontendCurrent'); } catch { /* Reconnect/visibility requests reconcile missed hints. */ } }
     value.onDrop((code, reason) => { if (!stopped && room === value && value !== droppedRoom) retryable(code) ? restart({ code, message: reason }) : fail({ code, message: reason }); });
     value.onLeave((code, reason) => {
       if (stopped || room !== value || value === droppedRoom) return;
@@ -133,6 +135,7 @@ export function createConnection({ url, engine, userId, token, onSnapshot, onGam
       if (!room?.connection?.isOpen) { restart(new Error('Connection closed'), 'socket-closed'); return; }
       try { room.send('move', movement); } catch (error) { restart(error); }
     },
+    requestFrontend() { if (!stopped && room?.connection?.isOpen) { try { room.send('frontendCurrent'); } catch { /* Version checks do not restart gameplay. */ } } },
     checkStale() {
       if (!stopped && status.phase === 'playing' && engine.initialized && Date.now() - engine.lastSnapshot > policy.staleMs) restart(new Error('Snapshot stale'), 'snapshot-stale');
     },

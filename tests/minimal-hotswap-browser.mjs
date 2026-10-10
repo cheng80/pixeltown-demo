@@ -12,16 +12,17 @@ try {
 const pages = [];
 for(let i=0;i<2;i++){
   const context=await browser.newContext({viewport:{width:1280,height:800}}),page=await context.newPage();pages.push(page);
+  await page.addInitScript(()=>{window.__qaQuery = selector => document.querySelector(selector) || document.querySelector('.ui-release')?.shadowRoot?.querySelector(selector);});
   await page.goto(control.webUrl || 'http://127.0.0.1:5272');
   await page.locator('input[name="nickname"]').fill(`동시${i}${Date.now().toString().slice(-6)}`);
   await page.getByRole('button',{name:'광장 들어가기'}).click();
   await page.waitForFunction(()=>window.__minimal?.snapshot?.players?.length>0);
-  await page.evaluate(()=>{const canvas=document.querySelector('canvas');let f=canvas[Object.keys(canvas).find(k=>k.startsWith('__reactFiber'))];while(f&&!f.memoizedProps?.engine)f=f.return;window.__qaEngine=f.memoizedProps.engine;});
+  await page.evaluate(()=>{window.__qaEngine=window.__minimalDebug.engine;});
 }
 for (const page of pages) await page.evaluate(() => {
-  const e = window.__qaEngine, room = window.__minimal.room;
+  const e = window.__qaEngine, room = e.room;
   const q = window.__swapQA = { phase: 'baseline', started: performance.now(), roomId: room.roomId, sessionId: room.sessionId,
-    initialSeq:e.seq, drops:0, errors:0, covers:0, fixes:0, predictionFailures:0, maxPending:0, stale:0, interpolationFrames:0, frames:0,
+    initialSeq:e.seq, drops:0, errors:0, covers:0, fixes:0, predictionFailures:0, playbackFailures:0, maxPending:0, stale:0, interpolationFrames:0, frames:0,
     deploymentEvents:[],labels:[],lastLabel:'',last:0, lastPhase:'baseline', pending:{}, samples:{baseline:{gaps:[],acks:[]},deployment:{gaps:[],acks:[]}}, live:true, initialFix:e.fix };
   room.onMessage('deployment',m=>q.deploymentEvents.push(m));room.onDrop(()=>q.drops++);room.onLeave(()=>q.drops++);room.onError(()=>q.errors++);
   const send = room.send.bind(room);q.originalSend=send;
@@ -36,13 +37,18 @@ for (const page of pages) await page.evaluate(() => {
   });
   const draw=now=>{
     if(!q.live)return;
-    const label=document.querySelector('.release')?.textContent || '';if(label!==q.lastLabel){q.labels.push(label);q.lastLabel=label;}
+    const label=window.__qaQuery('.release')?.textContent || '';if(label!==q.lastLabel){q.labels.push(label);q.lastLabel=label;}
     q.frames++;q.maxPending=Math.max(q.maxPending,e.pending.length);
-    if(document.querySelector('.overlay.cover'))q.covers++;
+    if(window.__qaQuery('.overlay.cover'))q.covers++;
     if(Date.now()-e.lastSnapshot>3000)q.stale++;
     for(const p of e.others.values()){
-      const k=Math.max(0,Math.min(1,(now-p.at)/100));
-      if(k>0&&k<1&&Math.hypot(p.from.x-p.to.x,p.from.y-p.to.y)>.1)q.interpolationFrames++;
+      const [from,to]=p.pb.pts;
+      if(!to)continue;
+      const k=(p.pb.head-from.ack)/(to.ack-from.ack);
+      if(k>0&&k<1&&Math.hypot(from.x-to.x,from.y-to.y)>.1){
+        if(Math.hypot(p.x-(from.x+(to.x-from.x)*k),p.y-(from.y+(to.y-from.y)*k))>.01)q.playbackFailures++;
+        q.interpolationFrames++;
+      }
     }
     requestAnimationFrame(draw);
   };requestAnimationFrame(draw);
@@ -67,14 +73,14 @@ for(const p of pages){await p.keyboard.up('ArrowLeft');await p.keyboard.up('Arro
 await sleep(1800);
 const results=[];
 for(const p of pages)results.push(await p.evaluate(()=>{
- const q=window.__swapQA,e=window.__qaEngine;q.live=false;window.__minimal.room.send=q.originalSend;
+ const q=window.__swapQA,e=window.__qaEngine;q.live=false;e.room.send=q.originalSend;
  const {originalSend,...data}=q;
- return {...data,finalSeq:e.seq,finalFix:e.fix,finalPending:e.pending.length,finalRoomId:window.__minimal.room.roomId,finalSessionId:window.__minimal.room.sessionId,others:e.others.size};
+ return {...data,finalSeq:e.seq,finalFix:e.fix,finalPending:e.pending.length,finalRoomId:e.room.roomId,finalSessionId:e.room.sessionId,others:e.others.size};
 }));
 const summary=a=>{a.sort((a,b)=>a-b);return {n:a.length,p50:a[Math.floor(a.length*.5)]||0,p95:a[Math.floor(a.length*.95)]||0,p99:a[Math.floor(a.length*.99)]||0,max:a.at(-1)||0};};
 for(const r of results){
  for(const phase of Object.values(r.samples))for(const key of Object.keys(phase))phase[key]=summary(phase[key]);
- assert.equal(r.drops+r.errors+r.covers+r.fixes+r.predictionFailures+r.stale,0);
+ assert.equal(r.drops+r.errors+r.covers+r.fixes+r.predictionFailures+r.playbackFailures+r.stale,0);
  assert.equal(r.roomId,r.finalRoomId);assert.equal(r.sessionId,r.finalSessionId);assert.equal(r.finalPending,0);
  assert(r.finalSeq-r.initialSeq>100);assert(r.labels.some(x=>x.includes('새 버전 준비 중')));assert(r.labels.some(x=>x.includes('상태 확인 중')));assert(r.labels.some(x=>x.includes('적용 완료')));assert(r.deploymentEvents.some(x=>x.phase==='applied'));
  assert(r.interpolationFrames>60);assert(r.maxPending<20);

@@ -58,13 +58,13 @@ function attach(joined, id) {
     fixes = player.fix; if (!position) position = { x: player.x, y: player.y };
   });
 }
-async function browserState() { return page?.evaluate(() => ({ ...window.__pbTest, open: !!window.__minimal?.room?.connection.isOpen,
-  roomId: window.__minimal?.room?.roomId, sessionId: window.__minimal?.room?.sessionId,
-  wallet: document.querySelector('.stat.saved')?.textContent, cover: !!document.querySelector('.overlay.cover') })); }
+async function browserState() { return page?.evaluate(() => ({ ...window.__pbTest, open: !!window.__minimalDebug?.engine.room?.connection.isOpen,
+  roomId: window.__minimalDebug?.engine.room?.roomId, sessionId: window.__minimalDebug?.engine.room?.sessionId,
+  wallet: window.__qaQuery('.stat.saved')?.textContent, cover: !!window.__qaQuery('.overlay.cover') })); }
 async function observeBrowser() {
   if (!page) return;
   await page.evaluate(() => {
-    const d = window.__minimal, room = d.room;
+    const d = window.__minimal, room = window.__minimalDebug.engine.room;
     window.__pbTest = { snapshots: 0, drops: 0, errors: 0, fixes: 0, covers: 0, ack: 0, maxSnapshotGap: 0 };
     let previous = performance.now();
     room.onMessage('snapshot', value => {
@@ -73,7 +73,7 @@ async function observeBrowser() {
         maxSnapshotGap: Math.max(window.__pbTest.maxSnapshotGap, t - previous) }); previous = t;
     });
     room.onDrop(() => window.__pbTest.drops++); room.onError(() => window.__pbTest.errors++);
-    window.__pbCoverTimer = setInterval(() => { if (document.querySelector('.overlay.cover')) window.__pbTest.covers++; }, 50);
+    window.__pbCoverTimer = setInterval(() => { if (window.__qaQuery('.overlay.cover')) window.__pbTest.covers++; }, 50);
   });
 }
 async function runPostman(outage) {
@@ -104,9 +104,11 @@ try {
     await ready('http://127.0.0.1:5275');
     browser = await chromium.launch({ executablePath: process.env.CHROME_PATH, headless: true });
     page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    // The UI lives in an open shadow root; the live room is reachable only through the dev runtime diagnostic.
+    await page.addInitScript(() => { window.__qaQuery = selector => document.querySelector(selector) || document.querySelector('.ui-release')?.shadowRoot?.querySelector(selector); });
     await page.goto('http://127.0.0.1:5275'); await page.locator('input[name="nickname"]').fill('브라우저검증');
     await page.getByRole('button', { name: '광장 들어가기' }).click();
-    await page.waitForFunction(() => window.__minimal?.room?.connection.isOpen && window.__minimal?.snapshot && !document.querySelector('.overlay.cover'));
+    await page.waitForFunction(() => window.__minimalDebug?.engine.room?.connection.isOpen && window.__minimal?.snapshot && !window.__qaQuery('.overlay.cover'));
     await observeBrowser(); report.browserIdentity = await browserState();
     await page.keyboard.down('ArrowRight');
   }
@@ -182,10 +184,10 @@ try {
   assert(maxSnapshotGap < 8000);
   if (page) {
     await page.keyboard.up('ArrowLeft'); await page.keyboard.up('ArrowRight');
-    await page.waitForFunction(() => !document.querySelector('.stat.saved')?.textContent.includes('미확인'), undefined, { timeout: 65000 });
+    await page.waitForFunction(() => !window.__qaQuery('.stat.saved')?.textContent.includes('미확인'), undefined, { timeout: 65000 });
     report.browser = await browserState(); assert(report.browser.ack > 100); assert.equal(report.browser.covers + report.browser.drops + report.browser.errors + report.browser.fixes, 0);
     await page.screenshot({ path: resolve(fixture, 'browser-recovered.png') });
-    await page.evaluate(async () => { clearInterval(window.__pbCoverTimer); await window.__minimal.room.leave(); });
+    await page.evaluate(async () => { clearInterval(window.__pbCoverTimer); await window.__minimalDebug.engine.room.leave(); });
     await browser.close(); browser = null; page = null;
   }
   await runPostman(false);

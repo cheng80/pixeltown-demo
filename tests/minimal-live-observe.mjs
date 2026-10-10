@@ -81,6 +81,7 @@ async function connect(c){
   if(wire){const pong=wire.pong;wire.pong=function(...args){const callback=typeof args.at(-1)==='function'?args.pop():null;args.push(error=>{if(!error)c.pongCallbacks++;else log('pong-write-error',{bot:c.index,sessionId:room.sessionId,message:error.message});callback?.(error);});return pong.apply(this,args);};}
   wire?.on('close',(code,reason)=>{if(!stopping)log('socket-close',{...(c.disconnectDetail||connectionDetail(c,room)),code,reason:reason.toString().slice(0,300)});});
   wire?.on('error',error=>{if(!stopping)log('socket-error',{...connectionDetail(c,room),message:error.message});});
+  for(const type of ['frontendRevision','frontendCurrent']) room.onMessage(type,hint=>{if(c.index===0){stats.frontend=hint;stats.frontendHints=(stats.frontendHints||0)+1;log('frontend-hint',{messageType:type,current:hint});}});
   room.onMessage('deployment',d=>{if(c.index===0)log('server-deployment',d);});room.onMessage('featureUnavailable',()=>{});
   room.onMessage('gameEnded',m=>{if(!c.matches.has(m.match_id)){c.matches.add(m.match_id);c.awarded+=(m.scores[c.id]||0);stats.settlements++;if(c.matches.size>100)c.matches.delete(c.matches.values().next().value);}});
   room.onMessage('snapshot',s=>{

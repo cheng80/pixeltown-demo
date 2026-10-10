@@ -21,7 +21,7 @@
     "start:minimal:game": "node scripts/start-minimal-game.mjs",
     "test:minimal:pb-restart": "node tests/minimal-pb-restart.mjs",
     "test:minimal:services": "node tests/minimal-services.mjs",
-    "test:minimal:unit": "node --test colyseus/minimal/test/*.test.js minimal/game/tests/state.test.mjs minimal/game/tests/visual-update.test.mjs minimal/game/tests/connection.test.mjs",
+    "test:minimal:unit": "node --test colyseus/minimal/test/*.test.js minimal/game/tests/state.test.mjs minimal/game/tests/visual-update.test.mjs minimal/game/tests/connection.test.mjs minimal/game/tests/runtime.test.mjs",
     "test:minimal:visual": "node tests/minimal-visual-update.mjs",
     "test:minimal:ui": "node minimal/game/tests/offline-ui.mjs",
     "test:minimal": "node tests/minimal-integration.mjs",
@@ -29,7 +29,10 @@
     "swap:minimal": "node scripts/swap-minimal-worker.mjs",
     "deploy:minimal:worker": "node scripts/deploy-minimal-worker.mjs",
     "deploy:minimal:frontend": "node scripts/deploy-minimal-frontend.mjs",
-    "test:minimal:recovery": "node tests/minimal-recovery.mjs"
+    "test:minimal:recovery": "node tests/minimal-recovery.mjs",
+    "test:minimal:frontend": "node tests/minimal-frontend-activation.mjs && node --test tests/minimal-frontend-publication.test.mjs tests/minimal-frontend-network.test.mjs",
+    "test:minimal:ota": "node tests/minimal-frontend-ota.mjs",
+    "activate:minimal:frontend": "node scripts/activate-minimal-frontend.mjs"
   },
   "dependencies": {
     "@colyseus/sdk": "0.18.4",

@@ -9,6 +9,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { resolve } from 'node:path';
 import { ROOM_CAPACITY, TICK_MS } from '../../minimal/shared/world.js';
 import { connectionObserverFromEnv, installMessagePolicy, ServerHeartbeat, ValidatedMoveTracker, wasRateLimited } from './connection-observer.js';
+import { FrontendCurrent } from './frontend-current.js';
 
 const outbox = new MinimalOutbox(OUTBOX_DIR, adminClient);
 const connectionObserver = connectionObserverFromEnv(STATE_DIR);
@@ -17,6 +18,7 @@ const period = Number(process.env.MINIMAL_SETTLE_MS || 180000);
 const spawnMs = Number(process.env.MINIMAL_SPAWN_MS || 6000);
 if (!Number.isInteger(period) || period < 1000 || period > 300000 || !Number.isInteger(spawnMs) || spawnMs < 1000 || spawnMs > 60000) throw new Error('Invalid minimal timing');
 let lobby = null;
+const frontend = new FrontendCurrent({ dir: STATE_DIR, origin: process.env.MINIMAL_FRONTEND_ORIGIN || `http://127.0.0.1:${WEB_PORT}`, clients: () => lobby?.clients || [] });
 class MinimalTown extends Room {
   async onCreate(options) {
     if (options.zone !== 'lobby') throw new ServerError(400, '메인 로비만 이용할 수 있어요.');
@@ -40,6 +42,10 @@ class MinimalTown extends Room {
     });
     this.game.on('unavailable', () => console.error('Minimal worker unavailable'));
     this.onMessage('move', (client, data) => this.inputs.push({ type: 'move', session: client.sessionId, data, now: Date.now(), receivedAt: performance.now() }));
+    this.onMessage('frontendCurrent', (client, data) => {
+      if (data !== undefined && data !== null && (typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length)) return;
+      client.send('frontendCurrent', frontend.hint());
+    });
     this.onMessage('*', (client, feature) => client.send('featureUnavailable', { feature: String(feature).slice(0, 40) }));
     this.setSimulationInterval(() => {
       const commands = this.inputs.splice(0); commands.push({ type: 'tick', now: Date.now() });
@@ -65,6 +71,7 @@ class MinimalTown extends Room {
     const result = await this.game.dispatch([...this.inputs.splice(0), { type: 'join', session: client.sessionId, data: auth, now: Date.now() }]);
     if (result.outcomes[0]?.error) throw new ServerError(409, result.outcomes[0].error);
     connectionObserver?.lifecycle('join', client, this.game.players.get(client.sessionId), false);
+    client.send('frontendCurrent', frontend.hint());
   }
   onDrop(client, code) {
     if (!this.game.players.has(client.sessionId)) return;
@@ -80,6 +87,7 @@ class MinimalTown extends Room {
   onReconnect(client) {
     this.held.delete(client.sessionId);
     client.send('snapshot', this.game.snapshot());
+    client.send('frontendCurrent', frontend.hint());
     connectionObserver?.lifecycle('reconnect', client, this.game.players.get(client.sessionId), false);
   }
   async onLeave(client, code) {
@@ -116,7 +124,7 @@ app.use((req, res, next) => {
   next();
 });
 const workerDeployment = process.env.MINIMAL_WORKER_ENTRY === resolve(STATE_DIR, 'worker-current/colyseus/minimal/simulation-worker.js') ? 'managed-release' : 'direct-entry';
-const health = () => ({ ok: !lobby?.game.fatal, mode: 'minimal', protocol: 1, capacity: ROOM_CAPACITY, rooms: lobby ? 1 : 0, players: lobby?.game.players.size || 0, persistence: outbox.status(), hotSwap: true, workerDeployment, worker: lobby?.game.status() || null, connectionDiagnostics: connectionObserver?.status() || { enabled: false } });
+const health = () => ({ ok: !lobby?.game.fatal, mode: 'minimal', protocol: 1, capacity: ROOM_CAPACITY, rooms: lobby ? 1 : 0, players: lobby?.game.players.size || 0, persistence: outbox.status(), hotSwap: true, workerDeployment, worker: lobby?.game.status() || null, frontend: frontend.status(), connectionDiagnostics: connectionObserver?.status() || { enabled: false } });
 // No browser or game token can invoke the local deployment control.
 app.post('/internal/worker/swap', async (req, res) => {
   const token = process.env.MINIMAL_SWAP_TOKEN;
@@ -127,7 +135,35 @@ app.post('/internal/worker/swap', async (req, res) => {
   try { res.json(await lobby.game.swap()); }
   catch (error) { res.status(409).json({ error: error.message }); }
 });
-app.get('/health', (_req, res) => res.status(lobby?.game.fatal ? 503 : 200).json(health()));
+app.post('/internal/frontend/activate', async (req, res) => {
+  const token = process.env.MINIMAL_FRONTEND_TOKEN;
+  const supplied = req.headers.authorization || '';
+  const expected = `Bearer ${token}`;
+  if (req.socket.remoteAddress !== '127.0.0.1' && req.socket.remoteAddress !== '::ffff:127.0.0.1' ||
+    ['origin', 'cf-connecting-ip', 'x-forwarded-for', 'forwarded'].some(name => req.headers[name] !== undefined) ||
+    !token || Buffer.byteLength(token) < 32 || Buffer.byteLength(supplied) !== Buffer.byteLength(expected) ||
+    !timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) return res.sendStatus(403);
+  if (req.headers['content-type']?.split(';')[0] !== 'application/json' || Number(req.headers['content-length']) > 4096) return res.status(400).json({ error: 'Invalid frontend activation body' });
+  let body = Buffer.alloc(0);
+  let input;
+  try {
+    for await (const chunk of req) {
+      if (body.length + chunk.length > 4096) return res.status(400).json({ error: 'Invalid frontend activation body' });
+      body = Buffer.concat([body, chunk]);
+    }
+    input = JSON.parse(body.toString('utf8'));
+    if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).sort().join(',') !== 'expectedGeneration,revision' ||
+      !Number.isSafeInteger(input.expectedGeneration) || input.expectedGeneration < 0 || !/^[a-f0-9]{64}$/.test(input.revision)) throw Error('Invalid body');
+  } catch { return res.status(400).json({ error: 'Invalid frontend activation body' }); }
+  try {
+    const result = await frontend.activate(input);
+    res.status(result.status).json(result);
+  } catch (error) {
+    const status = error.status || 503;
+    res.status(status).json({ activation: error.activation || 'not-attempted', notification: { state: 'not-attempted', targets: 0, failed: 0 }, error: status === 503 ? 'Frontend state unavailable' : error.message });
+  }
+});
+app.get('/health', (_req, res) => { res.setHeader('Cache-Control', 'no-store'); res.status(lobby?.game.fatal ? 503 : 200).json(health()); });
 app.get('/ready', async (_req, res) => {
   if (lobby?.game.fatal) return res.status(503).json(health());
   try { const r = await fetch(`${PB_URL}/api/health`, { signal: AbortSignal.timeout(1500) }); if (!r.ok) throw new Error(); res.json(health()); }
