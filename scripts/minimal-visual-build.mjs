@@ -106,6 +106,8 @@ export function minimalVisualBuild() {
       for (const item of Object.values(bundle)) {
         if (item.type === 'chunk') { if (required.has(item.fileName)) put(item.fileName, item.code.replaceAll('"/assets/', `"${prefix}assets/`).replaceAll("'/assets/", `'${prefix}assets/`)); }
         else {
+          // HTML belongs to the permanent shell; Pages redirects its canonical file URLs.
+          if (item.fileName.endsWith('.html')) continue;
           let source = item.source;
           if (item.fileName.endsWith('.css')) {
             if (!uiStyles.has(item.fileName)) continue;
@@ -118,7 +120,7 @@ export function minimalVisualBuild() {
       const images = [], fonts = [];
       for (const source of files(resolve(ROOT, 'minimal/game/public'))) {
         const name = relative(resolve(ROOT, 'minimal/game/public'), source).split('\\').join('/');
-        if (name.startsWith('_') || name.startsWith('visual/')) continue;
+        if (name.startsWith('_') || name.startsWith('visual/') || name.endsWith('.html')) continue;
         put(name, readFileSync(source));
         if (/\.(png|jpe?g|webp|gif|svg|avif)$/i.test(name)) images.push({ name, url: prefix + name });
         if (/^fonts\/Galmuri11(?:-Bold)?\.woff2$/.test(name)) fonts.push({ url: prefix + name, weight: name.includes('-Bold') ? '700' : '400' });
