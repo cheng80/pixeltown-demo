@@ -112,3 +112,7 @@
 | S5 | 게시→공개 확인→활성화·receipt. 로컬 가짜 pipeline 19/19. 운영 SSH·Pages 미실행. |
 | S6 | 최종 소스SFAvNp PASS: SDK85명10+10분·2,071,365입력·UI20회+worker교체·전체24개검사, 복구/drop/fix/pending0·seq=ack·canvas1·root≤2. PB브라우저·SDK100명worker 교체·수정worker브라우저 재생검사 통과. 최초QMbFGN 실패·원인미확정 기록은 보존하며 실제IME/터치기기는 제외. |
 | S7 | 정본·인계·결과 문서 갱신. 운영 도입 설정과 공개 검사 진단 경로 결정(NEEDS-DECISION)은 남김. |
+
+## 운영 적용 결과 (2026-10-11)
+
+사용자 후속 승인으로 commit·push·운영 적용과 실제 공개 브라우저2개 전체UI 교체·원복/연결유지 검증을 완료했다. 현재 generation3·revision52c726b5, 입력4061개·drops/recovered/fix/pending0·seq=ack다. 최초 게임host 도입 재시작1회 뒤 UI 교체는 host/PB 재시작 없이 진행했다. [상세 운영 결과](../reviews/2026-10-11-frontend-ota-production.md). CI 후속 활성화 자동화·실제기기·공개장시간과 과거정체 원인은 남는다.

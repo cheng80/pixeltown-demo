@@ -1,10 +1,10 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-11 (Asia/Seoul). 아래 운영·공개 검사 결과는2026-10-09 당시 기록이며 오늘 재확인한 상태가 아니다. 사용자 게임 주소는 `https://pixeltown.fastmake.net` 그대로다.
+갱신일: 2026-10-11 (Asia/Seoul). 전체 프런트 OTA 운영 결과는 아래 최신 작업과 7절을 따른다. 다른 운영·공개 결과는 각 기록 당시의 검사다. 사용자 게임 주소는 `https://pixeltown.fastmake.net` 그대로다.
 
-현재 작업: **전체 프런트 OTA의 로컬 구현·검증을 완료했고, 사용자 승인으로 commit·push와 운영 적용·실제 접속 검증을 진행 중이다.** runtime이 연결·입력·게임 상태를 유지하고 전체 UI release를 교체하며,15초 버전 폴링을 WebSocket 알림으로 바꿨다. 최종 소스 단위60/60·활성화8·게시/네트워크19/19·오프라인UI, PB중단3회·SDK100명worker교체·두브라우저 재생 검사가 통과했다. 최종85명10+10분(SFAvNp)은10분 무폴링HTTP0·20회UI+worker교체·전체24개검사·2,071,365입력, SDK/두브라우저 복구/drop/fix/pending0·seq=ack로 통과했다. 직전 소스의 동시복구 실패(QMbFGN)와 공개 정체2건은 원인 미확정으로 보존한다. 실제IME/터치기기·운영 자동활성화·공개 검사 전환은 남는다. [로컬 결과](reviews/2026-10-11-frontend-ota.md), [PLAN-008](plans/PLAN-008.md), [기술 계약](02_TECH_SPEC.md#frontend-ota-contract), [HTML 설명](diagrams/frontend-ota.html).
+현재 작업: **전체 프런트 OTA commit·push와 운영 적용·공개 브라우저 검증을 완료했다.** `4d6ce49`·`07abda9`를 main에 반영했고 Git Pages 자동 빌드·공개 파일 SHA·운영 generation 3을 확인했다. 브라우저2개에서 전체 UI 문구·CSS·root 교체와 원복을 검증했다. 입력4,061개·seq=ack·drops/recovered/fix/pending0·navigation1·같은 방/세션/canvas로 통과했다. 원래 화면52c726b5로 복원했다. [운영 결과](reviews/2026-10-11-frontend-ota-production.md), [로컬 결과](reviews/2026-10-11-frontend-ota.md), [PLAN-008](plans/PLAN-008.md). 실제 기기·공개 장시간 안정성과 CI 후속 자동 활성화는 남는다.
 
-현재 실행: **정상 입력 보정을 고치고 두 번째 공개30분에서 복구실패·보정·입력교정0을 확인했다.** SDK85명·실제Chromium1명·2,804,624입력, 응답정체2건은 같은세션으로 복구했고 최종pending0·ack=seq다. 브라우저끊김·덮개·새로고침0. 무손실복구는 통과했지만 끊김없는기준은 실패해 종류별배포 비교는 시작하지 않았다. 최초정체원인은 미확정이다. 첫검사의66개 입력교정과 실패자료도 보존한다. 최신Claude예측정지띠를 단위47/47·UI·공개의도적복구로 검증하고 화면a7b45baf를 게시했다. 자체시험접속을 정리하고 운영game·로컬서버를 유지했다. 기존100명지갑/원장 대조 통과. 복구/화면수정을 `7fc3f1e`로 main에 commit·push했고 Cloudflare자동빌드 성공·공개파일SHA일치를 확인했다. [상세 재검사](reviews/2026-10-09-public-recovery-recheck.md).
+이전 실행(2026-10-09): **정상 입력 보정을 고치고 두 번째 공개30분에서 복구실패·보정·입력교정0을 확인했다.** SDK85명·실제Chromium1명·2,804,624입력, 응답정체2건은 같은세션으로 복구했고 최종pending0·ack=seq다. 브라우저끊김·덮개·새로고침0. 무손실복구는 통과했지만 끊김없는기준은 실패해 종류별배포 비교는 시작하지 않았다. 최초정체원인은 미확정이다. 첫검사의66개 입력교정과 실패자료도 보존한다. 최신Claude예측정지띠를 단위47/47·UI·공개의도적복구로 검증하고 화면a7b45baf를 게시했다. 자체시험접속을 정리하고 운영game·로컬서버를 유지했다. 기존100명지갑/원장 대조 통과. 복구/화면수정을 `7fc3f1e`로 main에 commit·push했고 Cloudflare자동빌드 성공·공개파일SHA일치를 확인했다. [상세 재검사](reviews/2026-10-09-public-recovery-recheck.md).
 
 이전 로컬 작업: **접속 복구·heartbeat·입력 몰림·화면 다운로드 재시도를 구현하고 로컬 검증을 마쳤다.** 서버는20초 상태를 보관하고 프런트는 같은 세션을 최대12초·10회 복구한다. Claude가 화면 연결을 맡았으며 Codex는 서버·api.js·state.js와 테스트를 통합했다. 85명 의도적 끊김86건 복구·최종 pending/실패/보정0, 실제 Ego 브라우저 같은 세션 복구·덮개0, 100명 worker9회 교체·자연 끊김/예상 밖 보정0을 확인했다. 이전 공개 heartbeat244건의 최초 원인과 당시 미확인 입력 처리 여부는 여전히 미확정이다. 이 로컬 검증 당시에는 **운영 반영 전**이었다. 이후 운영 반영과 기준 재검사는 위 현재 실행을 따른다. 운영 game의 중지 상태와 로컬5270/18120/12620·미커밋 작업·다른 세션을 보존했다. [수정 검증](reviews/2026-10-09-disconnect-recovery.md), [복구 계약](handoffs/2026-10-09-session-recovery-contract.md).
 
@@ -179,6 +179,13 @@ PB 배포 중 플레이 유지: 운영 서비스를 PB와 게임으로 분리했
 4. PWA·앱 포장은 웹 핵심 플레이 검증 후 별도 계획으로 다룬다.
 
 ## 7. 인수인계
+
+### 전체 프런트 OTA 운영 적용 완료 (2026-10-11, Codex)
+
+- 사용자 요청으로 main commit·push와 운영 적용을 진행했다. `4d6ce49` 구현, `07abda9` 영구 HTML의 Pages 308 문제 수정·공개 검사를 게시했다. 관련 단위60/60·활성화8·게시/네트워크19/19·오프라인UI·최종 A/B 빌드·공개 API5/5·화면5/5 통과. [운영 결과](reviews/2026-10-11-frontend-ota-production.md).
+- 빈 로비·정산0/0에서 게임 host만 최초1회 재시작(PID56510), PB·기존서비스 유지. 공개 파일 SHA→loopback 활성화→브라우저 적용을 각각 확인했다. generation1(A)→2(B)→3(A 복원), 교체 알림 대상2·실패0. 현재 revision52c726b5·compatibility3877e3eb다.
+- Chromium2개 실제 공개 접속에서 약2분·입력4061개·전체UI 두번 교체, room/session/canvas 유지·navigation1·drops/recovered/failures/fix/pending0·seq=ack 통과. 자체 브라우저는 닫고 서버를 유지했다. 새 readonly 공개 OTA 검사로 React fiber 의존을 피했다. 과거 검사5개는 구 UI 전용 자료다.
+- 한계: 구 탭은 최초 새로고침 필요. Git Pages 자동 게시 뒤 SSH 활성화는 현재 수동 명령이며 CI 후속 자동화는 추가하지 않았다. 실제 모바일/IME/터치·공개85명 장시간은 미검증, 과거 정체의 원인도 미확정이다. 개발 세션·worktree·실패자료와 private 운영 백업을 보존한다.
 
 ### 전체 프런트 OTA 로컬 구현·검증 정리 (2026-10-11, Claude Opus 5.5 / Codex PM / Grok 검증)
 
