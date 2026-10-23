@@ -14,14 +14,14 @@
 | 당시 도구 설정 확인 | [도구 설정](local/tooling/) | `browser-config.json`은 당시 Chromium 설치 경로, `pb-release.json`은 당시 PocketBase 릴리스 조회 응답이다. 현재 설치 설정은 루트 README·lockfile을 따른다. |
 | 자료 이동 및 보존 근거 확인 | [보존 기록](local/provenance/) | `docs-preservation.json`은 초기 문서 해시, `relocation-manifest.json`은 첫 폴더 이동 기록, `reference-relocation.json`은 이번 재배치 시점의 파일 해시다. `previous-archive-README.md`는 이전 배치 설명이다. |
 | 기존 바깥 폴더 흔적 확인 | [작업 폴더 메타데이터](local/workspace-metadata/) | 빈 lockfile과 Finder 메타데이터. 개발에 사용하지 않는다. |
-| 배포 문서 윤문 원문·수정 목록·렌더 증거 | [문서 편집 기록](local/document-editing/) | 기존 `_workspace/2026-10-08-001`–`003`의 전체 자료. 최종 문구는 이미 현재 문서에 반영돼 있다. |
-| 정원 100명 확장 당시 게임·배포·통합 검사 | [게임 변경 기록](local/game-history/capacity-100/) | 기준본·배포 스크립트·결과·PB 바이너리. `repo-2026-10-07.tar.gz`에는 과거 체크아웃 전체(`.git`·환경 파일·의존성·테스트 DB)를 보존했다. 정원 변경은 main에 이미 반영돼 있다. |
+| 배포 문서 최종 수정 목록·검토 결과·대표 화면 | [문서 편집 기록](local/document-editing/) | 기존 `_workspace/2026-10-08-001`–`003`의 최종 변경 목록·검토 보고서와 데스크톱·모바일 대표 캡처만 남겼다. 원문 사본·편집 스크립트·중간 산출물은 삭제했다. 최종 문구는 현재 문서에 반영돼 있다. |
+| 정원 100명 확장 당시 배포·통합 검사 | [게임 변경 기록](local/game-history/capacity-100/) | 배포 스크립트·배포 결과·최종 통합 로그·PR 설명을 보존했다. main에 반영된 과거 코드 기준본·체크아웃 압축본·PB 바이너리는 삭제했다. |
 | 합성 유저 30·60명 도구와 검증 결과 | [합성 유저 기록](local/load-tests/synthetic-users/), [화면 증거](local/load-tests/playwright/) | 과거 일반 게임의 `town`·`move` 계약과 Mac mini 설치 경로를 전제로 한 도구다. 현재 최소 게임용 검사는 `tests/minimal-*`를 따른다. |
 | 초기 Colyseus 인증·Monitor 구현 | [서버 프로토타입](local/prototypes/colyseus/) | 과거 인증·상태 조회·접속 검증 코드. 현재 서버 코드는 루트 `colyseus/`를 따른다. |
 | 과거 서버 라우팅 설정 화면 | [서버 설정 증거](local/server-setup/) | Cloudflare 설정 당시 캡처이며 현재 운영 상태의 검증 근거가 아니다. |
-| zrok 프록시·터널 비교 실험 | [터널 실험](local/tunnel-experiments/zrok-test/) | 프록시·검증 코드·설치 안내·측정 결과·당시 의존성을 보존했다. 현재 운영 설정에 적용하지 않았다. |
+| zrok 프록시·터널 비교 실험 | [터널 실험](local/tunnel-experiments/zrok-test/) | 프록시·검증 코드·설치 안내·측정 결과·package/lockfile을 보존하고 `node_modules`는 삭제했다. 현재 운영 설정에 적용하지 않았다. |
 | 초기 설계와 서버 비용 발표 | [발표 자료 안내](../presentations/README.md) | 독립 HTML을 Git으로 관리한다. 발표 당시 수치와 요금을 현재 값으로 해석하지 않는다. |
-| 2026-10-24 자료 이동의 해시·권한·경로 대응 | [정리 보존 기록](local/provenance/workspace-cleanup-2026-10-24/relocation.json) | 이동 전 파일 목록·SHA-256과 압축 검증 결과, Test2 호환 링크 변경을 기록했다. 가져오기 당시 안내 원문은 [별도 보존](local/provenance/test2-import-2026-10-24/README.original.md)했다. |
+| 2026-10-24 자료 이동·후속 삭제 근거 | [이동 기록](local/provenance/workspace-cleanup-2026-10-24/relocation.json), [최소화 기록](local/provenance/workspace-cleanup-2026-10-24/pruning.json) | 이동 경로·압축 검증 당시 결과·Test2 호환 링크 변경과 후속 삭제 범위를 기록했다. 가져오기 당시 안내 원문은 [별도 보존](local/provenance/test2-import-2026-10-24/README.original.md)했다. |
 
 ## 참고 순서와 재사용 방법
 
@@ -37,4 +37,4 @@
 
 `local/` 링크는 자료가 있는 현재 컴퓨터에서 열 수 있다. 새로 clone한 저장소에는 이 파일들이 없으므로, 필요할 때 별도 전달받아 같은 위치에 둔다. 로컬 파일을 보존하려면 프로젝트 폴더 백업에 포함해야 하며 Git push만으로는 백업되지 않는다. 게임 빌드에는 이 참고 자료를 포함하지 않는다.
 
-2026-10-24 정리에서 `_workspace/` 자료를 위 용도별 위치로 옮겼다. 과거 체크아웃은 압축본의 모든 파일 해시·권한·심볼릭 링크를 대조한 뒤 제거했다. 압축본은 비공개 환경 파일과 테스트 DB를 포함하므로 `local/` 안에 보관하며, 복원이 필요하면 별도 임시 폴더에 풀어 조사한다. Test2의 기존 자료 링크 14개는 새 위치를 가리키도록 갱신했다.
+2026-10-24에 `_workspace/` 자료를 위 용도별 위치로 옮기고 Test2의 기존 자료 링크 14개를 갱신했다. 이후 사용자 승인에 따라 재사용할 소스·발표·최종 결과와 대표 화면만 남겼다. 과거 체크아웃 압축본·바이너리·의존성·문서 중간 산출물 등 파일 823개와 심볼릭 링크 6개, 파일 내용 기준 103,583,873 bytes를 삭제했다. 압축본 안의 유일한 과거 테스트 DB·환경 파일은 복원할 수 없다. 이전부터 있던 `source-study/`·`test-runs/` 등 다른 참고 자료와 현재 개발·운영 데이터는 이번 삭제 대상이 아니다.
