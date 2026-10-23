@@ -1,6 +1,15 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-11 (Asia/Seoul). 전체 프런트 OTA 운영 결과는 아래 최신 작업과 7절을 따른다. 다른 운영·공개 결과는 각 기록 당시의 검사다. 사용자 게임 주소는 `https://pixeltown.fastmake.net` 그대로다.
+갱신일: 2026-10-14 (Asia/Seoul). 전체 프런트 OTA 운영 결과는 아래 최신 작업과 7절을 따른다. 다른 운영·공개 결과는 각 기록 당시의 검사다. 기존 사용자 게임 주소는 `https://pixeltown.fastmake.net`이며, 현재 백엔드는 아래 종료 기록을 따른다.
+
+## 운영 서버 종료 (2026-10-14)
+
+- 사용자 요청으로 Mac mini의 기존·미니멀 PocketBase 및 Colyseus 4개 서비스를 `launchctl disable`과 `bootout`으로 종료했다. 재로그인·재부팅 후 자동 실행도 비활성화했다. 추가 요청으로 plist 4개를 `~/Library/LaunchAgents/`에서 `~/Servers/pixeltown-minimal/.backups/launchagents-disabled-20261014T015733Z-8i9u0to4/`로 옮겨 자동 실행 등록 파일도 제거했다. 재개하려면 백업 plist를 복원하고 해당 label을 `enable`한 뒤 `bootstrap`해야 한다.
+- 대상 label: `com.fastmake.pixeltown.colyseus`, `com.fastmake.pixeltown.minimal.colyseus`, `com.fastmake.pixeltown.minimal.pocketbase`, `com.fastmake.pixeltown.pocketbase`.
+- Colyseus를 먼저 정상 종료하고 PocketBase를 종료했다. 종료 전 두 게임 서버의 정산 대기 0, 미니멀 접속자·실패 정산 0을 확인했다. 종료 후 2567/13620/18820/8091 포트 닫힘, 관련 프로세스 없음, launchd 등록 해제와 disabled 상태를 확인했다.
+- 기존·미니멀 DB, 설치 파일, 환경 변수, plist와 백업은 보존했다. 등록 파일 이동 전후 DB 4개의 SHA-256이 일치했다. Stone Match(8090)는 유지했다. workshop(8092)은 최초 PixelTown 종료 때 유지했으나 후속 사용자 요청으로 종료·자동 실행 비활성화·등록 파일 백업 이동을 완료했다. workshop DB 2개의 `quick_check`가 통과했고 등록 파일 이동 전후 내용도 일치했다. 실제 재부팅 검증은 하지 않았다.
+- PixelTown Tunnel 삭제는 사용자 보고이며 이번 작업에서 Cloudflare 상태를 검증하지 않았다. Oracle A1 재시도 예약과 다른 서비스는 변경하지 않았다. commit·push는 수행하지 않았다.
+- 후속 사용자 요청으로 Mac mini `~/Servers`의 백업을 조사하고 같은 종류의 최신본만 남겼다. 미니멀 PB 배포 백업은 `pb-deploy-20261008T143624206780Z`를 남기고 이전 15개를 삭제했다. workshop DB 백업은 `@auto_pb_backup__20261013180005.zip`와 `.attrs`를 남기고 이전 ZIP 9개와 부속 파일을 삭제했다. 총 24개 백업 묶음·123개 파일·93,703,962 bytes를 제거했다. 자동 실행 설정과 용도가 다른 유일한 코드·서비스 전환 백업은 보존했다. 남긴 최신 PB DB의 `quick_check`·workshop ZIP CRC가 통과했고, 보존 백업과 종료된 서비스 DB의 SHA-256 및 Stone Match PID가 정리 전후 일치했다. 실제 백업 복원은 실행하지 않았다.
 
 현재 작업: **전체 프런트 OTA commit·push와 운영 적용·공개 브라우저 검증을 완료했다.** `4d6ce49`·`07abda9`를 main에 반영했고 Git Pages 자동 빌드·공개 파일 SHA·운영 generation 3을 확인했다. 브라우저2개에서 전체 UI 문구·CSS·root 교체와 원복을 검증했다. 입력4,061개·seq=ack·drops/recovered/fix/pending0·navigation1·같은 방/세션/canvas로 통과했다. 원래 화면52c726b5로 복원했다. [운영 결과](reviews/2026-10-11-frontend-ota-production.md), [로컬 결과](reviews/2026-10-11-frontend-ota.md), [PLAN-008](plans/PLAN-008.md). 실제 기기·공개 장시간 안정성과 CI 후속 자동 활성화는 남는다.
 
