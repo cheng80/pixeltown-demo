@@ -1,6 +1,15 @@
 # 프로젝트 현황
 
-갱신일: 2026-10-14 (Asia/Seoul). 전체 프런트 OTA 운영 결과는 아래 최신 작업과 7절을 따른다. 다른 운영·공개 결과는 각 기록 당시의 검사다. 기존 사용자 게임 주소는 `https://pixeltown.fastmake.net`이며, 현재 백엔드는 아래 종료 기록을 따른다.
+갱신일: 2026-10-24 (Asia/Seoul). 전체 프런트 OTA 운영 결과는 아래 최신 작업과 7절을 따른다. 다른 운영·공개 결과는 각 기록 당시의 검사다. 기존 사용자 게임 주소는 `https://pixeltown.fastmake.net`이며, 현재 백엔드는 아래 종료 기록을 따른다.
+
+## 작업 폴더·과거 체크아웃 정리 (2026-10-24)
+
+- 정리 전 등록된 Git worktree는 main 하나였다. `_workspace/test2-import-2026-10-24/capacity-100/repo/`는 별도 과거 clone이며 staged·unstaged·untracked·stash는 없었다. 정원 확장 `631c20d`는 main의 `05bf66c`, 연속 배포 `e7196a9`는 main의 `08884d6`와 각각 tree가 같고 `git cherry`에서도 이미 반영된 변경으로 확인했다. 후속 세션 복구·전체 프런트 OTA 코드를 과거 구현으로 덮어쓰지 않았다.
+- `_workspace/2026-10-08-001`–`003`의 최종 문서 수정도 현재 문서에 반영돼 있다. 원문·중간 산출물·검토·렌더 자료 전체를 `docs/references/local/document-editing/`으로 옮기고 아래 이력의 경로를 갱신했다.
+- Test2의 게임 변경 기록은 `docs/references/local/game-history/`, 봇·검증 화면은 `local/load-tests/`, 초기 서버는 `local/prototypes/`, 서버 설정 증거는 `local/server-setup/`, zrok 실험은 `local/tunnel-experiments/`에 보존했다. [자료 지도](references/README.md), [발표 HTML](presentations/pixeltown-20-users/index.html)을 통해 찾는다.
+- 별도 clone의 `.git`·환경 파일·의존성·테스트 DB는 `local/game-history/capacity-100/repo-2026-10-07.tar.gz`에 압축 보존했다. 파일별 SHA-256·권한·심볼릭 링크를 대조한 뒤 체크아웃과 빈 `_workspace/`를 제거했다. Test2의 호환 링크 14개와 README의 경로도 갱신했다. 상세 이동 목록과 대조 결과는 [로컬 보존 기록](references/local/provenance/workspace-cleanup-2026-10-24/relocation.json)에 있다.
+- 기존 미커밋 문서 2개의 운영 서버 종료·백업 정리 내용을 `cd40cce`로 보존했다. 운영 서버를 재개하거나 원격 브랜치를 변경하지 않았다. `local/` 자료는 Git에서 제외되며 폴더 백업이 필요하다. 발표 HTML과 자료 안내는 main에서 관리한다.
+- 검증: 이동 전 파일 5,350개·심볼릭 링크 24개 보존, 압축 항목 5,063개 대조, 문서 4개의 로컬 링크 116개·Test2 호환 링크 14개 정상. 발표 원본 SHA-256 일치, 현재 Chrome의 1280px·390px에서 8쪽 이동·출처 창·가로 넘침 0·브라우저 오류 0·외부 리소스 요청 0 확인. 전체 보기는 데스크톱에서 확인했으며 모바일은 기존 설계상 버튼을 숨긴다. `npm run build`·비밀정보 주요 패턴 검사·`git diff --check` 통과. 과거 브라우저 설정의 Chromium 1243 경로는 없어 현재 Chrome으로 검사했고 보존 원문은 수정하지 않았다. 게임 코드 변경이 없어 통합·부하·운영 검사는 재실행하지 않았다.
 
 ## 운영 서버 종료 (2026-10-14)
 
@@ -309,7 +318,7 @@ PB 배포 중 플레이 유지: 운영 서비스를 PB와 게임으로 분리했
 
 - 복구한 85명 이동 검사를 사용자 요청으로 18:14:16 KST에 정상 종료했다. `.test-work/minimal-live-2IhLNh/status.json`은 stopped·connected 0·410,224 입력·pendingAfterDrain 0·끊김/error/fix 0·배포 0회다. 정산 결과/원장 624/624와 사용자 100개를 대조했다. 실제 사용자와 서버는 이 단계에서 유지했다.
 - 이어 게임 서버 종료 지시를 받아 18:15:25 KST에 운영 `com.fastmake.pixeltown.minimal.colyseus`만 launchctl bootout했다. 종료 직전 players 0·generation 23·outbox 대기/실패 0/0, 종료 후 loopback 13620 listener 없음·PB 18820 health 200 확인. 자료는 원격 app의 `.test-work/game-user-shutdown-20261008.json`이다. Pages·PB·Tunnel·기존 게임·로컬 5270/18120/12620·개발 세션은 보존했다. 게임 서비스 재시작은 별도 사용자 요청에 따른다. 이후 공개 game health/ready 실패는 이 종료 상태와 구분해 읽는다.
-- 인계 HTML·화면 계약·TECH_SPEC·실 서비스 정리 문서를 마무리했다. 윤문 기록은 `_workspace/2026-10-08-003/`에 보존하며 원문과 검토 자료는 Git에서 제외한다. 스타일 수정 2곳·글자 기준 1.26%이며 이후 구현/검증 사실 추가는 윤문 변경률에 넣지 않았다. 이전 문서 윤문 자료도 보존한다.
+- 인계 HTML·화면 계약·TECH_SPEC·실 서비스 정리 문서를 마무리했다. 윤문 기록은 `docs/references/local/document-editing/2026-10-08-003/`에 보존하며 원문과 검토 자료는 Git에서 제외한다. 스타일 수정 2곳·글자 기준 1.26%이며 이후 구현/검증 사실 추가는 윤문 변경률에 넣지 않았다. 이전 문서 윤문 자료도 보존한다.
 - 최종 게시 전 검사: 최소 단위 21/21·오프라인 걷기 회귀·원격 빌드·Postman 5/5 통과. HTML 3개 self-check와 변경 문서의 로컬 링크 119개를 확인했다. Ego의 데스크톱 검사를 남겼으며 작업 공간이 사라져 최종 1280/390px 검사는 허용 Chromium 1193으로 완료했다. 페이지 넘침·브라우저 오류 0, 작은 화면의 그림 내부 스크롤만 허용한다. 자료는 `.test-work/frontend-live-source/`다. 공개 코드의 비밀정보 패턴 검사도 통과했고 `_workspace/`는 Git에서 제외했다.
 - 게시 검사에서 `engine.js` 끝의 빈 줄만 정리했다. 실행 코드는 동일하지만 파일 해시가 바뀌어 게시 빌드의 화면/호환성은 `c72da755`/`bd6f0b65`다. 실제 공개 두 번 교체 검증은 정리 전 `2ca05cdd`/`c4294810`의 기록으로 유지한다. 새 CI 빌드는 과거 공개 버전 4개와 새 버전을 보존하며, 이 호환성 변경은 열린 구버전 탭에 강제 적용하지 않는다.
 - 사용자가 commit/push/main 병합을 승인했다. 기존 dirty main을 유지하면서 별도 게시 브랜치에서 PB 서비스 분리·화면 교체·실제 검사·인계를 게시한다. 브랜치/worktree 삭제·개발 세션 종료는 하지 않는다. 병합 결과는 게시 후 아래에 기록한다.
@@ -343,7 +352,7 @@ PB 배포 중 플레이 유지: 운영 서비스를 PB와 게임으로 분리했
 
 - HTML 두 문서와 기술 설명·PB 배포·실 서비스 인계 Markdown 세 문서의 표현을 다듬었다. worker는 Colyseus 안의 게임 계산 스레드이며 PB는 별도 프로그램임을 설명했다. Colyseus 접속 서버·게임 worker·PB를 수정할 때의 반영 방법과 연결 유지 범위를 구분했다. [상세 그림](diagrams/worker-hot-swap.html), [도입 전/현재 비교](diagrams/zero-downtime.html), [기술 문서](architecture/zero-downtime.md).
 - 오래된 “운영 미반영”, “PB 분리 대기”를 서비스 분리·공개 PB 배포 검사 완료로 갱신했다. 도입 전 그림과 초기 검증 수치는 과거 기록으로 구분했다. 현재 타인 표시는 `playback.js`의 걸음 재생이며 초기 100ms 보간 검사와 구분했다.
-- 윤문 두 차례에서 59곳을 수정했다. 수치·인용·코드·링크·HTML 태그·CSS·SVG 좌표/연결은 윤문 전후 대조에서 같았다. 글자 기준 변경률은 HTML별 5.19%/9.20%다. 검토 기록과 원문은 `_workspace/2026-10-08-002/`, 최종 수정 목록은 `03_rewrite_diff_v2.json`에 있다. 진행 상태 갱신과 윤문 대조는 구분해 기록했다.
+- 윤문 두 차례에서 59곳을 수정했다. 수치·인용·코드·링크·HTML 태그·CSS·SVG 좌표/연결은 윤문 전후 대조에서 같았다. 글자 기준 변경률은 HTML별 5.19%/9.20%다. 검토 기록과 원문은 `docs/references/local/document-editing/2026-10-08-002/`, 최종 수정 목록은 `03_rewrite_diff_v2.json`에 있다. 진행 상태 갱신과 윤문 대조는 구분해 기록했다.
 - 검증: 두 HTML self-check 통과. 허용 Chromium 1193으로 1280/390px 네 렌더를 확인했으며 페이지 넘침·깨진 내부 목차·외부 리소스 요청·브라우저 오류는 0이었다. 변경한 11개 문서의 로컬 파일 링크 96개와 `git diff --check`도 통과했다. 그림 자체는 작은 화면에서 가로 스크롤한다. 렌더와 화면 자료는 위 윤문 폴더의 `browser/`에 있다.
 - 운영 검사가 남긴 임시 hooks는 원본으로 복구했다. 최종 공개 health는 players 0·outbox 0/0·hotSwap true·candidate false·idle이었다. 85명·3분 반복 배포는 재개하지 않았다. 로컬 PB/game/Vite PID 31654/31655/31666, 미커밋 프런트 작업과 개발 세션을 보존했다. 문서 윤문 과정에서는 화면 소스를 수정하지 않았고 commit/push도 하지 않았다.
 - 남은 일: 현재 프런트의 장시간 동기화 재검증, 실 서비스의 DB 이행·PB 버전 업그레이드·새 입장 재시도 안내·기기/지역별 검사. 접속 서버 자체 교체와 호스트 재부팅까지 연결을 유지하는 구조는 별도다. 시험 계정·백업·원문 자료는 정리 지시 전까지 보존한다.
@@ -395,7 +404,7 @@ PB 배포 중 플레이 유지: 운영 서비스를 PB와 게임으로 분리했
 - 그림은 전체 구조 6개 노드와 교체 순서 4개 참여자로 나눴다. CSS/SVG를 담은 단일 HTML이며 외부 폰트·이미지·JavaScript를 요청하지 않는다. 브라우저에서 열거나 인쇄할 수 있다. 인증·readiness 절차는 기술 문서에 있다.
 - 검증 수치는 기존 로컬 보고서에서 가져왔다. 문서 작성 중에 게임 부하·운영 검증을 다시 실행하지 않았다. docs/README와 TECH_SPEC에 링크를 추가했다.
 - 문서 검사: 다이어그램 self-check와 `git diff --check` 통과. 링크 21개와 HTML 내부 목차 정상. ego-browser 데스크톱 1458px·모바일 390px에서 본문 가로 넘침, SVG 밖으로 나간 글자, 외부 리소스 요청 없음. 모바일에서는 그림만 가로 스크롤한다. QA 자료는 `.test-work/worker-document-browser-report.json`, `worker-document-link-report.json`과 화면 캡처에 있다.
-- 사용자 피드백에 따라 제목·설명·관련 링크 문구를 윤문했다. 반복 비유와 슬로건을 줄이고 프로그램의 동작을 직접 서술했다. 계약·수치·코드 예제는 유지했다. 윤문 전후 대조에서 API 표·코드 블록·인라인 식별자·링크가 같았고, 변경한 그림도 데스크톱·모바일에서 넘침이 없었다. 원문과 수정 내역은 `_workspace/2026-10-08-001/`에 남겼다.
+- 사용자 피드백에 따라 제목·설명·관련 링크 문구를 윤문했다. 반복 비유와 슬로건을 줄이고 프로그램의 동작을 직접 서술했다. 계약·수치·코드 예제는 유지했다. 윤문 전후 대조에서 API 표·코드 블록·인라인 식별자·링크가 같았고, 변경한 그림도 데스크톱·모바일에서 넘침이 없었다. 원문과 수정 내역은 `docs/references/local/document-editing/2026-10-08-001/`에 남겼다.
 - 서버·게임·프런트 소스·DB·개발 세션·기존 미커밋 작업은 변경하지 않았다. commit/push·운영 접근/배포 없음. 최초 접속 계층 도입과 운영 검증은 별도 지시를 기다린다.
 
 ### 동기화·끊김 없는 worker 배포 확인 (2026-10-08, Codex)
